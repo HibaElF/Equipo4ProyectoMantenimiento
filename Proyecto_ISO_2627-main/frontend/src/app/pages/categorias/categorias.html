@@ -1,0 +1,193 @@
+<main class="pagina">
+  <header class="pagina-cabecera">
+    <div>
+      <h1 class="pagina-titulo">Categorías</h1>
+      <p class="pagina-descripcion">Consulta y gestiona las categorías disponibles en ESIBuy.</p>
+    </div>
+
+    <button
+      class="boton-principal"
+      type="button"
+      (click)="abrirFormulario()"
+      [disabled]="mostrandoFormulario()">
+      Nueva categoría
+    </button>
+  </header>
+
+  @if (mensajeResultado()) {
+    <output class="aviso aviso-exito">{{ mensajeResultado() }}</output>
+  }
+
+  @if (mostrandoFormulario()) {
+    <section
+      id="formulario-categoria"
+      class="tarjeta form-panel"
+      aria-labelledby="titulo-formulario">
+      <h2 id="titulo-formulario" class="titulo-formulario" tabindex="-1">
+        {{ categoriaEnEdicion() ? 'Modificar categoría' : 'Crear categoría' }}
+      </h2>
+
+      <form [formGroup]="formularioCategoria" (ngSubmit)="guardarCategoria()">
+        <div class="form-grid">
+          <label>
+            Nombre
+            <input
+              type="text"
+              formControlName="nombre"
+              placeholder="Ej. Hogar"
+              maxlength="100"
+              [attr.aria-invalid]="nombreInvalido()" />
+            @if (nombreInvalido()) {
+              <span class="field-error">
+                El nombre es obligatorio y no puede contener solo espacios.
+              </span>
+            }
+          </label>
+
+          <label>
+            Descripción
+            <textarea
+              formControlName="descripcion"
+              placeholder="Describe brevemente la categoría"
+              rows="4"
+              maxlength="500"
+              [attr.aria-invalid]="descripcionInvalida()"></textarea>
+            @if (descripcionInvalida()) {
+              <span class="field-error">
+                La descripción es obligatoria y no puede contener solo espacios.
+              </span>
+            }
+          </label>
+        </div>
+
+        @if (errorFormulario()) {
+          <p class="aviso aviso-error" role="alert">{{ errorFormulario() }}</p>
+        }
+
+        <div class="form-actions">
+          <button
+            class="boton-secundario"
+            type="button"
+            (click)="cancelarFormulario()"
+            [disabled]="creando() || modificando()">
+            Cancelar
+          </button>
+
+          <button
+            class="boton-principal"
+            type="submit"
+            [disabled]="creando() || modificando()">
+            @if (creando() || modificando()) {
+              Guardando...
+            } @else if (categoriaEnEdicion()) {
+              Guardar cambios
+            } @else {
+              Crear categoría
+            }
+          </button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <!-- HU-11: Búsqueda y ordenación de categorías -->
+  <section class="tarjeta filtros-categorias" aria-label="Buscar y ordenar categorías">
+    <form [formGroup]="filtros" (ngSubmit)="aplicarFiltros()">
+      <div class="filtros-campos">
+        <label>
+          Buscar por nombre
+          <input
+            type="search"
+            formControlName="nombre"
+            placeholder="Ej. Deportes"
+            maxlength="100" />
+        </label>
+
+        <label>
+          Ordenar por nombre
+          <select formControlName="orden">
+            <option value="">Sin ordenar</option>
+            <option value="asc">Nombre (A - Z)</option>
+            <option value="desc">Nombre (Z - A)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="filtros-acciones">
+        <button class="boton-principal" type="submit" [disabled]="cargando()">Buscar</button>
+
+        <button
+          class="boton-secundario"
+          type="button"
+          (click)="limpiarFiltros()"
+          [disabled]="cargando()">
+          Limpiar filtros
+        </button>
+      </div>
+    </form>
+  </section>
+
+  @if (!cargando() && !error()) {
+    <p class="resumen"><output>
+      @if (hayFiltrosAplicados()) {
+        Categorías encontradas:
+      } @else {
+        Total de categorías:
+      }
+      <strong>{{ categorias().length }}</strong>
+    </output></p>
+  }
+
+  <!-- Estados de carga, error y resultados -->
+  @if (cargando()) {
+    <output class="estado">Cargando categorías...</output>
+  } @else if (error()) {
+    <div class="estado" role="alert">
+      <p class="estado-titulo">No se pudieron cargar las categorías.</p>
+      <button class="boton-secundario boton-reintentar" type="button" (click)="cargarCategorias()">Reintentar</button>
+    </div>
+  } @else if (categorias().length === 0) {
+    <div class="estado">
+      @if (hayFiltrosAplicados()) {
+        <p class="estado-titulo">No se encontraron categorías con los filtros indicados.</p>
+        <button class="boton-secundario" type="button" (click)="limpiarFiltros()">Limpiar filtros</button>
+      } @else {
+        <p class="estado-titulo">No hay categorías registradas actualmente.</p>
+        <p>Crea la primera con «Nueva categoría».</p>
+      }
+    </div>
+  } @else {
+    <section class="categorias-list" aria-label="Listado de categorías">
+      @for (categoria of categorias(); track categoria.id) {
+        <article class="tarjeta categoria-card">
+          <h2>{{ categoria.nombre }}</h2>
+          <p class="categoria-descripcion">{{ categoria.descripcion }}</p>
+
+          <div class="categoria-actions">
+            <button
+              class="boton-secundario"
+              type="button"
+              (click)="iniciarEdicion(categoria)"
+              [disabled]="mostrandoFormulario()"
+              [attr.aria-label]="'Editar categoría ' + categoria.nombre">
+              Editar
+            </button>
+
+            <button
+              class="boton-peligro"
+              type="button"
+              (click)="eliminarCategoria(categoria)"
+              [disabled]="mostrandoFormulario() || eliminando() !== null"
+              [attr.aria-label]="'Eliminar categoría ' + categoria.nombre">
+              @if (eliminando() === categoria.id) {
+                Eliminando...
+              } @else {
+                Eliminar
+              }
+            </button>
+          </div>
+        </article>
+      }
+    </section>
+  }
+</main>

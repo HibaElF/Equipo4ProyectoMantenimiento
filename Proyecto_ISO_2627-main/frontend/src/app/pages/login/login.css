@@ -1,0 +1,6 @@
+/* La estructura, la tarjeta, los campos y los botones vienen de ../acceso/acceso.css. */
+
+.enlace-olvido {
+  justify-self: end;
+  font-size: .95rem;
+}

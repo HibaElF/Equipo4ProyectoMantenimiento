@@ -1,0 +1,477 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import {
+  HttpTestingController,
+  provideHttpClientTesting
+} from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+
+import { Register } from './register';
+import { RegistrationService } from './registration.service';
+
+describe('Register', () => {
+  let component: Register;
+  let fixture: ComponentFixture<Register>;
+  let httpMock: HttpTestingController;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Register],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([])
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(Register);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('shows the customer form by default and switches to the seller form', () => {
+    expect(
+      fixture.nativeElement.querySelector('[formControlName="fechaNacimiento"]')
+    ).toBeTruthy();
+
+    expect(
+      fixture.nativeElement.querySelector('[formControlName="tipoCliente"]')
+    ).toBeTruthy();
+
+    fixture.nativeElement
+      .querySelector('.role-switch button:last-child')
+      .click();
+
+    httpMock.expectOne(
+      'https://localhost:8443/categorias/registro'
+    ).flush([]);
+
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('[formControlName="nombreComercial"]')
+    ).toBeTruthy();
+
+    expect(
+      fixture.nativeElement.querySelector('[formControlName="fechaNacimiento"]')
+    ).toBeNull();
+
+    expect(
+      fixture.nativeElement
+        .querySelector('.avatar-wrap img')
+        .getAttribute('src')
+    ).toBe('/avatars/vendedor.svg');
+  });
+
+  it('does not submit invalid data and reports mismatched passwords', () => {
+    component.clienteForm.patchValue({
+      contrasena: 'password123',
+      repetirContrasena: 'different123'
+    });
+
+    component.register();
+    fixture.detectChanges();
+
+    expect(component.clienteForm.invalid).toBe(true);
+    expect(component.passwordMismatch(component.clienteForm)).toBe(true);
+
+    httpMock.expectNone('https://localhost:8443/cliente/register');
+  });
+
+  it('validates all password requirements for customer and seller forms', () => {
+    const passwords = [
+      'password1!',
+      'PASSWORD1!',
+      'Password!',
+      'Password1',
+      'Password1 ',
+    ];
+
+    for (const password of passwords) {
+      component.clienteForm.controls.contrasena.setValue(password);
+      component.vendedorForm.controls.contrasena.setValue(password);
+
+      expect(
+        component.clienteForm.controls.contrasena.hasError('passwordRequirements')
+      ).toBe(true);
+      expect(
+        component.vendedorForm.controls.contrasena.hasError('passwordRequirements')
+      ).toBe(true);
+    }
+
+    component.clienteForm.controls.contrasena.setValue('Password1!');
+    component.vendedorForm.controls.contrasena.setValue('Password1!');
+
+    expect(component.clienteForm.controls.contrasena.valid).toBe(true);
+    expect(component.vendedorForm.controls.contrasena.valid).toBe(true);
+  });
+
+  it('shows password requirements on focus and marks satisfied rules with a check', () => {
+    expect(
+      fixture.nativeElement.querySelector('.password-requirements')
+    ).toBeNull();
+
+    const passwordInput = fixture.nativeElement.querySelector(
+      '[formControlName="contrasena"]'
+    ) as HTMLInputElement;
+
+    passwordInput.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('.password-requirements')
+    ).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelectorAll('.password-requirements li.met')
+    ).toHaveLength(0);
+
+    passwordInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('.password-requirements')
+    ).toBeNull();
+
+    passwordInput.dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    component.clienteForm.controls.contrasena.setValue('Password1!');
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelectorAll('.password-requirements li.met')
+    ).toHaveLength(5);
+    expect(
+      fixture.nativeElement.querySelector('.requirement-status').textContent
+    ).toBe('✓');
+
+    passwordInput.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('.password-requirements')
+    ).toBeTruthy();
+  });
+
+  it('usa la etiqueta «DNI/NIF» también en el formulario de cliente (B10)', () => {
+    const etiqueta = fixture.nativeElement.querySelector('[formControlName="dniNif"]')
+      .closest('label').querySelector('.campo-etiqueta');
+
+    expect(etiqueta.textContent.trim()).toBe('DNI/NIF');
+  });
+
+  it('no repite bajo la lista de requisitos el error de longitud de la contraseña (B10)', () => {
+    const contrasena = component.clienteForm.controls.contrasena;
+    contrasena.setValue('Ab1!');
+    contrasena.markAsTouched();
+
+    expect(component.controlError(component.clienteForm, 'contrasena'))
+      .toBe('La contraseña debe cumplir todos los requisitos indicados.');
+  });
+
+  it('toggles password visibility independently for all registration password fields', () => {
+    const fields = [
+      'contrasena',
+      'repetirContrasena',
+    ];
+
+    for (const field of fields) {
+      const input = fixture.nativeElement.querySelector(
+        `[formControlName="${field}"]`
+      ) as HTMLInputElement;
+      const toggle = input.parentElement?.querySelector(
+        '.boton-ojo'
+      ) as HTMLButtonElement;
+
+      expect(input.type).toBe('password');
+      expect(toggle.type).toBe('button');
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(input.type).toBe('text');
+      expect(toggle.getAttribute('aria-pressed')).toBe('true');
+
+      toggle.click();
+      fixture.detectChanges();
+
+      expect(input.type).toBe('password');
+    }
+
+    fixture.nativeElement
+      .querySelector('.role-switch button:last-child')
+      .click();
+    httpMock.expectOne(
+      'https://localhost:8443/categorias/registro'
+    ).flush([]);
+    fixture.detectChanges();
+
+    for (const field of fields) {
+      const input = fixture.nativeElement.querySelector(
+        `[formControlName="${field}"]`
+      ) as HTMLInputElement;
+      const toggle = input.parentElement?.querySelector(
+        '.boton-ojo'
+      ) as HTMLButtonElement;
+
+      expect(input.type).toBe('password');
+      toggle.click();
+      fixture.detectChanges();
+      expect(input.type).toBe('text');
+    }
+  });
+
+  it('prevents customers under 18 from submitting', () => {
+    component.clienteForm.patchValue({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      fechaNacimiento: '2020-01-01',
+      dniNif: '12345678A',
+      email: 'ada@example.com',
+      contrasena: 'Strong-pass-123!',
+      repetirContrasena: 'Strong-pass-123!',
+    });
+
+    component.register();
+
+    expect(
+      component.clienteForm.controls.fechaNacimiento.hasError('underage')
+    ).toBe(true);
+
+    expect(
+      component.controlError(component.clienteForm, 'fechaNacimiento')
+    ).toContain('18 años');
+
+    httpMock.expectNone('https://localhost:8443/cliente/register');
+  });
+
+  it('maps a premium customer request and confirms pending activation', () => {
+    component.clienteForm.setValue({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      fechaNacimiento: '1990-12-10',
+      dniNif: '12345678A',
+      email: 'ada@example.com',
+      telefono: '',
+      imagenPerfil: '',
+      contrasena: 'Strong-pass-123!',
+      repetirContrasena: 'Strong-pass-123!',
+      tipoCliente: 'premium',
+    });
+
+    component.register();
+
+    const request = httpMock.expectOne(
+      'https://localhost:8443/cliente/register'
+    );
+
+    expect(request.request.method).toBe('POST');
+
+    expect(request.request.body).toEqual({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      fechaNacimiento: '1990-12-10',
+      dniNif: '12345678A',
+      email: 'ada@example.com',
+      contrasena: 'Strong-pass-123!',
+      esPremium: true,
+    });
+
+    request.flush({
+      mensaje: 'Si la solicitud puede tramitarse, el equipo administrador revisará los datos antes de activar la cuenta.'
+    });
+
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('output').textContent
+    ).toContain('revisará los datos');
+  });
+
+  it('shows the same generic accepted message for an existing email (A21)', () => {
+    component.clienteForm.setValue({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      fechaNacimiento: '1990-12-10',
+      dniNif: '12345678A',
+      email: 'ada@example.com',
+      telefono: '',
+      imagenPerfil: '',
+      contrasena: 'Strong-pass-123!',
+      repetirContrasena: 'Strong-pass-123!',
+      tipoCliente: 'normal',
+    });
+
+    component.register();
+
+    httpMock.expectOne(
+      'https://localhost:8443/cliente/register'
+    ).flush(
+      {
+        mensaje: 'Si la solicitud puede tramitarse, el equipo administrador revisará los datos antes de activar la cuenta.'
+      },
+      {
+        status: 202,
+        statusText: 'Accepted'
+      }
+    );
+
+    fixture.detectChanges();
+
+    const message = fixture.nativeElement.querySelector('output').textContent;
+    expect(message).toContain('Si la solicitud puede tramitarse');
+    expect(message).not.toContain('existe');
+    expect(message).not.toContain('correo');
+  });
+
+  it('shows all field errors returned together by the backend', () => {
+    component.clienteForm.setValue({
+      nombre: 'Ada',
+      apellidos: 'Lovelace',
+      fechaNacimiento: '1990-12-10',
+      dniNif: '12345678A',
+      email: 'ada@example.com',
+      telefono: '',
+      imagenPerfil: '',
+      contrasena: 'Strong-pass-123!',
+      repetirContrasena: 'Strong-pass-123!',
+      tipoCliente: 'normal',
+    });
+
+    component.register();
+
+    httpMock.expectOne(
+      'https://localhost:8443/cliente/register'
+    ).flush(
+      {
+        error: 'Revisa los campos del formulario.',
+        errores: {
+          fechaNacimiento: ['El cliente debe tener al menos 18 años.'],
+          email: ['Introduce un correo electrónico válido.'],
+        },
+      },
+      {
+        status: 400,
+        statusText: 'Bad Request'
+      }
+    );
+
+    fixture.detectChanges();
+
+    const errorItems = Array.from(
+      fixture.nativeElement.querySelectorAll('.feedback li'),
+      (item: Element) => item.textContent,
+    );
+
+    expect(errorItems).toEqual([
+      'Fecha de nacimiento: El cliente debe tener al menos 18 años.',
+      'Correo electrónico: Introduce un correo electrónico válido.',
+    ]);
+  });
+
+  // HU11: comprobar que el registro carga las categorías del backend.
+  it('loads categories when selecting the seller role', async () => {
+    fixture.nativeElement
+      .querySelector('.role-switch button:last-child')
+      .click();
+
+    const request = httpMock.expectOne(
+      'https://localhost:8443/categorias/registro'
+    );
+
+    expect(request.request.method).toBe('GET');
+
+    request.flush([
+      {
+        id: '6abe34098deff53da8a2c052',
+        nombre: 'Deportes',
+      },
+    ]);
+
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.sellerCategories).toEqual([
+      {
+        id: '6abe34098deff53da8a2c052',
+        nombre: 'Deportes',
+      },
+    ]);
+
+    expect(fixture.nativeElement.textContent).toContain('Deportes');
+
+    expect(
+      component.vendedorForm.controls.categoriaId
+    ).toBeTruthy();
+  });
+
+  it('posts seller registration to the seller endpoint', () => {
+    const registrationService = TestBed.inject(RegistrationService);
+
+    const requestBody = {
+      nombre: 'Grace',
+      apellidos: 'Hopper',
+      dniNif: '12345678B',
+      email: 'grace@example.com',
+      contrasena: 'Strong-pass-123!',
+      categoriaId: '6abe34098deff53da8a2c052',
+      nombreComercial: 'Grace Shop',
+    };
+
+    registrationService.registerVendedor(requestBody).subscribe();
+
+    const request = httpMock.expectOne(
+      'https://localhost:8443/vendedor/register'
+    );
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(requestBody);
+
+    request.flush({
+      mensaje: 'Si la solicitud puede tramitarse, el equipo administrador revisará los datos antes de activar la cuenta.'
+    });
+  });
+
+  describe('confirmación de contraseña (A22)', () => {
+    const confirmationInput = (): HTMLInputElement =>
+      fixture.nativeElement.querySelector('[formControlName="repetirContrasena"]');
+
+    const expectClipboardBlocked = (input: HTMLInputElement): void => {
+      for (const type of ['paste', 'copy', 'cut', 'drop']) {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        input.dispatchEvent(event);
+        expect(event.defaultPrevented, type).toBe(true);
+      }
+      expect(input.getAttribute('autocomplete')).toBe('off');
+    };
+
+    it('no permite pegar, copiar, cortar ni soltar en el formulario de cliente', () => {
+      expectClipboardBlocked(confirmationInput());
+      expect(component.clienteForm.controls.repetirContrasena.value).toBe('');
+    });
+
+    it('no permite pegar, copiar, cortar ni soltar en el formulario de vendedor', () => {
+      fixture.nativeElement
+        .querySelector('.role-switch button:last-child')
+        .click();
+
+      httpMock.expectOne(
+        'https://localhost:8443/categorias/registro'
+      ).flush([]);
+
+      fixture.detectChanges();
+
+      expectClipboardBlocked(confirmationInput());
+      expect(component.vendedorForm.controls.repetirContrasena.value).toBe('');
+    });
+  });
+});

@@ -1,0 +1,152 @@
+/*
+ * Listados de usuarios y de administradores. La página, la cabecera, las tarjetas, los botones, los
+ * chips, los estados y los avisos vienen de ../tienda/tienda.css. Solo usa tokens de styles.css.
+ */
+
+.statistics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statistics article {
+  display: grid;
+  gap: .25rem;
+}
+
+.statistics span {
+  color: var(--color-text-secondary);
+  font-size: .9rem;
+}
+
+.statistics strong {
+  color: var(--color-text);
+  font-size: 1.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Filtros --- */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.filters label {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+  gap: .4rem;
+  min-width: 0;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: .55rem .8rem;
+  border: 1px solid var(--color-border-input);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 400;
+}
+
+/* --- Tabla --- */
+
+.table-wrapper {
+  position: relative;
+  max-width: 100%;
+  padding: 0;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: .9rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: var(--color-background);
+}
+
+th {
+  color: var(--color-text-secondary);
+  background: var(--color-background);
+  font-size: .875rem;
+  font-weight: 700;
+}
+
+.actions-cell {
+  min-width: 12rem;
+}
+
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* M9: objetivo táctil de 44 px. Las acciones son iconos con nombre accesible (aria-label) y texto en `title`. */
+.accion {
+  min-height: 44px;
+  padding: .4rem .8rem;
+  font-size: .9rem;
+  white-space: nowrap;
+}
+
+.accion-icono {
+  min-width: 44px;
+  padding: .4rem;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.current-admin-label {
+  min-height: 44px;
+}
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.pagination span {
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 760px) {
+  .filters label {
+    flex-basis: 100%;
+  }
+
+  .filters > button {
+    flex: 1 1 8rem;
+  }
+}
