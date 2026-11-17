@@ -11,6 +11,11 @@ import jakarta.validation.Validator;
  */
 final class ValidacionProducto {
 
+    static final String MENSAJE_DESCUENTOS_SUPERAN_MAXIMO =
+            "El descuento y el descuento premium juntos no pueden superar el 100 %.";
+
+    private static final int DESCUENTO_MAXIMO = 100;
+
     private ValidacionProducto() {
     }
 
@@ -27,6 +32,10 @@ final class ValidacionProducto {
 
         if (!sonValoresValidos(request)) {
             throw new InvalidProductException();
+        }
+        // El cliente premium suma los dos descuentos, así que juntos no pueden pasar del 100 %.
+        if (request.descuento() + request.descuentoPremium() > DESCUENTO_MAXIMO) {
+            throw new InvalidProductException(MENSAJE_DESCUENTOS_SUPERAN_MAXIMO);
         }
         return nombreCategoria;
     }
@@ -57,6 +66,6 @@ final class ValidacionProducto {
     }
 
     private static boolean esDescuentoValido(int descuento) {
-        return descuento >= 0 && descuento <= 100;
+        return descuento >= 0 && descuento <= DESCUENTO_MAXIMO;
     }
 }

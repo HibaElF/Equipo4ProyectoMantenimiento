@@ -10,7 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 public record ModificarProductoRequest(
     @NotBlank(message = "El nombre del producto es obligatorio") String nombre,
     @NotBlank(message = "La categoría del producto es obligatoria") String categoria,
-    String descripcion,
+    @NotBlank(message = "La descripción del producto es obligatoria") String descripcion,
     @NotNull(message = "El precio es obligatorio")
     @Positive(message = "El precio debe ser mayor que 0") Double precio,
     @PositiveOrZero(message = "El stock no puede ser negativo") int stock,
