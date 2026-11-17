@@ -48,6 +48,9 @@
     <div class="campo campo-amplio">
         <label for="descripcion-producto">Descripción</label>
         <textarea id="descripcion-producto" rows="3" formControlName="descripcion"></textarea>
+        @if (campoInvalido('descripcion')) {
+        <small class="error-campo">La descripción es obligatoria.</small>
+        }
     </div>
 
     <div class="campo campo-imagen">
@@ -111,6 +114,15 @@
             }
         </div>
     </div>
+    @if (descuentosSuperanMaximo()) {
+    <div class="campo">
+        <small class="error-campo" role="alert">El descuento y el descuento premium juntos no pueden superar el 100 %.</small>
+    </div>
+    } @else if (formularioProducto.controls.descuentoPremium.value > 0) {
+    <div class="campo">
+        <small class="ayuda-campo">Los clientes premium tendrán un {{ descuentoTotalPremium() }} % de descuento en total.</small>
+    </div>
+    }
 
     <div class="campo">
         <label for="solo-premium-producto">
@@ -235,7 +247,7 @@
             <p>Descuento: {{ producto.descuento }} %</p>
             }
             @if (producto.descuentoPremium > 0) {
-            <p>Descuento Premium: {{ producto.descuentoPremium }} %</p>
+            <p>Descuento Premium adicional: {{ producto.descuentoPremium }} %</p>
             }
             @if (producto.soloPremium) {
             <p><span class="chip chip-aviso">Solo para clientes premium</span></p>

@@ -10,7 +10,14 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { normalizarTexto } from '../../shared/texto/normalizar-texto';
 import { CategoriasService } from '../categorias/categorias.service';
@@ -18,6 +25,15 @@ import { ProductoPropio, ProductoService } from './producto.service';
 import { VendedorService } from './vendedor.service';
 
 export type EstadoFiltro = 'todos' | 'activos' | 'desactivados';
+
+/** Oferta de producto: el cliente premium suma los dos descuentos, que juntos no pueden pasar del 100 %. */
+export const DESCUENTO_MAXIMO = 100;
+
+function descuentosHastaElMaximo(formulario: AbstractControl): ValidationErrors | null {
+  const descuento = Number(formulario.get('descuento')?.value ?? 0);
+  const descuentoPremium = Number(formulario.get('descuentoPremium')?.value ?? 0);
+  return descuento + descuentoPremium > DESCUENTO_MAXIMO ? { descuentosSuperanMaximo: true } : null;
+}
 
 @Component({
   selector: 'app-panel-vendedor',
@@ -97,15 +113,16 @@ export class PanelVendedor implements OnInit {
   readonly formularioProducto = this.formBuilder.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(2)]],
     categoria: ['', Validators.required],
-    descripcion: [''],
+    // Oferta de producto: la descripción es obligatoria y no basta con espacios.
+    descripcion: ['', [Validators.required, Validators.pattern(/\S/)]],
     esVisible: [true],
     // M14: precio y stock empiezan vacíos (con placeholder), no con un 0 que hay que borrar.
     precio: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
     // Al crear el stock debe ser mayor que 0; al modificar (HU18) se admite 0.
     stock: new FormControl<number | null>(null, [Validators.required, Validators.min(1)]),
-    descuento: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    descuentoPremium: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-  });
+    descuento: [0, [Validators.required, Validators.min(0), Validators.max(DESCUENTO_MAXIMO)]],
+    descuentoPremium: [0, [Validators.required, Validators.min(0), Validators.max(DESCUENTO_MAXIMO)]],
+  }, { validators: descuentosHastaElMaximo });
 
   alternarFormulario(): void {
     this.mensajeExito.set('');
@@ -456,6 +473,21 @@ export class PanelVendedor implements OnInit {
   campoInvalido(nombreCampo: string): boolean {
     const control = this.formularioProducto.get(nombreCampo);
     return !!control && control.invalid && (control.dirty || control.touched);
+  }
+
+  /** Oferta de producto: avisa cuando el descuento y el premium juntos superan el 100 %. */
+  descuentosSuperanMaximo(): boolean {
+    const { descuento, descuentoPremium } = this.formularioProducto.controls;
+    return (
+      this.formularioProducto.hasError('descuentosSuperanMaximo') &&
+      (descuento.dirty || descuento.touched || descuentoPremium.dirty || descuentoPremium.touched)
+    );
+  }
+
+  /** Descuento total que tendrá un cliente premium: el normal más el premium. */
+  descuentoTotalPremium(): number {
+    const { descuento, descuentoPremium } = this.formularioProducto.getRawValue();
+    return Number(descuento ?? 0) + Number(descuentoPremium ?? 0);
   }
 
   urlImagen(imagen: string): string {
