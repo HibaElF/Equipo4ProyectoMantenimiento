@@ -165,6 +165,18 @@ class ProductoControllerHU18Tests {
     }
 
     @Test
+    void descripcionVaciaDevuelveBadRequestSinLlamarAlServicio() throws Exception {
+        mockMvc.perform(peticionModificar(
+                        JSON_VALIDO.replace("\"descripcion\":\"Retroiluminado\"", "\"descripcion\":\"  \""))
+                        .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.descripcion[0]").value("La descripción del producto es obligatoria"));
+
+        verifyNoInteractions(productoService);
+    }
+
+    @Test
     void categoriaInexistenteDevuelveBadRequestConMensaje() throws Exception {
         when(productoService.modificarProducto(eq(EMAIL_VENDEDOR), eq("producto-1"), any(), isNull()))
                 .thenThrow(new InvalidProductException());

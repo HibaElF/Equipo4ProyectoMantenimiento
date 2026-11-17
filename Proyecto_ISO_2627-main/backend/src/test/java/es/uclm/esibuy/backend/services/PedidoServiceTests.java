@@ -333,8 +333,8 @@ class PedidoServiceTests {
         compra();
         Pedido pedido = pagar();
         assertEquals(EstadoPedido.PAGADO_COMPLETADO, pedido.getEstado());
-        assertEquals(new BigDecimal(premium ? "150.00" : "180.00"), pedido.getImporte());
-        assertEquals(new BigDecimal(premium ? "75.00" : "90.00"), pedido.getLineas().getFirst().precioCompra());
+        assertEquals(new BigDecimal(premium ? "130.00" : "180.00"), pedido.getImporte());
+        assertEquals(new BigDecimal(premium ? "65.00" : "90.00"), pedido.getLineas().getFirst().precioCompra());
         assertEquals("vendedor-1", pedido.getLineas().getFirst().vendedorId());
         assertNotNull(pedido.getFechaPago());
         verify(productos).descontarStock(producto, 2);

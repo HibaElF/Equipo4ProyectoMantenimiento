@@ -228,7 +228,7 @@ class CarritoServiceTests {
         verify(carritoDAO).save(any());
     }
     @Test
-    void calculaImporteConDescuentoGeneralYPremiumSinAcumularlos() {
+    void calculaImporteSumandoElDescuentoGeneralYElPremium() {
         prepararCarrito(null);
         producto.setPrecio(19.99);
         producto.setDescuento(10);
@@ -237,7 +237,7 @@ class CarritoServiceTests {
         assertEquals(new java.math.BigDecimal("53.97"),
                 servicio.anadirProductoConImporte("producto-1", 3).importe());
         cliente.setEsPremium(true);
-        assertEquals(new java.math.BigDecimal("47.97"),
+        assertEquals(new java.math.BigDecimal("41.97"),
                 servicio.anadirProductoConImporte("producto-1", 3).importe());
         producto.setDescuentoPremium(0);
         assertEquals(new java.math.BigDecimal("53.97"),
@@ -600,8 +600,8 @@ class CarritoServiceTests {
         });
 
         var consulta = servicio.consultarCarrito();
-        String unitario = tipo.equals("premium") ? "8.04" : "9.05";
-        String inicial = tipo.equals("premium") ? "23.58" : "25.60";
+        String unitario = tipo.equals("premium") ? "7.04" : "9.05";
+        String inicial = tipo.equals("premium") ? "21.58" : "25.60";
         assertEquals(new java.math.BigDecimal(inicial), consulta.importe());
         // Cambian externamente precio y stock antes de modificar el carrito.
         segundo.setPrecio(8.00);
@@ -611,7 +611,7 @@ class CarritoServiceTests {
                 .findFirst().orElseThrow();
         assertEquals(new java.math.BigDecimal(unitario), primera.precioUnitario());
         assertEquals(new java.math.BigDecimal(unitario).multiply(java.math.BigDecimal.valueOf(5)), primera.subtotal());
-        assertEquals(tipo.equals("premium") ? new java.math.BigDecimal("48.20")
+        assertEquals(tipo.equals("premium") ? new java.math.BigDecimal("43.20")
                 : new java.math.BigDecimal("53.25"), modificado.importe());
         assertEquals(1, guardado.get().cantidadDe("producto-2"));
 
