@@ -31,6 +31,7 @@ import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.VendedorDAO;
 import es.uclm.esibuy.backend.dto.CrearProductoRequest;
+import es.uclm.esibuy.backend.dto.ModificarProductoRequest;
 import es.uclm.esibuy.backend.exceptions.InvalidProductException;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
@@ -368,6 +369,44 @@ class ProductoServiceTests {
     @Test
     void elDescuentoPremiumEsValidoSeaONoSoloPremium() {
         assertEquals(30, crearProductoConSolicitud(solicitud("Informática", 5, 30, false)).getDescuentoPremium());
+    }
+
+    // --- Oferta de producto: los dos descuentos se suman y la descripción es obligatoria ---
+
+    @Test
+    void rechazaCrearProductoSiLosDescuentosSumanMasDeCien() {
+        when(vendedorDAO.findByEmail(EMAIL)).thenReturn(Optional.of(crearVendedor(true, false)));
+        when(categoriaDAO.existsByNombreIgnoreCase("Informática")).thenReturn(true);
+        CrearProductoRequest request = new CrearProductoRequest(
+                "Lámpara", "Informática", "Lámpara de mesa", true, 25.0, 5, 60, 41, false);
+
+        InvalidProductException excepcion = assertThrows(
+                InvalidProductException.class,
+                () -> productoService.crearProducto(EMAIL, request, null));
+
+        assertEquals(ValidacionProducto.MENSAJE_DESCUENTOS_SUPERAN_MAXIMO, excepcion.getMessage());
+        verify(productoDAO, never()).save(any(Producto.class));
+    }
+
+    @Test
+    void aceptaCrearProductoSiLosDescuentosSumanExactamenteCien() {
+        Producto guardado = crearProductoConSolicitud(new CrearProductoRequest(
+                "Lámpara", "Informática", "Lámpara de mesa", true, 25.0, 5, 60, 40, false));
+
+        assertEquals(60, guardado.getDescuento());
+        assertEquals(40, guardado.getDescuentoPremium());
+    }
+
+    @Test
+    void laValidacionDeLaPeticionExigeLaDescripcion() {
+        Validator real = Validation.buildDefaultValidatorFactory().getValidator();
+
+        assertFalse(real.validate(new CrearProductoRequest("Lámpara", "Informática", null, 10.0, 5, 0, 0)).isEmpty());
+        assertFalse(real.validate(new CrearProductoRequest("Lámpara", "Informática", "   ", 10.0, 5, 0, 0)).isEmpty());
+        assertFalse(real.validate(
+                new ModificarProductoRequest("Lámpara", "Informática", "", 10.0, 5, 0, 0)).isEmpty());
+        assertTrue(real.validate(
+                new ModificarProductoRequest("Lámpara", "Informática", "Lámpara de mesa", 10.0, 5, 0, 0)).isEmpty());
     }
 
     @Test

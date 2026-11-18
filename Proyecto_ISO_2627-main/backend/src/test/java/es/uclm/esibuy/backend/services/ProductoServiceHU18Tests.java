@@ -181,6 +181,21 @@ class ProductoServiceHU18Tests {
     }
 
     @Test
+    void rechazaModificarSiLosDescuentosSumanMasDeCien() {
+        when(vendedorDAO.findByEmail(EMAIL_VENDEDOR)).thenReturn(Optional.of(crearVendedor(true, false)));
+        when(categoriaDAO.existsByNombreIgnoreCase("Periféricos")).thenReturn(true);
+        ModificarProductoRequest request = new ModificarProductoRequest(
+                "Teclado", "Periféricos", "Retroiluminado", 10.0, 1, 50, 51);
+
+        InvalidProductException excepcion = assertThrows(
+                InvalidProductException.class,
+                () -> productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, request, null));
+
+        assertEquals(ValidacionProducto.MENSAJE_DESCUENTOS_SUPERAN_MAXIMO, excepcion.getMessage());
+        verifyNoInteractions(productoDAO, productoImagenService);
+    }
+
+    @Test
     void rechazaDescuentoPremiumInvalidoAunqueSeIndiqueSoloPremium() {
         assertDatosInvalidos(new ModificarProductoRequest(
                 "Teclado", "Periféricos", null, 10.0, 1, 0, 101, true));
