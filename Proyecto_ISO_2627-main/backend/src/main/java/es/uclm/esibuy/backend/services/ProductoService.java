@@ -22,6 +22,7 @@ import es.uclm.esibuy.backend.dto.ProductoAdministracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoCatalogoResponse;
 import es.uclm.esibuy.backend.exceptions.EstadoProductoException;
 import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
+import es.uclm.esibuy.backend.exceptions.StockModificadoException;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
@@ -231,10 +232,12 @@ public class ProductoService {
         String nombreCategoria = ValidacionProducto.validarDatos(request, validar, categoriaDAO);
         Producto producto = buscarProductoPropio(vendedor, idProducto);
 
-        int stockAnterior = producto.getStock();
+        int stockActual = producto.getStock();
+        int stockNuevo = stockAGuardar(request, stockActual);
 
         // Solo se actualizan los campos permitidos; el vendedor y la visibilidad se conservan.
         ValidacionProducto.asignarDatos(producto, request, nombreCategoria);
+        producto.setStock(stockNuevo);
         // La marca «solo premium» es opcional: si no se envía, se conserva la actual.
         if (request.soloPremium() != null) {
             producto.setSoloPremium(request.soloPremium());
@@ -249,7 +252,7 @@ public class ProductoService {
 
         Producto productoModificado;
         try {
-            productoModificado = productoDAO.actualizarDatos(producto, stockAnterior);
+            productoModificado = productoDAO.actualizarDatos(producto, stockActual);
         } catch (RuntimeException exception) {
             if (imagenNueva != null) {
                 try {
@@ -270,6 +273,22 @@ public class ProductoService {
         return vendedorDAO.findByEmail(emailVendedor)
                 .filter(cuenta -> cuenta.isActivada() && !cuenta.isBloqueada())
                 .orElseThrow(() -> new AccessDeniedException(mensajeAccesoDenegado));
+    }
+
+    /*
+     * Gestión de stock: si el stock cambió mientras el vendedor tenía abierto el formulario (por ejemplo,
+     * por una venta), no se pisa. Si el vendedor no tocó el stock (o puso justo el actual) se conserva el
+     * actual; si lo cambió a otro valor, se le avisa con el stock actual para que lo revise.
+     */
+    private static int stockAGuardar(ModificarProductoRequest request, int stockActual) {
+        Integer stockAlAbrir = request.stockAnterior();
+        if (stockAlAbrir == null || stockAlAbrir == stockActual) {
+            return request.stock();
+        }
+        if (request.stock() == stockAlAbrir || request.stock() == stockActual) {
+            return stockActual;
+        }
+        throw new StockModificadoException(stockActual);
     }
 
     // Un producto ajeno se trata como inexistente para no revelar productos de otros vendedores.

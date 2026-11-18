@@ -68,7 +68,8 @@ export interface CrearProductoRequest {
 }
 
 // La visibilidad no se modifica desde el formulario: se gestiona con Activar/Desactivar (HU16).
-export type ModificarProductoRequest = Omit<CrearProductoRequest, 'esVisible'>;
+// Gestión de stock: stockAnterior es el stock que tenía el formulario al abrirse, para no pisar ventas.
+export type ModificarProductoRequest = Omit<CrearProductoRequest, 'esVisible'> & { stockAnterior?: number };
 
 export interface CrearProductoResponse {
   nombre: string;

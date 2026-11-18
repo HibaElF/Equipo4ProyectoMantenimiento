@@ -415,7 +415,8 @@ describe('PanelVendedor - activar/desactivar producto', () => {
           stock: 0,
           descuento: 5,
           descuentoPremium: 10,
-          soloPremium: false
+          soloPremium: false,
+          stockAnterior: 4
         },
         null
       );
@@ -447,6 +448,45 @@ describe('PanelVendedor - activar/desactivar producto', () => {
       component.guardarProducto();
 
       expect(productoServiceMock.modificarProducto).not.toHaveBeenCalled();
+    });
+
+    // --- Gestión de stock: no se pisan las ventas hechas mientras se edita ---
+
+    it('envía el stock que tenía el producto al abrir el formulario', () => {
+      component.editarProducto(productoConDatos);
+      component.formularioProducto.patchValue({ precio: 39.99 });
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.modificarProducto).toHaveBeenCalledWith(
+        'producto-1',
+        expect.objectContaining({ precio: 39.99, stock: 4, stockAnterior: 4 }),
+        null
+      );
+    });
+
+    it('si el stock cambió mientras se editaba avisa, lo actualiza y lo usa al volver a guardar', () => {
+      const aviso = 'El stock ha cambiado mientras editabas: ahora hay 1 unidad. Revisa la cantidad y vuelve a guardar.';
+      productoServiceMock.modificarProducto.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 409, error: { error: aviso, stockActual: 1 } }))
+      );
+      component.editarProducto(productoConDatos);
+      component.formularioProducto.patchValue({ stock: 10 });
+
+      component.guardarProducto();
+
+      expect(component.mensajeError()).toBe(aviso);
+      expect(component.mostrandoFormulario()).toBe(true);
+      expect(component.productos().find((producto) => producto.id === 'producto-1')?.stock).toBe(1);
+      expect(component.formularioProducto.controls.stock.value).toBe(10);
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.modificarProducto).toHaveBeenLastCalledWith(
+        'producto-1',
+        expect.objectContaining({ stock: 10, stockAnterior: 1 }),
+        null
+      );
     });
 
     it('muestra el motivo devuelto por el backend si la modificación falla', () => {
@@ -621,7 +661,8 @@ describe('PanelVendedor - activar/desactivar producto', () => {
           stock: 4,
           descuento: 0,
           descuentoPremium: 30,
-          soloPremium: true
+          soloPremium: true,
+          stockAnterior: 4
         },
         null
       );

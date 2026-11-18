@@ -19,7 +19,9 @@ public record ModificarProductoRequest(
     @PositiveOrZero(message = "El descuento premium no puede ser negativo")
     @Max(value = 100, message = "El descuento premium no puede superar el 100 %") int descuentoPremium,
     // Si no se envía (null), se conserva el valor actual del producto.
-    Boolean soloPremium
+    Boolean soloPremium,
+    // Gestión de stock: stock que tenía el formulario al abrirse. Si no se envía, se guarda el stock indicado.
+    @PositiveOrZero(message = "El stock anterior no puede ser negativo") Integer stockAnterior
 ) implements DatosProductoRequest {
     public ModificarProductoRequest(
             String nombre,
@@ -30,5 +32,17 @@ public record ModificarProductoRequest(
             int descuento,
             int descuentoPremium) {
         this(nombre, categoria, descripcion, precio, stock, descuento, descuentoPremium, null);
+    }
+
+    public ModificarProductoRequest(
+            String nombre,
+            String categoria,
+            String descripcion,
+            Double precio,
+            int stock,
+            int descuento,
+            int descuentoPremium,
+            Boolean soloPremium) {
+        this(nombre, categoria, descripcion, precio, stock, descuento, descuentoPremium, soloPremium, null);
     }
 }
