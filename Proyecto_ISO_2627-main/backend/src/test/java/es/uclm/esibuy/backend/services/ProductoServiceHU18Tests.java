@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,8 +36,10 @@ import es.uclm.esibuy.backend.dto.ConsultarProductosResponse;
 import es.uclm.esibuy.backend.dto.ModificarProductoRequest;
 import es.uclm.esibuy.backend.exceptions.InvalidProductException;
 import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
+import es.uclm.esibuy.backend.exceptions.StockModificadoException;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
+import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 
 @ExtendWith(MockitoExtension.class)
@@ -366,6 +369,77 @@ class ProductoServiceHU18Tests {
                 () -> productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, request, null));
 
         verifyNoInteractions(productoDAO, productoImagenService);
+    }
+
+    // --- Gestión de stock: no se pierden las ventas hechas mientras se edita el producto ---
+
+    @Test
+    void siElStockNoHaCambiadoSeGuardaElDelFormulario() {
+        prepararModificacionValida(crearProducto(NOMBRE_COMERCIAL));
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, conStock(10, 4), null);
+
+        assertEquals(10, productoGuardado().getStock());
+        verify(productoDAO).actualizarDatos(any(Producto.class), eq(4));
+    }
+
+    @Test
+    void siSeVendeMientrasSeEditaYNoSeTocaElStockSeConservanLasVentas() {
+        // Se abrió el formulario con 4 unidades; mientras tanto se vendieron 3 y queda 1.
+        Producto producto = crearProducto(NOMBRE_COMERCIAL);
+        producto.setStock(1);
+        prepararModificacionValida(producto);
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, conStock(4, 4), null);
+
+        Producto guardado = productoGuardado();
+        assertEquals(1, guardado.getStock());
+        assertEquals(59.99, guardado.getPrecio());
+        verify(productoDAO).actualizarDatos(any(Producto.class), eq(1));
+    }
+
+    @Test
+    void siSeVendeMientrasSeEditaYSeCambiaElStockAvisaConElStockActual() {
+        Producto producto = crearProducto(NOMBRE_COMERCIAL);
+        producto.setStock(1);
+        when(vendedorDAO.findByEmail(EMAIL_VENDEDOR)).thenReturn(Optional.of(crearVendedor(true, false)));
+        when(categoriaDAO.existsByNombreIgnoreCase("Periféricos")).thenReturn(true);
+        when(productoDAO.findById(ID_PRODUCTO)).thenReturn(Optional.of(producto));
+
+        StockModificadoException excepcion = assertThrows(
+                StockModificadoException.class,
+                () -> productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, conStock(10, 4), null));
+
+        assertEquals(1, excepcion.getStockActual());
+        assertEquals(
+                "El stock ha cambiado mientras editabas: ahora hay 1 unidad. Revisa la cantidad y vuelve a guardar.",
+                excepcion.getMessage());
+        verify(productoDAO, never()).actualizarDatos(any(Producto.class), org.mockito.ArgumentMatchers.anyInt());
+        verifyNoInteractions(productoImagenService);
+    }
+
+    @Test
+    void siElVendedorPoneJustoElStockActualSeGuardaSinAvisar() {
+        Producto producto = crearProducto(NOMBRE_COMERCIAL);
+        producto.setStock(1);
+        prepararModificacionValida(producto);
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, conStock(1, 4), null);
+
+        assertEquals(1, productoGuardado().getStock());
+    }
+
+    @Test
+    void elStockAnteriorNoPuedeSerNegativo() {
+        Validator real = Validation.buildDefaultValidatorFactory().getValidator();
+
+        assertFalse(real.validate(conStock(4, -1)).isEmpty());
+        assertTrue(real.validate(conStock(4, 0)).isEmpty());
+    }
+
+    private static ModificarProductoRequest conStock(int stock, int stockAnterior) {
+        return new ModificarProductoRequest(
+                "Teclado mecánico", "Periféricos", "Retroiluminado", 59.99, stock, 15, 20, null, stockAnterior);
     }
 
     private void assertDatosInvalidos(ModificarProductoRequest request) {
