@@ -6,13 +6,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import es.uclm.esibuy.backend.dto.ApiErrorResponse;
+import es.uclm.esibuy.backend.exceptions.ClienteConPedidosEnCursoException;
 import es.uclm.esibuy.backend.exceptions.CuentaNoEncontradaException;
 import es.uclm.esibuy.backend.exceptions.VendedorConPedidosEnCursoException;
 
 @RestControllerAdvice(assignableTypes = { ClienteController.class, VendedorController.class })
 public class CuentaBajaExceptionHandler {
-    @ExceptionHandler(VendedorConPedidosEnCursoException.class)
-    public ResponseEntity<ApiErrorResponse> pedidosEnCurso(VendedorConPedidosEnCursoException exception) {
+    @ExceptionHandler({ VendedorConPedidosEnCursoException.class, ClienteConPedidosEnCursoException.class })
+    public ResponseEntity<ApiErrorResponse> pedidosEnCurso(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiErrorResponse(exception.getMessage()));
     }
 
