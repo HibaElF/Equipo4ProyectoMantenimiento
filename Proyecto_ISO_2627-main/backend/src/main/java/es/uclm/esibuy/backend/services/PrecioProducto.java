@@ -6,10 +6,12 @@ import java.math.RoundingMode;
 import es.uclm.esibuy.backend.model.Producto;
 
 /*
- * Precio que paga un cliente. Si es premium y el producto tiene descuento premium, se aplica ese
- * descuento, y si no, el descuento normal del producto.
+ * Precio que paga un cliente. El descuento normal se aplica a todos; el cliente premium suma además el
+ * descuento premium del producto (10 % + 15 % = 25 %). El total nunca pasa del 100 %.
  */
 final class PrecioProducto {
+
+    private static final int DESCUENTO_MAXIMO = 100;
 
     private PrecioProducto() {
     }
@@ -19,9 +21,11 @@ final class PrecioProducto {
     }
 
     static int descuentoAplicable(Producto producto, boolean clientePremium) {
-        return clientePremium && producto.getDescuentoPremium() > 0
-                ? producto.getDescuentoPremium()
-                : producto.getDescuento();
+        if (!clientePremium) {
+            return producto.getDescuento();
+        }
+        // Los productos guardados antes de validar la suma pueden superar el 100 %: se limita.
+        return Math.min(DESCUENTO_MAXIMO, producto.getDescuento() + producto.getDescuentoPremium());
     }
 
     private static Double calcularPrecioFinal(Double precio, int descuento) {

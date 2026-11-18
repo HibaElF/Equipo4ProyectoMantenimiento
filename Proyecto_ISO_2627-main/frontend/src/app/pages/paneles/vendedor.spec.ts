@@ -415,7 +415,8 @@ describe('PanelVendedor - activar/desactivar producto', () => {
           stock: 0,
           descuento: 5,
           descuentoPremium: 10,
-          soloPremium: false
+          soloPremium: false,
+          stockAnterior: 4
         },
         null
       );
@@ -447,6 +448,45 @@ describe('PanelVendedor - activar/desactivar producto', () => {
       component.guardarProducto();
 
       expect(productoServiceMock.modificarProducto).not.toHaveBeenCalled();
+    });
+
+    // --- Gestión de stock: no se pisan las ventas hechas mientras se edita ---
+
+    it('envía el stock que tenía el producto al abrir el formulario', () => {
+      component.editarProducto(productoConDatos);
+      component.formularioProducto.patchValue({ precio: 39.99 });
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.modificarProducto).toHaveBeenCalledWith(
+        'producto-1',
+        expect.objectContaining({ precio: 39.99, stock: 4, stockAnterior: 4 }),
+        null
+      );
+    });
+
+    it('si el stock cambió mientras se editaba avisa, lo actualiza y lo usa al volver a guardar', () => {
+      const aviso = 'El stock ha cambiado mientras editabas: ahora hay 1 unidad. Revisa la cantidad y vuelve a guardar.';
+      productoServiceMock.modificarProducto.mockReturnValueOnce(
+        throwError(() => new HttpErrorResponse({ status: 409, error: { error: aviso, stockActual: 1 } }))
+      );
+      component.editarProducto(productoConDatos);
+      component.formularioProducto.patchValue({ stock: 10 });
+
+      component.guardarProducto();
+
+      expect(component.mensajeError()).toBe(aviso);
+      expect(component.mostrandoFormulario()).toBe(true);
+      expect(component.productos().find((producto) => producto.id === 'producto-1')?.stock).toBe(1);
+      expect(component.formularioProducto.controls.stock.value).toBe(10);
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.modificarProducto).toHaveBeenLastCalledWith(
+        'producto-1',
+        expect.objectContaining({ stock: 10, stockAnterior: 1 }),
+        null
+      );
     });
 
     it('muestra el motivo devuelto por el backend si la modificación falla', () => {
@@ -607,7 +647,7 @@ describe('PanelVendedor - activar/desactivar producto', () => {
     it('envía la nueva marca y conserva el resto de campos', () => {
       component.editarProducto(productoActivo);
       component.soloPremium.setValue(true);
-      component.formularioProducto.patchValue({ descuentoPremium: 30 });
+      component.formularioProducto.patchValue({ descripcion: 'Teclado compacto', descuentoPremium: 30 });
 
       component.guardarProducto();
 
@@ -616,12 +656,13 @@ describe('PanelVendedor - activar/desactivar producto', () => {
         {
           nombre: 'Teclado',
           categoria: 'Informática',
-          descripcion: '',
+          descripcion: 'Teclado compacto',
           precio: 49.99,
           stock: 4,
           descuento: 0,
           descuentoPremium: 30,
-          soloPremium: true
+          soloPremium: true,
+          stockAnterior: 4
         },
         null
       );
@@ -630,6 +671,7 @@ describe('PanelVendedor - activar/desactivar producto', () => {
     it('envía soloPremium false al desmarcar la casilla', () => {
       component.editarProducto(productoSoloPremium);
       component.soloPremium.setValue(false);
+      component.formularioProducto.patchValue({ descripcion: 'Teclado compacto' });
 
       component.guardarProducto();
 
@@ -761,6 +803,88 @@ describe('PanelVendedor - activar/desactivar producto', () => {
       component.formularioProducto.patchValue({ stock: 0 });
 
       expect(component.formularioProducto.controls.stock.valid).toBe(false);
+    });
+  });
+
+  describe('oferta de producto: descripción obligatoria y descuentos que se suman', () => {
+    function rellenarFormulario(valores: Record<string, unknown> = {}): void {
+      component.formularioProducto.patchValue({
+        nombre: 'Teclado',
+        categoria: 'Informática',
+        descripcion: 'Teclado compacto',
+        precio: 49.99,
+        stock: 3,
+        ...valores
+      });
+    }
+
+    beforeEach(() => {
+      productoServiceMock.crearProducto.mockReturnValue(of({}));
+      productoServiceMock.modificarProducto.mockReturnValue(of(productoActivo));
+    });
+
+    it('no envía la petición si la descripción está vacía o solo tiene espacios', () => {
+      component.alternarFormulario();
+      rellenarFormulario({ descripcion: '' });
+      component.guardarProducto();
+      rellenarFormulario({ descripcion: '   ' });
+      component.guardarProducto();
+
+      expect(productoServiceMock.crearProducto).not.toHaveBeenCalled();
+      expect(component.formularioProducto.controls.descripcion.invalid).toBe(true);
+    });
+
+    it('avisa junto al campo de que la descripción es obligatoria', () => {
+      component.alternarFormulario();
+      rellenarFormulario({ descripcion: '' });
+      component.guardarProducto();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('La descripción es obligatoria.');
+    });
+
+    it('no envía la petición si los descuentos suman más de 100 y explica el motivo', () => {
+      component.alternarFormulario();
+      rellenarFormulario({ descuento: 60, descuentoPremium: 41 });
+      component.guardarProducto();
+      fixture.detectChanges();
+
+      expect(productoServiceMock.crearProducto).not.toHaveBeenCalled();
+      expect(component.formularioProducto.hasError('descuentosSuperanMaximo')).toBe(true);
+      expect(fixture.nativeElement.textContent).toContain(
+        'El descuento y el descuento premium juntos no pueden superar el 100 %.'
+      );
+    });
+
+    it('acepta descuentos que suman exactamente 100', () => {
+      component.alternarFormulario();
+      rellenarFormulario({ descuento: 60, descuentoPremium: 40 });
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.crearProducto).toHaveBeenCalledWith(
+        expect.objectContaining({ descuento: 60, descuentoPremium: 40 }),
+        null
+      );
+    });
+
+    it('al modificar tampoco deja que los descuentos sumen más de 100', () => {
+      component.editarProducto({ ...productoActivo, descripcion: 'Teclado compacto' });
+      component.formularioProducto.patchValue({ descuento: 50, descuentoPremium: 51 });
+
+      component.guardarProducto();
+
+      expect(productoServiceMock.modificarProducto).not.toHaveBeenCalled();
+    });
+
+    it('indica el descuento total que tendrá un cliente premium', () => {
+      component.alternarFormulario();
+      rellenarFormulario({ descuento: 10, descuentoPremium: 15 });
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain(
+        'Los clientes premium tendrán un 25 % de descuento en total.'
+      );
     });
   });
 
@@ -982,7 +1106,7 @@ describe('PanelVendedor - tarjetas de producto (A15, A16, M7, B7)', () => {
 
     const texto = vista.querySelector('li')?.textContent ?? '';
     expect(texto).not.toContain('Descuento: 0');
-    expect(texto).toContain('Descuento Premium: 15 %');
+    expect(texto).toContain('Descuento Premium adicional: 15 %');
   });
 
   it('indica el estado con un chip que conserva el texto «Estado: …»', () => {

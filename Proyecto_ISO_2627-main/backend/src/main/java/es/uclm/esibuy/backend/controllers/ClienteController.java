@@ -28,6 +28,7 @@ import es.uclm.esibuy.backend.dto.RegistroClienteRequest;
 import es.uclm.esibuy.backend.dto.RegistroPublicoResponse;
 import es.uclm.esibuy.backend.exceptions.DireccionDuplicadaException;
 import es.uclm.esibuy.backend.exceptions.DireccionNoEncontradaException;
+import es.uclm.esibuy.backend.exceptions.PagoPremiumException;
 import es.uclm.esibuy.backend.services.ClienteService;
 import es.uclm.esibuy.backend.services.ProductoService;
 import es.uclm.esibuy.backend.services.PerfilService;
@@ -79,7 +80,7 @@ public class ClienteController {
         public ResponseEntity<PerfilResponse> cambiarTipo(
                         Authentication authentication,
                         @Valid @RequestBody CambiarTipoClienteRequest request) {
-                clienteService.cambiarTipoCliente(authentication.getName(), request.esPremium());
+                clienteService.cambiarTipoCliente(authentication.getName(), request.esPremium(), request.metodoPagoId());
                 return ResponseEntity.ok(perfilService.consultarPerfil(authentication.getName()));
         }
 
@@ -129,6 +130,13 @@ public class ClienteController {
         public ResponseEntity<ApiErrorResponse> manejarDireccionDuplicada(
                         DireccionDuplicadaException excepcion) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body(new ApiErrorResponse(excepcion.getMessage()));
+        }
+
+        @ExceptionHandler(PagoPremiumException.class)
+        public ResponseEntity<ApiErrorResponse> manejarPagoPremium(
+                        PagoPremiumException excepcion) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                                 .body(new ApiErrorResponse(excepcion.getMessage()));
         }
 }

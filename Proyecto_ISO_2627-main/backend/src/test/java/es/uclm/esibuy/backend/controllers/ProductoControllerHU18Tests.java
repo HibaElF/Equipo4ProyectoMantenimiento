@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -32,6 +33,7 @@ import es.uclm.esibuy.backend.dto.ConsultarProductosResponse;
 import es.uclm.esibuy.backend.dto.ModificarProductoRequest;
 import es.uclm.esibuy.backend.exceptions.InvalidProductException;
 import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
+import es.uclm.esibuy.backend.exceptions.StockModificadoException;
 import es.uclm.esibuy.backend.services.ProductoService;
 import es.uclm.esibuy.backend.services.SesionService;
 import es.uclm.esibuy.backend.services.VendedorService;
@@ -165,6 +167,18 @@ class ProductoControllerHU18Tests {
     }
 
     @Test
+    void descripcionVaciaDevuelveBadRequestSinLlamarAlServicio() throws Exception {
+        mockMvc.perform(peticionModificar(
+                        JSON_VALIDO.replace("\"descripcion\":\"Retroiluminado\"", "\"descripcion\":\"  \""))
+                        .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
+                        .with(csrf()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.descripcion[0]").value("La descripción del producto es obligatoria"));
+
+        verifyNoInteractions(productoService);
+    }
+
+    @Test
     void categoriaInexistenteDevuelveBadRequestConMensaje() throws Exception {
         when(productoService.modificarProducto(eq(EMAIL_VENDEDOR), eq("producto-1"), any(), isNull()))
                 .thenThrow(new InvalidProductException());
@@ -241,6 +255,51 @@ class ProductoControllerHU18Tests {
     void conflictoDeStockDevuelve409SinExponerDetallesInternos() throws Exception {
         when(productoService.modificarProducto(eq(EMAIL_VENDEDOR), eq("producto-1"), any(), isNull()))
                 .thenThrow(new org.springframework.dao.OptimisticLockingFailureException("Detalle interno"));
+        mockMvc.perform(peticionModificar(JSON_VALIDO)
+                        .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
+                        .with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("El producto ha cambiado. Actualiza e inténtalo de nuevo."));
+    }
+
+    // --- Gestión de stock ---
+
+    @Test
+    void enviaAlServicioElStockQueTeniaElFormulario() throws Exception {
+        mockMvc.perform(peticionModificar(JSON_VALIDO.replace("}", ",\"stockAnterior\":4}"))
+                        .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
+                        .with(csrf()))
+                .andExpect(status().isOk());
+
+        verify(productoService).modificarProducto(
+                eq(EMAIL_VENDEDOR),
+                eq("producto-1"),
+                eq(new ModificarProductoRequest(
+                        "Teclado mecánico", "Periféricos", "Retroiluminado", 59.99, 10, 15, 20, null, 4)),
+                isNull());
+    }
+
+    @Test
+    void stockCambiadoMientrasSeEditabaDevuelveConflictoConElStockActual() throws Exception {
+        when(productoService.modificarProducto(
+                        eq(EMAIL_VENDEDOR), eq("producto-1"), any(ModificarProductoRequest.class), isNull()))
+                .thenThrow(new StockModificadoException(7));
+
+        mockMvc.perform(peticionModificar(JSON_VALIDO)
+                        .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
+                        .with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(
+                        "El stock ha cambiado mientras editabas: ahora hay 7 unidades. Revisa la cantidad y vuelve a guardar."))
+                .andExpect(jsonPath("$.stockActual").value(7));
+    }
+
+    @Test
+    void productoCambiadoALaVezDevuelveConflictoEnLugarDeErrorInterno() throws Exception {
+        when(productoService.modificarProducto(
+                        eq(EMAIL_VENDEDOR), eq("producto-1"), any(ModificarProductoRequest.class), isNull()))
+                .thenThrow(new OptimisticLockingFailureException("El producto ha cambiado. Actualiza e inténtalo de nuevo."));
+
         mockMvc.perform(peticionModificar(JSON_VALIDO)
                         .with(user(EMAIL_VENDEDOR).roles("VENDEDOR"))
                         .with(csrf()))

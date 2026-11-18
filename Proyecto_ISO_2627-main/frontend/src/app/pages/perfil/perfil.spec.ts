@@ -210,6 +210,35 @@ describe('Perfil', () => {
     expect(componente.bajaEnCurso()).toBe(false);
   });
 
+  it('avisa al cliente de que los pedidos pagados o enviados impiden la baja', () => {
+    crearComponente(of(perfilCliente));
+
+    componente.iniciarBaja();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('con pedidos pagados o enviados la baja se rechazará');
+  });
+
+  it('muestra el rechazo de baja cuando el cliente tiene pedidos en curso', () => {
+    const router = TestBed.inject(Router);
+    const navegar = vi.spyOn(router, 'navigate');
+    crearComponente(of(perfilCliente));
+    perfilServiceMock.darDeBajaCuenta.mockReturnValue(throwError(() =>
+      new HttpErrorResponse({
+        status: 409,
+        error: { error: 'No puedes darte de baja porque tienes pedidos en curso (pagados o enviados).' }
+      })));
+
+    componente.iniciarBaja();
+    componente.continuarBaja();
+    componente.continuarBaja();
+
+    expect(perfilServiceMock.darDeBajaCuenta).toHaveBeenCalledWith('CLIENTE');
+    expect(componente.errorBaja()).toBe('No puedes darte de baja porque tienes pedidos en curso (pagados o enviados).');
+    expect(componente.bajaEnCurso()).toBe(false);
+    expect(navegar).not.toHaveBeenCalled();
+  });
+
   it('muestra la categoría del vendedor cuando está asociada', () => {
     crearComponente(of(perfilVendedor));
 

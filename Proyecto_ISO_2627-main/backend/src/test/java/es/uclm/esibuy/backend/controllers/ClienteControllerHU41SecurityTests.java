@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import es.uclm.esibuy.backend.config.SecurityConfiguration;
 import es.uclm.esibuy.backend.dto.PerfilResponse;
+import es.uclm.esibuy.backend.exceptions.PagoPremiumException;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.services.ClienteService;
 import es.uclm.esibuy.backend.services.PerfilService;
@@ -48,23 +49,23 @@ class ClienteControllerHU41SecurityTests {
 
     @Test
     void clienteAutenticadoPuedeCambiarSuTipoConCsrf() throws Exception {
-        when(clienteService.cambiarTipoCliente(EMAIL_CLIENTE, true)).thenReturn(new Cliente());
+        when(clienteService.cambiarTipoCliente(EMAIL_CLIENTE, true, "mp-1")).thenReturn(new Cliente());
         when(perfilService.consultarPerfil(EMAIL_CLIENTE)).thenReturn(perfilPremium());
 
         mockMvc.perform(put("/cliente/tipo")
                         .with(user(EMAIL_CLIENTE).roles("CLIENTE"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"esPremium\":true}"))
+                        .content("{\"esPremium\":true,\"metodoPagoId\":\"mp-1\"}"))
                 .andExpect(status().isOk());
 
-        verify(clienteService).cambiarTipoCliente(EMAIL_CLIENTE, true);
+        verify(clienteService).cambiarTipoCliente(EMAIL_CLIENTE, true, "mp-1");
         verify(perfilService).consultarPerfil(EMAIL_CLIENTE);
     }
 
     @Test
     void utilizaLaIdentidadAutenticadaAunqueSeEnvienDatosDeOtroCliente() throws Exception {
-        when(clienteService.cambiarTipoCliente(EMAIL_CLIENTE, true)).thenReturn(new Cliente());
+        when(clienteService.cambiarTipoCliente(EMAIL_CLIENTE, true, "mp-1")).thenReturn(new Cliente());
         when(perfilService.consultarPerfil(EMAIL_CLIENTE)).thenReturn(perfilPremium());
 
         mockMvc.perform(put("/cliente/tipo")
@@ -72,10 +73,25 @@ class ClienteControllerHU41SecurityTests {
                         .with(user(EMAIL_CLIENTE).roles("CLIENTE"))
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"esPremium\":true,\"clienteId\":\"cliente-de-otro\",\"email\":\"otro@example.com\"}"))
+                        .content("{\"esPremium\":true,\"metodoPagoId\":\"mp-1\",\"clienteId\":\"cliente-de-otro\",\"email\":\"otro@example.com\"}"))
                 .andExpect(status().isOk());
 
-        verify(clienteService).cambiarTipoCliente(eq(EMAIL_CLIENTE), eq(true));
+        verify(clienteService).cambiarTipoCliente(eq(EMAIL_CLIENTE), eq(true), eq("mp-1"));
+    }
+
+    @Test
+    void devuelve400SiElPagoPremiumNoEsValido() throws Exception {
+        when(clienteService.cambiarTipoCliente(EMAIL_CLIENTE, true, null))
+                .thenThrow(new PagoPremiumException("Selecciona un método de pago para hacerte premium."));
+
+        mockMvc.perform(put("/cliente/tipo")
+                        .with(user(EMAIL_CLIENTE).roles("CLIENTE"))
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"esPremium\":true}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(perfilService);
     }
 
     @Test

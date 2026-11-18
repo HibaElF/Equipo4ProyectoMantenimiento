@@ -1,7 +1,9 @@
 package es.uclm.esibuy.backend.services;
 
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +18,7 @@ import es.uclm.esibuy.backend.dao.MetodoPagoDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.VendedorDAO;
+import es.uclm.esibuy.backend.exceptions.ClienteConPedidosEnCursoException;
 import es.uclm.esibuy.backend.exceptions.CuentaNoEncontradaException;
 import es.uclm.esibuy.backend.exceptions.VendedorConPedidosEnCursoException;
 import es.uclm.esibuy.backend.model.Cliente;
@@ -27,6 +30,10 @@ import es.uclm.esibuy.backend.model.Vendedor;
 @Service
 public class BajaUsuarioService {
     private static final Logger LOGGER = LoggerFactory.getLogger(BajaUsuarioService.class);
+    // Darse de baja: un pedido está en curso si ya se ha pagado y aún no ha terminado.
+    // Los cancelados y los finalizados no impiden la baja.
+    private static final Set<EstadoPedido> ESTADOS_EN_CURSO =
+            EnumSet.of(EstadoPedido.PAGADO_COMPLETADO, EstadoPedido.TRAMITADO_ENVIADO);
     private final ClienteDAO clienteDAO;
     private final VendedorDAO vendedorDAO;
     private final CarritoDAO carritoDAO;
@@ -68,7 +75,11 @@ public class BajaUsuarioService {
         String email = normalizarEmail(emailAutenticado);
         transaccion.executeWithoutResult(status -> {
             Cliente cliente = clienteDAO.findByEmail(email).orElseThrow(CuentaNoEncontradaException::new);
-            for (Pedido pedido : pedidoDAO.findByClienteId(cliente.getId())) {
+            List<Pedido> pedidos = pedidoDAO.findByClienteId(cliente.getId());
+            if (hayPedidosEnCurso(pedidos)) {
+                throw new ClienteConPedidosEnCursoException();
+            }
+            for (Pedido pedido : pedidos) {
                 pedidoDAO.save(pedido.desvinculadoCliente());
             }
             listaProductosDAO.deleteByUsuarioId(cliente.getId());
@@ -84,8 +95,7 @@ public class BajaUsuarioService {
         String email = normalizarEmail(emailAutenticado);
         List<String> imagenes = transaccion.execute(status -> {
             Vendedor vendedor = vendedorDAO.findByEmail(email).orElseThrow(CuentaNoEncontradaException::new);
-            List<Pedido> pedidos = pedidoDAO.findByVendedorId(vendedor.getId());
-            if (pedidos.stream().anyMatch(pedido -> pedido.getEstado() != EstadoPedido.FINALIZADO)) {
+            if (hayPedidosEnCurso(pedidoDAO.findByVendedorId(vendedor.getId()))) {
                 throw new VendedorConPedidosEnCursoException();
             }
 
@@ -110,6 +120,10 @@ public class BajaUsuarioService {
         }
         sesionService.cerrarSesiones(email);
         auditoriaService.registrarBajaCuenta("VENDEDOR");
+    }
+
+    private static boolean hayPedidosEnCurso(List<Pedido> pedidos) {
+        return pedidos.stream().anyMatch(pedido -> ESTADOS_EN_CURSO.contains(pedido.getEstado()));
     }
 
     private String normalizarEmail(String email) {
