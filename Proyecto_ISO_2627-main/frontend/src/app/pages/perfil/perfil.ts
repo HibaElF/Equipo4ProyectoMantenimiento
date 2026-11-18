@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 
 import { CategoriaPerfil, ModificarPerfilRequest, PerfilResponse, PerfilService } from './perfil.service';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
+import { MetodoPagoResponse, PagosService } from '../pagos/pagos.service';
 
 const mayorDeEdad: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
   if (!control.value) {
@@ -42,6 +43,7 @@ const NOMBRES_TIPO_USUARIO: Record<string, string> = {
 })
 export class Perfil {
   private readonly servicioPerfil = inject(PerfilService);
+  private readonly servicioPagos = inject(PagosService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly enrutador = inject(Router);
   private readonly constructorFormularios = inject(FormBuilder);
@@ -55,6 +57,11 @@ export class Perfil {
   readonly mensajeExito = signal('');
   readonly mostrandoConfirmacionTipo = signal(false);
   readonly tipoPremiumPendiente = signal(false);
+  // PBI 290: pago (simulado) al hacerse Premium
+  readonly metodosPago = signal<MetodoPagoResponse[]>([]);
+  readonly metodoPagoSeleccionado = signal('');
+  readonly cargandoMetodosPago = signal(false);
+  readonly errorPagoPremium = signal('');
   readonly pasoConfirmacionBaja = signal<0 | 1 | 2>(0);
   readonly bajaEnCurso = signal(false);
   readonly errorBaja = signal('');
@@ -113,7 +120,6 @@ export class Perfil {
       error: (error: HttpErrorResponse) => {
         this.cargando.set(false);
         this.mensajeError.set(this.obtenerMensajeError(error, 'No se pudo cargar el perfil. Inténtalo de nuevo.'));
-
         if (error.status === 401) {
           this.enrutador.navigate(['/login'], {
             queryParams: { motivo: 'sesion-expirada' }
@@ -220,7 +226,30 @@ export class Perfil {
 
     const nuevoTipoPremium = datos.esPremium !== true;
     this.tipoPremiumPendiente.set(nuevoTipoPremium);
+    this.errorPagoPremium.set('');
+    this.metodoPagoSeleccionado.set('');
+    if (nuevoTipoPremium) {
+      this.cargarMetodosPago();
+    }
     this.mostrandoConfirmacionTipo.set(true);
+  }
+
+  private cargarMetodosPago(): void {
+    this.cargandoMetodosPago.set(true);
+    this.servicioPagos.consultarMetodos().subscribe({
+      next: (metodos) => {
+        this.metodosPago.set(metodos);
+        if (metodos.length === 1) {
+          this.metodoPagoSeleccionado.set(metodos[0].id);
+        }
+        this.cargandoMetodosPago.set(false);
+      },
+      error: () => {
+        this.metodosPago.set([]);
+        this.cargandoMetodosPago.set(false);
+        this.errorPagoPremium.set('No se pudieron cargar tus métodos de pago.');
+      }
+    });
   }
 
   cancelarCambioTipoCliente(): void {
@@ -233,20 +262,35 @@ export class Perfil {
     }
 
     const nuevoTipoPremium = this.tipoPremiumPendiente();
+    const metodoPagoId = nuevoTipoPremium ? this.metodoPagoSeleccionado() : null;
+    if (nuevoTipoPremium && !metodoPagoId) {
+      this.errorPagoPremium.set('Selecciona un método de pago para hacerte Premium.');
+      return;
+    }
+    this.errorPagoPremium.set('');
     this.mostrandoConfirmacionTipo.set(false);
     this.guardando.set(true);
     this.mensajeFormulario.set('');
     this.mensajeExito.set('');
 
-    this.servicioPerfil.cambiarTipoCliente(nuevoTipoPremium).subscribe({
+    this.servicioPerfil.cambiarTipoCliente(nuevoTipoPremium, metodoPagoId).subscribe({
       next: (perfilActualizado) => {
         this.perfil.set(perfilActualizado);
         this.guardando.set(false);
-        this.mensajeExito.set('El tipo de cliente se ha actualizado correctamente.');
+        this.mensajeExito.set(nuevoTipoPremium
+          ? 'Pago realizado. Ya eres cliente Premium.'
+          : 'El tipo de cliente se ha actualizado correctamente.');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: (error: HttpErrorResponse) => {
         this.guardando.set(false);
-        this.mensajeFormulario.set(this.obtenerMensajeError(error, 'No se pudo actualizar el tipo de cliente.'));
+        const mensaje = this.obtenerMensajeError(error, 'No se pudo actualizar el tipo de cliente.');
+        this.mensajeFormulario.set(mensaje);
+        if (nuevoTipoPremium && error.status !== 401) {
+          // Volvemos a mostrar el diálogo con el error del pago
+          this.errorPagoPremium.set(mensaje);
+          this.mostrandoConfirmacionTipo.set(true);
+        }
 
         if (error.status === 401) {
           this.enrutador.navigate(['/login'], {

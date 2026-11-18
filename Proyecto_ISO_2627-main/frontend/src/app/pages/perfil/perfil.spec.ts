@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Perfil } from './perfil';
 import { PerfilResponse, PerfilService } from './perfil.service';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
+import { PagosService } from '../pagos/pagos.service';
 // M8: la confirmación es un diálogo propio (asíncrono); se simula su respuesta.
 const simularConfirmacion = (aceptada: boolean) =>
   vi.spyOn(TestBed.inject(ConfirmacionService), 'confirmar').mockResolvedValue(aceptada);
@@ -18,6 +19,11 @@ const perfilCliente: PerfilResponse = {
   dniNif: '12*******', fechaNacimiento: null, esPremium: true,
   nombreComercial: null, categoria: null, sede: null,
   fechaIncorporacion: null, rol: null, totpActivado: false, emailOtpActivado: false,
+};
+
+// PBI 290: método de pago del cliente para hacerse Premium
+const metodoPagoCliente = {
+  id: 'mp-1', tipo: 'TARJETA', nombre: 'Mi visa', datosEnmascarados: '**** **** **** 1111',
 };
 
 const perfilVendedor: PerfilResponse = {
@@ -49,6 +55,9 @@ describe('Perfil', () => {
     modificarPreferenciaTercerFactor: ReturnType<typeof vi.fn>;
     darDeBajaCuenta: ReturnType<typeof vi.fn>;
   };
+  let pagosServiceMock: {
+    consultarMetodos: ReturnType<typeof vi.fn>;
+  };
 
   function crearComponente(respuesta: Observable<PerfilResponse>) {
     perfilServiceMock.consultarPerfil.mockReturnValue(respuesta);
@@ -68,11 +77,17 @@ describe('Perfil', () => {
       darDeBajaCuenta: vi.fn(),
       modificarPreferenciaTercerFactor: vi.fn(),
     };
+    pagosServiceMock = {
+      consultarMetodos: vi.fn(() => of([metodoPagoCliente])),
+    };
+    // jsdom no implementa scrollTo
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
     await TestBed.configureTestingModule({
       imports: [Perfil],
       providers: [
         provideRouter([]),
         { provide: PerfilService, useValue: perfilServiceMock },
+        { provide: PagosService, useValue: pagosServiceMock },
       ],
     }).compileComponents();
   });
@@ -394,8 +409,53 @@ describe('Perfil', () => {
     expect(componente.mostrandoConfirmacionTipo()).toBe(true);
     componente.confirmarCambioTipoCliente();
 
-    expect(perfilServiceMock.cambiarTipoCliente).toHaveBeenCalledWith(true);
+    expect(pagosServiceMock.consultarMetodos).toHaveBeenCalled();
+    expect(perfilServiceMock.cambiarTipoCliente).toHaveBeenCalledWith(true, 'mp-1');
     expect(componente.perfil()).toEqual(perfilActualizado);
+    expect(componente.mensajeExito()).toContain('Ya eres cliente Premium');
+  });
+
+  it('no deja hacerse Premium sin elegir un método de pago (PBI 290)', () => {
+    pagosServiceMock.consultarMetodos.mockReturnValue(of([]));
+    crearComponente(of({ ...perfilCliente, esPremium: false }));
+
+    componente.cambiarTipoCliente();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('No tienes ningún método de pago');
+
+    componente.confirmarCambioTipoCliente();
+
+    expect(perfilServiceMock.cambiarTipoCliente).not.toHaveBeenCalled();
+    expect(componente.errorPagoPremium()).toContain('Selecciona un método de pago');
+    expect(componente.mostrandoConfirmacionTipo()).toBe(true);
+  });
+
+  it('envía el método de pago elegido cuando el cliente tiene varios (PBI 290)', () => {
+    pagosServiceMock.consultarMetodos.mockReturnValue(of([
+      metodoPagoCliente, { ...metodoPagoCliente, id: 'mp-2', nombre: 'Otra tarjeta' },
+    ]));
+    crearComponente(of({ ...perfilCliente, esPremium: false }));
+    perfilServiceMock.cambiarTipoCliente.mockReturnValue(of({ ...perfilCliente, esPremium: true }));
+
+    componente.cambiarTipoCliente();
+    expect(componente.metodoPagoSeleccionado()).toBe('');
+    componente.metodoPagoSeleccionado.set('mp-2');
+    componente.confirmarCambioTipoCliente();
+
+    expect(perfilServiceMock.cambiarTipoCliente).toHaveBeenCalledWith(true, 'mp-2');
+  });
+
+  it('vuelve a mostrar el diálogo con el error si el backend rechaza el pago (PBI 290)', () => {
+    crearComponente(of({ ...perfilCliente, esPremium: false }));
+    perfilServiceMock.cambiarTipoCliente.mockReturnValue(throwError(() =>
+      new HttpErrorResponse({ status: 400, error: { error: 'El método de pago está caducado.' } })));
+
+    componente.cambiarTipoCliente();
+    componente.confirmarCambioTipoCliente();
+
+    expect(componente.perfil()?.esPremium).toBe(false);
+    expect(componente.mostrandoConfirmacionTipo()).toBe(true);
+    expect(componente.errorPagoPremium()).toBe('El método de pago está caducado.');
   });
 
   it('cancela el cambio de tipo si el cliente rechaza la confirmacion', () => {
@@ -418,7 +478,8 @@ describe('Perfil', () => {
     componente.cambiarTipoCliente();
     componente.confirmarCambioTipoCliente();
 
-    expect(perfilServiceMock.cambiarTipoCliente).toHaveBeenCalledWith(false);
+    expect(perfilServiceMock.cambiarTipoCliente).toHaveBeenCalledWith(false, null);
+    expect(pagosServiceMock.consultarMetodos).not.toHaveBeenCalled();
     expect(componente.perfil()).toEqual(perfilActualizado);
   });
 
