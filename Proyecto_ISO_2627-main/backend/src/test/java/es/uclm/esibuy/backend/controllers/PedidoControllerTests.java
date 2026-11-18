@@ -74,37 +74,61 @@ class PedidoControllerTests {
     }
 
     private Pedido pedido() {
+        return pedido("pedido-1", "v1", "Tienda", new BigDecimal("75.00"), 2);
+    }
+
+    private Pedido pedido(String id, String vendedorId, String tienda, BigDecimal precio, int cantidad) {
         Direccion direccion = new Direccion();
         direccion.setId("direccion-a");
         direccion.setCalle("Calle original");
         Instant fecha = Instant.parse("2026-11-01T10:00:00Z");
-        return Pedido.builder().id("pedido-1").clienteId("cliente-a")
-                .lineas(List.of(new LineaPedido("p1", "Producto original",
-                        new BigDecimal("75.00"), 2, "v1", "Tienda")))
-                .estado(EstadoPedido.PAGADO_COMPLETADO).importe(new BigDecimal("150.00"))
+        return Pedido.builder().id(id).compraId("compra-1").clienteId("cliente-a")
+                .lineas(List.of(new LineaPedido("p-" + id, "Producto original",
+                        precio, cantidad, vendedorId, tienda)))
+                .estado(EstadoPedido.PAGADO_COMPLETADO).importe(precio.multiply(BigDecimal.valueOf(cantidad)))
                 .fechaCreacion(fecha).fechaPago(fecha).direccionEnvio(direccion).metodoPagoId("metodo-a")
                 .build();
     }
 
     @Test
     void devuelve201ConResumenSinEntidadClienteNiDatosSensibles() throws Exception {
-        when(servicio.realizarPedido("direccion-a", "metodo-a", OPERACION)).thenReturn(pedido());
+        when(servicio.realizarPedido("direccion-a", "metodo-a", OPERACION)).thenReturn(List.of(pedido()));
         mvc.perform(peticion(JSON)).andExpect(status().isCreated())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.id").value("pedido-1"))
-                .andExpect(jsonPath("$.estado").value("PAGADO_COMPLETADO"))
-                .andExpect(jsonPath("$.importe").value(150))
-                .andExpect(jsonPath("$.lineas[0].precioCompra").value(75))
-                .andExpect(jsonPath("$.lineas[0].cantidad").value(2))
-                .andExpect(jsonPath("$.lineas[0].nombreProducto").value("Producto original"))
-                .andExpect(jsonPath("$.direccionEnvio.calle").value("Calle original"))
-                .andExpect(jsonPath("$.metodoPagoId").value("metodo-a"))
-                .andExpect(jsonPath("$.fechaPago").isNotEmpty())
+                .andExpect(jsonPath("$.importeTotal").value(150))
+                .andExpect(jsonPath("$.pedidos.length()").value(1))
+                .andExpect(jsonPath("$.pedidos[0].id").value("pedido-1"))
+                .andExpect(jsonPath("$.pedidos[0].estado").value("PAGADO_COMPLETADO"))
+                .andExpect(jsonPath("$.pedidos[0].importe").value(150))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].precioCompra").value(75))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].cantidad").value(2))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].nombreProducto").value("Producto original"))
+                .andExpect(jsonPath("$.pedidos[0].direccionEnvio.calle").value("Calle original"))
+                .andExpect(jsonPath("$.pedidos[0].metodoPagoId").value("metodo-a"))
+                .andExpect(jsonPath("$.pedidos[0].fechaPago").isNotEmpty())
+                .andExpect(jsonPath("$.pedidos[0].clienteId").doesNotExist())
                 .andExpect(jsonPath("$.clienteId").doesNotExist())
                 .andExpect(jsonPath("$.token").doesNotExist())
                 .andExpect(jsonPath("$.numeroTarjeta").doesNotExist())
                 .andExpect(jsonPath("$.cvv").doesNotExist());
         verify(servicio).realizarPedido("direccion-a", "metodo-a", OPERACION);
+    }
+
+    @Test
+    void compraConVariosVendedoresDevuelveUnPedidoPorVendedorYElTotal() throws Exception {
+        when(servicio.realizarPedido("direccion-a", "metodo-a", OPERACION)).thenReturn(List.of(
+                pedido("pedido-1", "v1", "Tienda uno", new BigDecimal("75.00"), 2),
+                pedido("pedido-2", "v2", "Tienda dos", new BigDecimal("10.50"), 1)));
+
+        mvc.perform(peticion(JSON)).andExpect(status().isCreated())
+                .andExpect(jsonPath("$.pedidos.length()").value(2))
+                .andExpect(jsonPath("$.pedidos[0].id").value("pedido-1"))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].nombreVendedor").value("Tienda uno"))
+                .andExpect(jsonPath("$.pedidos[0].importe").value(150))
+                .andExpect(jsonPath("$.pedidos[1].id").value("pedido-2"))
+                .andExpect(jsonPath("$.pedidos[1].lineas[0].nombreVendedor").value("Tienda dos"))
+                .andExpect(jsonPath("$.pedidos[1].importe").value(10.5))
+                .andExpect(jsonPath("$.importeTotal").value(160.5));
     }
 
     @Test
@@ -183,15 +207,16 @@ class PedidoControllerTests {
 
     @Test
     void ignoraPropietarioEImportesInyectadosYConservaClaveEnReenvios() throws Exception {
-        when(servicio.realizarPedido("direccion-a", "metodo-a", OPERACION)).thenReturn(pedido());
+        when(servicio.realizarPedido("direccion-a", "metodo-a", OPERACION)).thenReturn(List.of(pedido()));
         String manipulado = JSON.substring(0, JSON.length() - 1)
                 + ",\"clienteId\":\"ajeno\",\"carritoId\":\"ajeno\",\"total\":1,\"precio\":1,"
                 + "\"descuento\":100,\"stock\":999,\"estado\":\"FINALIZADO\"}";
         for (int i = 0; i < 2; i++) {
             mvc.perform(peticion(manipulado)).andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.id").value("pedido-1"))
-                    .andExpect(jsonPath("$.importe").value(150))
-                    .andExpect(jsonPath("$.estado").value("PAGADO_COMPLETADO"));
+                    .andExpect(jsonPath("$.pedidos[0].id").value("pedido-1"))
+                    .andExpect(jsonPath("$.pedidos[0].importe").value(150))
+                    .andExpect(jsonPath("$.importeTotal").value(150))
+                    .andExpect(jsonPath("$.pedidos[0].estado").value("PAGADO_COMPLETADO"));
         }
         verify(servicio, times(2)).realizarPedido("direccion-a", "metodo-a", OPERACION);
     }
