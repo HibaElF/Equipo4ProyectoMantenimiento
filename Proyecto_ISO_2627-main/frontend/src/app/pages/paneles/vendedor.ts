@@ -59,6 +59,8 @@ export class PanelVendedor implements OnInit {
   readonly productoCambiandoEstado = signal<string | null>(null);
   readonly productoEliminando = signal<string | null>(null);
   readonly productoEnEdicion = signal<ProductoPropio | null>(null);
+  // Gestión de stock: stock del producto cuando se abrió el formulario de modificación.
+  private stockAlEditar: number | null = null;
   // Imágenes que no han cargado: se sustituyen por el icono de «sin imagen» (M7).
   readonly imagenesFallidas = signal<ReadonlySet<string>>(new Set<string>());
 
@@ -184,6 +186,7 @@ export class PanelVendedor implements OnInit {
     this.devolverFoco();
     this.mostrandoFormulario.set(false);
     this.productoEnEdicion.set(null);
+    this.stockAlEditar = null;
     this.limpiarImagenSeleccionada();
     this.errorImagen.set('');
     this.ajustarStockMinimo(1);
@@ -207,6 +210,7 @@ export class PanelVendedor implements OnInit {
     this.errorImagen.set('');
     this.origenFoco = producto.id;
     this.productoEnEdicion.set(producto);
+    this.stockAlEditar = producto.stock;
     this.ajustarStockMinimo(0);
     // Se reutiliza el formulario de creación cargando los valores actuales del producto.
     this.formularioProducto.reset({
@@ -380,6 +384,7 @@ export class PanelVendedor implements OnInit {
         descuento,
         descuentoPremium,
         soloPremium: this.soloPremium.value,
+        stockAnterior: this.stockAlEditar ?? undefined,
       },
       this.imagenSeleccionada()
     ).subscribe({
@@ -397,8 +402,22 @@ export class PanelVendedor implements OnInit {
             ? 'No se pudo conectar con el servicio. Inténtalo de nuevo.'
             : mensajeBackend ?? 'No se pudo modificar el producto. Revisa los datos e inténtalo otra vez.'
         );
+        if (error.status === 409 && typeof error.error?.stockActual === 'number') {
+          this.actualizarStockConflicto(id, error.error.stockActual);
+        }
       }
     });
+  }
+
+  /*
+   * Gestión de stock: el stock cambió mientras se editaba. Se toma el stock actual como referencia para
+   * el siguiente guardado y se muestra en el catálogo; la cantidad escrita por el vendedor no se toca.
+   */
+  private actualizarStockConflicto(id: string, stockActual: number): void {
+    this.stockAlEditar = stockActual;
+    this.productos.update((productos) =>
+      productos.map((producto) => (producto.id === id ? { ...producto, stock: stockActual } : producto))
+    );
   }
 
   cambiarEstadoProducto(producto: ProductoPropio): void {
