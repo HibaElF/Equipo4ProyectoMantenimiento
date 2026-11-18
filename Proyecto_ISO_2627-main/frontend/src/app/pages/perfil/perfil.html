@@ -417,9 +417,9 @@
           <p class="account-type-kicker">Aviso 1 de 2</p>
           <h2 id="confirmacion-baja-uno">¿Quieres iniciar la baja?</h2>
           @if (datos.tipoUsuario === 'CLIENTE') {
-            <p>Se eliminarán tu perfil, direcciones, métodos de pago y carrito. Tus pedidos se conservarán sin datos que te identifiquen.</p>
+            <p>Se eliminarán tu perfil, direcciones, métodos de pago y carrito. Tus pedidos se conservarán sin datos que te identifiquen; con pedidos pagados o enviados la baja se rechazará.</p>
           } @else {
-            <p>Se eliminarán tu perfil y tus productos. Los pedidos finalizados conservarán su histórico; con pedidos en curso la baja se rechazará.</p>
+            <p>Se eliminarán tu perfil y tus productos. Los pedidos conservarán su histórico; con pedidos pagados o enviados la baja se rechazará.</p>
           }
           <div class="confirmation-actions">
             <button class="boton-secundario" type="button" (click)="cancelarBaja()">Cancelar</button>

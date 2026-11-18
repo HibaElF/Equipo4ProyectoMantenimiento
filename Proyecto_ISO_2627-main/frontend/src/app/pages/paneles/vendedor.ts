@@ -10,7 +10,14 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { normalizarTexto } from '../../shared/texto/normalizar-texto';
 import { CategoriasService } from '../categorias/categorias.service';
@@ -18,6 +25,15 @@ import { ProductoPropio, ProductoService } from './producto.service';
 import { VendedorService } from './vendedor.service';
 
 export type EstadoFiltro = 'todos' | 'activos' | 'desactivados';
+
+/** Oferta de producto: el cliente premium suma los dos descuentos, que juntos no pueden pasar del 100 %. */
+export const DESCUENTO_MAXIMO = 100;
+
+function descuentosHastaElMaximo(formulario: AbstractControl): ValidationErrors | null {
+  const descuento = Number(formulario.get('descuento')?.value ?? 0);
+  const descuentoPremium = Number(formulario.get('descuentoPremium')?.value ?? 0);
+  return descuento + descuentoPremium > DESCUENTO_MAXIMO ? { descuentosSuperanMaximo: true } : null;
+}
 
 @Component({
   selector: 'app-panel-vendedor',
@@ -43,6 +59,8 @@ export class PanelVendedor implements OnInit {
   readonly productoCambiandoEstado = signal<string | null>(null);
   readonly productoEliminando = signal<string | null>(null);
   readonly productoEnEdicion = signal<ProductoPropio | null>(null);
+  // Gestión de stock: stock del producto cuando se abrió el formulario de modificación.
+  private stockAlEditar: number | null = null;
   // Imágenes que no han cargado: se sustituyen por el icono de «sin imagen» (M7).
   readonly imagenesFallidas = signal<ReadonlySet<string>>(new Set<string>());
 
@@ -97,15 +115,16 @@ export class PanelVendedor implements OnInit {
   readonly formularioProducto = this.formBuilder.nonNullable.group({
     nombre: ['', [Validators.required, Validators.minLength(2)]],
     categoria: ['', Validators.required],
-    descripcion: [''],
+    // Oferta de producto: la descripción es obligatoria y no basta con espacios.
+    descripcion: ['', [Validators.required, Validators.pattern(/\S/)]],
     esVisible: [true],
     // M14: precio y stock empiezan vacíos (con placeholder), no con un 0 que hay que borrar.
     precio: new FormControl<number | null>(null, [Validators.required, Validators.min(0.01)]),
     // Al crear el stock debe ser mayor que 0; al modificar (HU18) se admite 0.
     stock: new FormControl<number | null>(null, [Validators.required, Validators.min(1)]),
-    descuento: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-    descuentoPremium: [0, [Validators.required, Validators.min(0), Validators.max(100)]],
-  });
+    descuento: [0, [Validators.required, Validators.min(0), Validators.max(DESCUENTO_MAXIMO)]],
+    descuentoPremium: [0, [Validators.required, Validators.min(0), Validators.max(DESCUENTO_MAXIMO)]],
+  }, { validators: descuentosHastaElMaximo });
 
   alternarFormulario(): void {
     this.mensajeExito.set('');
@@ -167,6 +186,7 @@ export class PanelVendedor implements OnInit {
     this.devolverFoco();
     this.mostrandoFormulario.set(false);
     this.productoEnEdicion.set(null);
+    this.stockAlEditar = null;
     this.limpiarImagenSeleccionada();
     this.errorImagen.set('');
     this.ajustarStockMinimo(1);
@@ -190,6 +210,7 @@ export class PanelVendedor implements OnInit {
     this.errorImagen.set('');
     this.origenFoco = producto.id;
     this.productoEnEdicion.set(producto);
+    this.stockAlEditar = producto.stock;
     this.ajustarStockMinimo(0);
     // Se reutiliza el formulario de creación cargando los valores actuales del producto.
     this.formularioProducto.reset({
@@ -363,6 +384,7 @@ export class PanelVendedor implements OnInit {
         descuento,
         descuentoPremium,
         soloPremium: this.soloPremium.value,
+        stockAnterior: this.stockAlEditar ?? undefined,
       },
       this.imagenSeleccionada()
     ).subscribe({
@@ -380,8 +402,22 @@ export class PanelVendedor implements OnInit {
             ? 'No se pudo conectar con el servicio. Inténtalo de nuevo.'
             : mensajeBackend ?? 'No se pudo modificar el producto. Revisa los datos e inténtalo otra vez.'
         );
+        if (error.status === 409 && typeof error.error?.stockActual === 'number') {
+          this.actualizarStockConflicto(id, error.error.stockActual);
+        }
       }
     });
+  }
+
+  /*
+   * Gestión de stock: el stock cambió mientras se editaba. Se toma el stock actual como referencia para
+   * el siguiente guardado y se muestra en el catálogo; la cantidad escrita por el vendedor no se toca.
+   */
+  private actualizarStockConflicto(id: string, stockActual: number): void {
+    this.stockAlEditar = stockActual;
+    this.productos.update((productos) =>
+      productos.map((producto) => (producto.id === id ? { ...producto, stock: stockActual } : producto))
+    );
   }
 
   cambiarEstadoProducto(producto: ProductoPropio): void {
@@ -456,6 +492,21 @@ export class PanelVendedor implements OnInit {
   campoInvalido(nombreCampo: string): boolean {
     const control = this.formularioProducto.get(nombreCampo);
     return !!control && control.invalid && (control.dirty || control.touched);
+  }
+
+  /** Oferta de producto: avisa cuando el descuento y el premium juntos superan el 100 %. */
+  descuentosSuperanMaximo(): boolean {
+    const { descuento, descuentoPremium } = this.formularioProducto.controls;
+    return (
+      this.formularioProducto.hasError('descuentosSuperanMaximo') &&
+      (descuento.dirty || descuento.touched || descuentoPremium.dirty || descuentoPremium.touched)
+    );
+  }
+
+  /** Descuento total que tendrá un cliente premium: el normal más el premium. */
+  descuentoTotalPremium(): number {
+    const { descuento, descuentoPremium } = this.formularioProducto.getRawValue();
+    return Number(descuento ?? 0) + Number(descuentoPremium ?? 0);
   }
 
   urlImagen(imagen: string): string {

@@ -71,13 +71,13 @@ class ProductoCatalogoServiceHU19Tests {
         when(productoDAO.findByEsVisibleTrue()).thenReturn(List.of(matching, noMatch));
 
         List<ProductoCatalogoResponse> productos = consultar(
-                new FiltroProductosRequest("gaming", "informática", 79.99, 80.01, true));
+                new FiltroProductosRequest("gaming", "informática", 69.99, 70.01, true));
 
         assertEquals(1, productos.size());
         assertEquals(ID_PRODUCTO, productos.get(0).id());
-        assertEquals(80.0, productos.get(0).precio());
+        assertEquals(70.0, productos.get(0).precio());
         assertEquals(100.0, productos.get(0).precioOriginal());
-        assertEquals(20, productos.get(0).descuentoAplicado());
+        assertEquals(30, productos.get(0).descuentoAplicado());
         assertEquals("<b>mecánico</b>", productos.get(0).descripcion());
         assertEquals("<script>tienda</script>", productos.get(0).vendedor());
     }
@@ -122,7 +122,7 @@ class ProductoCatalogoServiceHU19Tests {
     }
 
     @Test
-    void unClientePremiumUsaElDescuentoPremiumSiExisteYElNormalComoAlternativa() {
+    void unClientePremiumSumaElDescuentoNormalYElPremium() {
         Producto conPremium = crearProducto(ID_PRODUCTO, "Premium", "Informática", 3, 100.0, 10, 25, false);
         Producto sinPremium = crearProducto("normal", "Normal", "Informática", 3, 100.0, 10, 0, false);
         when(clienteDAO.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(crearCliente(true, true)));
@@ -130,8 +130,8 @@ class ProductoCatalogoServiceHU19Tests {
 
         List<ProductoCatalogoResponse> resultado = consultar(new FiltroProductosRequest(null, null, null, null, null));
 
-        assertEquals(75.0, resultado.get(0).precio());
-        assertEquals(25, resultado.get(0).descuentoAplicado());
+        assertEquals(65.0, resultado.get(0).precio());
+        assertEquals(35, resultado.get(0).descuentoAplicado());
         assertEquals(90.0, resultado.get(1).precio());
         assertEquals(10, resultado.get(1).descuentoAplicado());
     }
@@ -255,8 +255,8 @@ class ProductoCatalogoServiceHU19Tests {
         ProductoCatalogoResponse detalle =
                 productoService.consultarDetalleParaCliente(EMAIL_CLIENTE, ID_PRODUCTO);
 
-        assertEquals(40.0, detalle.precio());
-        assertEquals(20, detalle.descuentoAplicado());
+        assertEquals(35.0, detalle.precio());
+        assertEquals(30, detalle.descuentoAplicado());
         assertEquals("<img src=x onerror=alert(1)>", detalle.descripcion());
         assertEquals("<svg onload=alert(1)>", detalle.vendedor());
         assertTrue(detalle.puedeConsultarDetalle());

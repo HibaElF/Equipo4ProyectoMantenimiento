@@ -18,6 +18,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,6 +33,7 @@ import es.uclm.esibuy.backend.dao.MetodoPagoDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.VendedorDAO;
+import es.uclm.esibuy.backend.exceptions.ClienteConPedidosEnCursoException;
 import es.uclm.esibuy.backend.exceptions.VendedorConPedidosEnCursoException;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Direccion;
@@ -69,7 +72,7 @@ class BajaUsuarioServiceTests {
     @Test
     void bajaClienteAnonimizaPedidosYEliminaLosDatosAsociadosAntesDeCerrarSesiones() {
         Cliente cliente = cliente();
-        Pedido pedido = pedido(EstadoPedido.PAGADO_COMPLETADO);
+        Pedido pedido = pedido(EstadoPedido.FINALIZADO);
         when(clientes.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(cliente));
         when(pedidos.findByClienteId("cliente-1")).thenReturn(List.of(pedido));
 
@@ -92,6 +95,40 @@ class BajaUsuarioServiceTests {
         orden.verify(auditoria).registrarBajaCuenta("CLIENTE");
     }
 
+    @ParameterizedTest
+    @EnumSource(value = EstadoPedido.class, names = { "PAGADO_COMPLETADO", "TRAMITADO_ENVIADO" })
+    void bloqueaLaBajaDelClienteSiTieneUnPedidoEnCursoSinTocarSusDatos(EstadoPedido estado) {
+        when(clientes.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(cliente()));
+        when(pedidos.findByClienteId("cliente-1"))
+                .thenReturn(List.of(pedido(EstadoPedido.FINALIZADO), pedido(estado)));
+
+        assertThrows(ClienteConPedidosEnCursoException.class,
+                () -> servicio.darDeBajaCliente(EMAIL_CLIENTE));
+
+        verify(pedidos, never()).save(any(Pedido.class));
+        verify(listas, never()).deleteByUsuarioId(any());
+        verify(metodos, never()).deleteByClienteId(any());
+        verify(carritos, never()).deleteById(any());
+        verify(clientes, never()).delete(any(Cliente.class));
+        verify(sesiones, never()).cerrarSesiones(any());
+        verifyNoInteractions(auditoria);
+        verify(transacciones).rollback(any());
+    }
+
+    @Test
+    void permiteLaBajaDelClienteAunqueLeHayanCanceladoUnPedido() {
+        Cliente cliente = cliente();
+        when(clientes.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(cliente));
+        when(pedidos.findByClienteId("cliente-1")).thenReturn(List.of(pedido(EstadoPedido.CANCELADO)));
+
+        servicio.darDeBajaCliente(EMAIL_CLIENTE);
+
+        verify(pedidos).save(any(Pedido.class));
+        verify(clientes).delete(cliente);
+        verify(sesiones).cerrarSesiones(EMAIL_CLIENTE);
+        verify(auditoria).registrarBajaCuenta("CLIENTE");
+    }
+
     @Test
     void siFallaLaEliminacionDelClienteNoInvalidaSesionesNiRegistraBaja() {
         Cliente cliente = cliente();
@@ -106,12 +143,13 @@ class BajaUsuarioServiceTests {
         verify(transacciones).rollback(any());
     }
 
-    @Test
-    void bloqueaLaBajaDelVendedorAntesDeEliminarProductosSiHayUnPedidoNoFinalizado() {
+    @ParameterizedTest
+    @EnumSource(value = EstadoPedido.class, names = { "PAGADO_COMPLETADO", "TRAMITADO_ENVIADO" })
+    void bloqueaLaBajaDelVendedorAntesDeEliminarProductosSiHayUnPedidoEnCurso(EstadoPedido estado) {
         Vendedor vendedor = vendedor();
         when(vendedores.findByEmail(EMAIL_VENDEDOR)).thenReturn(Optional.of(vendedor));
         when(pedidos.findByVendedorId("vendedor-1"))
-                .thenReturn(List.of(pedido(EstadoPedido.PAGADO_COMPLETADO)));
+                .thenReturn(List.of(pedido(EstadoPedido.CANCELADO), pedido(estado)));
 
         assertThrows(VendedorConPedidosEnCursoException.class,
                 () -> servicio.darDeBajaVendedor(EMAIL_VENDEDOR));
@@ -145,6 +183,22 @@ class BajaUsuarioServiceTests {
         verify(imagenes).eliminar("/product-images/producto.png");
         verify(pedidos, never()).delete(any(Pedido.class));
         verify(pedidos, never()).deleteAll(any(Iterable.class));
+    }
+
+    @Test
+    void permiteLaBajaDelVendedorAunqueLeHayanCanceladoUnPedido() {
+        Vendedor vendedor = vendedor();
+        when(vendedores.findByEmail(EMAIL_VENDEDOR)).thenReturn(Optional.of(vendedor));
+        when(pedidos.findByVendedorId("vendedor-1"))
+                .thenReturn(List.of(pedido(EstadoPedido.CANCELADO), pedido(EstadoPedido.FINALIZADO)));
+        when(productos.findByVendedor("Tienda Uno")).thenReturn(List.of());
+
+        servicio.darDeBajaVendedor(EMAIL_VENDEDOR);
+
+        verify(vendedores).delete(vendedor);
+        verify(sesiones).cerrarSesiones(EMAIL_VENDEDOR);
+        verify(auditoria).registrarBajaCuenta("VENDEDOR");
+        verify(pedidos, never()).delete(any(Pedido.class));
     }
 
     private Cliente cliente() {

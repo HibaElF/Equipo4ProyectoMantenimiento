@@ -378,8 +378,8 @@ class PedidoMongoIntegrationTests {
 
         String operacion = nuevaOperacion();
         Pedido pedido = pagar("a", operacion);
-        BigDecimal precioEsperado = new BigDecimal(premium ? "92.59" : "111.11");
-        BigDecimal importeEsperado = new BigDecimal(premium ? "185.18" : "222.22");
+        BigDecimal precioEsperado = new BigDecimal(premium ? "80.24" : "111.11");
+        BigDecimal importeEsperado = new BigDecimal(premium ? "160.48" : "222.22");
         String vendedorId = pedido.getLineas().getFirst().vendedorId();
         assertNotNull(vendedorId);
         assertTrue(template.exists(Query.query(Criteria.where("id").is(vendedorId)), Vendedor.class));

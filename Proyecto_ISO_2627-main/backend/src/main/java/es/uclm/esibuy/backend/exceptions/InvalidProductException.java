@@ -5,4 +5,8 @@ public class InvalidProductException extends RuntimeException {
     public InvalidProductException() {
 		super("Los datos del producto no cumplen con los requisitos.");
 	}
+
+    public InvalidProductException(String mensaje) {
+        super(mensaje);
+    }
 }

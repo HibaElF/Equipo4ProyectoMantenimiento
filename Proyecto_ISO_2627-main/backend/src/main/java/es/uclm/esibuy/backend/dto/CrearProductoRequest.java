@@ -10,7 +10,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 public record CrearProductoRequest(
     @NotBlank String nombre,
     @NotBlank String categoria,
-    String descripcion,
+    @NotBlank(message = "La descripción del producto es obligatoria") String descripcion,
     Boolean esVisible,
     @NotNull @Positive Double precio,
     @Positive(message = "El stock debe ser mayor que 0") int stock,
