@@ -8,6 +8,7 @@ import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.PersistenceCreator;
 import org.springframework.data.annotation.TypeAlias;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
@@ -20,6 +21,9 @@ public class Pedido {
 
     private String clienteId;
     private String clienteNombre;
+    // HU-50: al pagar se crea un pedido por vendedor; todos los de la misma compra comparten este id.
+    @Indexed
+    private String compraId;
     private List<LineaPedido> lineas;
     private EstadoPedido estado;
     private Direccion direccionEnvio;
@@ -42,6 +46,7 @@ public class Pedido {
 
     public static final class Builder {
         private String id;
+        private String compraId;
         private String clienteId;
         private List<LineaPedido> lineas;
         private EstadoPedido estado;
@@ -56,6 +61,11 @@ public class Pedido {
 
         public Builder id(String id) {
             this.id = id;
+            return this;
+        }
+
+        public Builder compraId(String compraId) {
+            this.compraId = compraId;
             return this;
         }
 
@@ -100,8 +110,10 @@ public class Pedido {
         }
 
         public Pedido build() {
-            return new Pedido(id, clienteId, lineas, estado, importe, fechaCreacion, fechaPago,
+            Pedido pedido = new Pedido(id, clienteId, lineas, estado, importe, fechaCreacion, fechaPago,
                     direccionEnvio, metodoPagoId, historialInicial());
+            pedido.compraId = compraId;
+            return pedido;
         }
 
         private List<CambioEstadoPedido> historialInicial() {
@@ -170,6 +182,7 @@ public class Pedido {
     Pedido actualizado = new Pedido(id, clienteId, lineas, nuevoEstado, importe,
             fechaCreacion, nuevaFechaPago, direccionEnvio, metodoPagoId, nuevoHistorial);
     actualizado.setClienteNombre(clienteNombre);
+    actualizado.compraId = compraId;
     return actualizado;
     }
 
@@ -181,7 +194,12 @@ public class Pedido {
         Pedido pedidoAnonimizado = new Pedido(id, null, lineas, estado, importe,
                 fechaCreacion, fechaPago, null, null, historialEstados);
         pedidoAnonimizado.setClienteNombre("cliente eliminado");
+        pedidoAnonimizado.compraId = compraId;
         return pedidoAnonimizado;
+    }
+
+    public String getCompraId() {
+        return compraId;
     }
 
     public String getClienteId() {

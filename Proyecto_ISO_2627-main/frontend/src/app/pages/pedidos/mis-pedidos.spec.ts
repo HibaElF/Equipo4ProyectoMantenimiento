@@ -378,4 +378,76 @@ describe('MisPedidos - HU-38 confirmar recepción', () => {
     expect(fixture.nativeElement.textContent)
       .not.toContain('Valorar producto');
   });
+
+  describe('HU-50 pedido por vendedor y cancelados', () => {
+    const cancelado: PedidoCliente = {
+      ...pagado,
+      estado: 'CANCELADO',
+      historialEstados: [
+        ...pagado.historialEstados,
+        { estado: 'CANCELADO', fecha: '2026-11-05T10:30:00Z' }
+      ]
+    };
+
+    it('muestra en cada pedido el vendedor que lo envía', () => {
+      const deTiendaA: PedidoCliente = {
+        ...pagado,
+        lineas: [{
+          productoId: 'producto-1',
+          nombreProducto: 'Producto de prueba',
+          precioCompra: 25,
+          cantidad: 1,
+          vendedorId: 'vendedor-a',
+          nombreVendedor: 'Tienda A'
+        }]
+      };
+      cargar([deTiendaA]);
+
+      const tarjeta: HTMLElement = fixture.nativeElement.querySelector(
+        '#titulo-activos ~ .lista-pedidos .tarjeta-pedido'
+      );
+      expect(tarjeta.textContent).toContain('Vendedor: Tienda A');
+    });
+
+    it('mueve al histórico el pedido cancelado y lo marca como «Cancelado»', async () => {
+      cargar([pagado]);
+      simularConfirmacion(true);
+
+      await fixture.componentInstance.cancelarPedido(pagado);
+      http.expectOne(csrfUrl).flush({ token: 'csrf' });
+      http.expectOne(`${baseUrl}/pedido-pagado/cancelar`).flush(cancelado);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.pedidosActivos()).toHaveLength(0);
+      expect(fixture.componentInstance.pedidosHistoricos()).toEqual([cancelado]);
+      const chip: HTMLElement = fixture.nativeElement.querySelector(
+        '#titulo-historico ~ .lista-pedidos .chip-estado'
+      );
+      expect(chip.textContent?.trim()).toBe('Cancelado');
+      expect(chip.classList).toContain('estado-cancelado');
+    });
+
+    it('el seguimiento de un pedido cancelado termina en «Cancelado» sin pasos pendientes', () => {
+      cargar([], [cancelado]);
+
+      fixture.componentInstance.pedidoSeleccionado.set(cancelado);
+      fixture.detectChanges();
+
+      const pasos: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('.historial li')
+      );
+      expect(pasos.map((paso) => paso.querySelector('strong')?.textContent?.trim()))
+        .toEqual(['Pagado / Completado', 'Cancelado']);
+      expect(pasos[1].classList).toContain('paso-cancelado');
+      expect(fixture.nativeElement.querySelector('.historial').textContent)
+        .not.toContain('Pendiente');
+    });
+
+    it('el histórico vacío explica que incluye los cancelados', () => {
+      cargar([], []);
+
+      expect(fixture.nativeElement.textContent)
+        .toContain('Los pedidos finalizados o cancelados aparecerán aquí.');
+    });
+  });
 });

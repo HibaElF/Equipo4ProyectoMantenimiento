@@ -160,7 +160,7 @@ public class PedidosVendedorService {
                 .filter(pedido ->
                         esVisibleParaVendedor(pedido, vendedorId))
                 .filter(pedido -> historico
-                        ? pedido.getEstado() == EstadoPedido.FINALIZADO
+                        ? esHistorico(pedido.getEstado())
                         : esActivo(pedido.getEstado()))
                 .sorted(
                         Comparator.comparing(
@@ -178,6 +178,12 @@ public class PedidosVendedorService {
     private boolean esActivo(EstadoPedido estado) {
         return estado == EstadoPedido.PAGADO_COMPLETADO
                 || estado == EstadoPedido.TRAMITADO_ENVIADO;
+    }
+
+    // Los cancelados van al histórico para que el vendedor sepa que no tiene que enviarlos.
+    private boolean esHistorico(EstadoPedido estado) {
+        return estado == EstadoPedido.FINALIZADO
+                || estado == EstadoPedido.CANCELADO;
     }
 
     private boolean esVisibleParaVendedor(

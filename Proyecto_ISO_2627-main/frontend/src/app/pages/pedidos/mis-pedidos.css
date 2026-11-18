@@ -256,6 +256,10 @@ td {
   background: var(--color-brand);
 }
 
+.historial li.paso-cancelado .punto {
+  background: var(--color-danger);
+}
+
 .historial li div {
   display: grid;
   gap: .2rem;

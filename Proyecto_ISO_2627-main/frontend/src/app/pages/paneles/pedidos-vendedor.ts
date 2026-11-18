@@ -198,13 +198,15 @@ export class PedidosVendedor implements OnInit {
     return id.slice(-6).toUpperCase();
   }
 
-  /** Color del chip de estado: el pagado espera acción del vendedor. */
+  /** Color del chip de estado: el pagado espera acción del vendedor y el cancelado ya no se envía. */
   claseChip(estado: PedidoVendedor['estado']): string {
     switch (estado) {
       case 'PAGADO_COMPLETADO':
         return 'chip-aviso';
       case 'FINALIZADO':
         return 'chip-exito';
+      case 'CANCELADO':
+        return 'chip-peligro';
       default:
         return 'chip-neutro';
     }
@@ -218,6 +220,8 @@ export class PedidosVendedor implements OnInit {
         return 'Enviado';
       case 'FINALIZADO':
         return 'Finalizado';
+      case 'CANCELADO':
+        return 'Cancelado';
     }
   }
 

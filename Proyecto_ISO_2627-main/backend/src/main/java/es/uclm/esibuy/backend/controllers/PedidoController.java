@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.security.core.Authentication;
 
+import es.uclm.esibuy.backend.dto.CompraResponse;
 import es.uclm.esibuy.backend.dto.CrearPedidoRequest;
 import es.uclm.esibuy.backend.dto.CrearValoracionRequest;
 import es.uclm.esibuy.backend.dto.EstadoValoracionResponse;
-import es.uclm.esibuy.backend.dto.PedidoResponse;
 import es.uclm.esibuy.backend.dto.ValoracionResponse;
 import es.uclm.esibuy.backend.services.PedidoService;
 import es.uclm.esibuy.backend.services.ValoracionService;
@@ -33,8 +33,8 @@ public class PedidoController {
     }
 
     @PostMapping
-    public ResponseEntity<PedidoResponse> realizarPedido(@Valid @RequestBody CrearPedidoRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(PedidoResponse.de(pedidoService.realizarPedido(
+    public ResponseEntity<CompraResponse> realizarPedido(@Valid @RequestBody CrearPedidoRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(CompraResponse.de(pedidoService.realizarPedido(
                 request.direccionId(), request.metodoPagoId(), request.operacionId())));
     }
 
