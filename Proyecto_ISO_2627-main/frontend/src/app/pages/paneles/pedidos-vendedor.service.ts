@@ -18,7 +18,7 @@ export interface DireccionPedidoVendedor {
 export interface PedidoVendedor {
   id: string;
   clienteNombre: string;
-  estado: 'PAGADO_COMPLETADO' | 'TRAMITADO_ENVIADO' | 'FINALIZADO';
+  estado: 'PAGADO_COMPLETADO' | 'TRAMITADO_ENVIADO' | 'FINALIZADO' | 'CANCELADO';
   fechaCreacion: string;
   fechaPago: string | null;
   productos: LineaPedidoVendedor[];
