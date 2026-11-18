@@ -95,7 +95,7 @@ export class PerfilService {
       );
   }
 
-  cambiarTipoCliente(esPremium: boolean): Observable<PerfilResponse> {
+  cambiarTipoCliente(esPremium: boolean, metodoPagoId: string | null = null): Observable<PerfilResponse> {
     return this.http
       .get<RespuestaTokenCsrf>(
         `${environment.apiUrl}/usuarios/csrf`,
@@ -105,7 +105,7 @@ export class PerfilService {
         switchMap((respuestaCsrf) =>
           this.http.put<PerfilResponse>(
             `${environment.apiUrl}/cliente/tipo`,
-            { esPremium },
+            { esPremium, metodoPagoId },
             {
               withCredentials: true,
               headers: new HttpHeaders({
@@ -135,8 +135,7 @@ export class PerfilService {
 
   darDeBajaCuenta(tipoUsuario: 'CLIENTE' | 'VENDEDOR'): Observable<void> {
     const ruta = tipoUsuario === 'CLIENTE' ? '/cliente/cuenta' : '/vendedor/cuenta';
-    return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(
-      switchMap((respuestaCsrf) => this.http.delete<void>(`${environment.apiUrl}${ruta}`, {
+    return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(      switchMap((respuestaCsrf) => this.http.delete<void>(`${environment.apiUrl}${ruta}`, {
         withCredentials: true,
         headers: new HttpHeaders({ 'X-XSRF-TOKEN': respuestaCsrf.token })
       }))
@@ -144,8 +143,7 @@ export class PerfilService {
   }
 
   private peticionConCsrf<T>(method: 'POST' | 'DELETE' | 'PUT', ruta: string, body?: unknown): Observable<T> {
-    return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(
-      switchMap((respuestaCsrf) => this.http.request<T>(method, `${environment.apiUrl}${ruta}`, {
+    return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(      switchMap((respuestaCsrf) => this.http.request<T>(method, `${environment.apiUrl}${ruta}`, {
         body,
         withCredentials: true,
         headers: new HttpHeaders({ 'X-XSRF-TOKEN': respuestaCsrf.token })

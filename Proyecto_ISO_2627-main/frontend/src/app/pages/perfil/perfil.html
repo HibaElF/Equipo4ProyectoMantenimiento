@@ -371,13 +371,39 @@
           </h2>
           @if (tipoPremiumPendiente()) {
             <p>Disfrutarás de las ventajas Premium y del acceso a los productos que te correspondan.</p>
+
+            <label class="totp-code-label" for="metodo-pago-premium">Método de pago</label>
+            @if (cargandoMetodosPago()) {
+              <p class="field-help">Cargando tus métodos de pago...</p>
+            } @else if (metodosPago().length === 0) {
+              <p class="field-help">
+                No tienes ningún método de pago.
+                <a routerLink="/perfil/pagos" (click)="cancelarCambioTipoCliente()">Añade uno</a>
+                para hacerte Premium.
+              </p>
+            } @else {
+              <select id="metodo-pago-premium"
+                      [ngModel]="metodoPagoSeleccionado()"
+                      (ngModelChange)="metodoPagoSeleccionado.set($event)">
+                <option value="">Selecciona un método de pago</option>
+                @for (metodo of metodosPago(); track metodo.id) {
+                  <option [value]="metodo.id">{{ metodo.nombre }} · {{ metodo.datosEnmascarados }}</option>
+                }
+              </select>
+            }
+            <p class="field-help">Pago simulado: no se realiza ningún cargo real.</p>
+
+            @if (errorPagoPremium()) {
+              <p class="field-error" role="alert">{{ errorPagoPremium() }}</p>
+            }
           } @else {
             <p>Al volver a cliente normal perderás las ventajas asociadas a Premium.</p>
           }
           <div class="confirmation-actions">
             <button class="boton-secundario" type="button" (click)="cancelarCambioTipoCliente()">Cancelar</button>
-            <button class="boton-principal" type="button" (click)="confirmarCambioTipoCliente()">
-              {{ tipoPremiumPendiente() ? 'Sí, hacerme Premium' : 'Sí, volver a Normal' }}
+            <button class="boton-principal" type="button" (click)="confirmarCambioTipoCliente()"
+                    [disabled]="tipoPremiumPendiente() && !metodoPagoSeleccionado()">
+              {{ tipoPremiumPendiente() ? 'Pagar y hacerme Premium' : 'Sí, volver a Normal' }}
             </button>
           </div>
         </dialog>
