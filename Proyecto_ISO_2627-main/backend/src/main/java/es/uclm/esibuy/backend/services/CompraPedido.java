@@ -26,7 +26,8 @@ import es.uclm.esibuy.backend.model.Vendedor;
 
 /*
  * HU-26 - Compra del carrito dentro de la transacción que abre PedidoService: crea los pedidos,
- * descuenta el stock, los marca como pagados (pago simulado) y vacía el carrito.
+ * los marca como pagados (pago simulado) y vacía el carrito.
+ * PBI 291 - El stock ya se descontó al añadir al carrito (reserva), así que aquí no se descuenta.
  * HU-50 - Se crea un pedido por vendedor, para que cada uno tramite y envíe el suyo.
  */
 final class CompraPedido {
@@ -69,8 +70,6 @@ final class CompraPedido {
                 .orElseThrow(() -> new IllegalArgumentException("El carrito está vacío."));
         if (carrito.getProductos().isEmpty()) throw new IllegalArgumentException("El carrito está vacío.");
 
-        List<LineaPedido> lineas = new ArrayList<>();
-        List<Producto> productos = new ArrayList<>();
         // Ordenados por id de vendedor: los pedidos se crean siempre en el mismo orden.
         Map<String, List<LineaPedido>> lineasPorVendedor = new TreeMap<>();
         Map<String, BigDecimal> importePorVendedor = new HashMap<>();
@@ -86,8 +85,6 @@ final class CompraPedido {
                     .orElseThrow(() -> new IllegalArgumentException("El vendedor del producto ya no existe."));
             LineaPedido linea = new LineaPedido(producto.getId(), producto.getNombre(), calculo.precioUnitario(),
                     entrada.getValue(), vendedor.getId(), vendedor.getNombreComercial());
-            lineas.add(linea);
-            productos.add(producto);
             lineasPorVendedor.computeIfAbsent(vendedor.getId(), id -> new ArrayList<>()).add(linea);
             importePorVendedor.put(vendedor.getId(), importePorVendedor
                     .getOrDefault(vendedor.getId(), BigDecimal.ZERO.setScale(2)).add(calculo.subtotal()));
@@ -110,9 +107,6 @@ final class CompraPedido {
             pedido.setClienteNombre(clienteNombre);
             pedidoDAO.insert(pedido);
             pedidos.add(pedido);
-        }
-        for (int i = 0; i < productos.size(); i++) {
-            productoDAO.descontarStock(productos.get(i), lineas.get(i).cantidad());
         }
         Instant fechaPago = Instant.now();
         List<Pedido> pagados = new ArrayList<>();

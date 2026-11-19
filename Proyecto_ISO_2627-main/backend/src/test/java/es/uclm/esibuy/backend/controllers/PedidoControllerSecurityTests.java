@@ -129,7 +129,8 @@ class PedidoControllerSecurityTests {
         verify(clientes, never()).findById("cliente-b");
         verify(carritos, never()).findById("cliente-b");
         verify(metodos, never()).findByClienteId("cliente-b");
-        verify(productos).descontarStock(any(), eq(2));
+        // PBI 291: el stock se reservó al añadir al carrito; al pagar no se descuenta otra vez.
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(pedidos).save(argThat(p -> "cliente-a".equals(p.getClienteId())));
     }
 
@@ -137,7 +138,7 @@ class PedidoControllerSecurityTests {
     void claveYaPagadaConOtraSeleccionDevuelveConflictoSinSegundaCompra() throws Exception {
         mvc.perform(peticion(JSON)).andExpect(status().isCreated());
         mvc.perform(peticion(JSON.replace("direccion-a", "direccion-b"))).andExpect(status().isConflict());
-        verify(productos, times(1)).descontarStock(any(), eq(2));
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(pedidos, times(1)).insert(any(Pedido.class));
         verify(carritos, times(1)).save(any());
     }
@@ -162,7 +163,7 @@ class PedidoControllerSecurityTests {
         String segunda = mvc.perform(peticion(JSON)).andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         assertEquals(primera, segunda);
-        verify(productos, times(1)).descontarStock(any(), eq(2));
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos, times(1)).save(any());
         verify(pedidos, times(1)).insert(any(Pedido.class));
     }

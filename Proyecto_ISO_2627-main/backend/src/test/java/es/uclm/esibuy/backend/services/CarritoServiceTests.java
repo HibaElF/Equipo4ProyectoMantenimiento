@@ -2,6 +2,8 @@ package es.uclm.esibuy.backend.services;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 import java.util.List;
@@ -80,14 +82,34 @@ class CarritoServiceTests {
         when(carritoDAO.findById("cliente-a")).thenReturn(Optional.ofNullable(carrito));
     }
 
+    // PBI 291: simula el DAO real, que descuenta y repone el stock del producto.
+    private void simularStockReal(Producto productoSimulado) {
+        lenient().doAnswer(invocation -> {
+            int cantidad = invocation.getArgument(1);
+            if (productoSimulado.getStock() < cantidad) {
+                throw new IllegalArgumentException("El producto ha cambiado o no hay stock suficiente.");
+            }
+            productoSimulado.setStock(productoSimulado.getStock() - cantidad);
+            return null;
+        }).when(productoDAO).descontarStock(any(), anyInt());
+        lenient().doAnswer(invocation -> {
+            int cantidad = invocation.getArgument(1);
+            productoSimulado.setStock(productoSimulado.getStock() + cantidad);
+            return null;
+        }).when(productoDAO).reponerStock(anyString(), anyInt());
+    }
+
     @Test
-    void creaCarritoDelClienteAutenticadoSinDescontarStock() {
+    void creaCarritoDelClienteAutenticadoReservandoStock() {
         prepararCarrito(null);
+        simularStockReal(producto);
         when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Carrito resultado = servicio.anadirProducto("producto-1", 3);
         assertEquals("cliente-a", resultado.getId());
         assertEquals(3, resultado.cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
+        // PBI 291: al añadir al carrito se reserva (descuenta) el stock.
+        assertEquals(7, producto.getStock());
+        verify(productoDAO).descontarStock(producto, 3);
         verify(productoDAO, never()).save(any());
         verify(carritoDAO, never()).findById("cliente-b");
     }
@@ -99,7 +121,8 @@ class CarritoServiceTests {
         Carrito resultado = servicio.anadirProducto("producto-1", 2);
         assertEquals(5, resultado.cantidadDe("producto-1"));
         assertEquals(1, resultado.getProductos().size());
-        assertEquals(10, producto.getStock());
+        // Solo se reservan las 2 unidades nuevas.
+        verify(productoDAO).descontarStock(producto, 2);
     }
 
     @ParameterizedTest
@@ -111,14 +134,16 @@ class CarritoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {6, 11, Integer.MAX_VALUE})
-    void rechazaStockAcumuladoSinCambiarCarrito(int cantidad) {
+    // PBI 291: las 5 del carrito ya están reservadas; solo se puede añadir hasta el stock libre (10).
+    @ValueSource(ints = {11, Integer.MAX_VALUE})
+    void rechazaMasQueElStockLibreSinCambiarCarrito(int cantidad) {
         Carrito anterior = new Carrito("cliente-a").conCantidad("producto-1", 5);
         prepararCarrito(anterior);
         assertThrows(IllegalArgumentException.class, () -> servicio.anadirProducto("producto-1", cantidad));
         assertEquals(5, anterior.cantidadDe("producto-1"));
         assertEquals(10, producto.getStock());
         verify(carritoDAO, never()).save(any());
+        verify(productoDAO, never()).descontarStock(any(), anyInt());
     }
 
     @Test
@@ -189,15 +214,19 @@ class CarritoServiceTests {
     }
 
     @Test
-    void reintentaConflictoYRevalidaCantidadActual() {
+    void conflictoAlGuardarDevuelveLaReservaYReintenta() {
         prepararProducto();
+        simularStockReal(producto);
         when(carritoDAO.findById("cliente-a")).thenReturn(
                 Optional.of(new Carrito("cliente-a").conCantidad("producto-1", 3)),
-                Optional.of(new Carrito("cliente-a").conCantidad("producto-1", 9)));
-        when(carritoDAO.save(any())).thenThrow(new OptimisticLockingFailureException("conflicto"));
-        assertThrows(IllegalArgumentException.class, () -> servicio.anadirProducto("producto-1", 2));
-        verify(carritoDAO).save(any());
-        verify(productoDAO, times(2)).findById("producto-1");
+                Optional.of(new Carrito("cliente-a").conCantidad("producto-1", 4)));
+        when(carritoDAO.save(any())).thenThrow(new OptimisticLockingFailureException("conflicto"))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        assertEquals(6, servicio.anadirProducto("producto-1", 2).cantidadDe("producto-1"));
+        // Primer intento: reserva 2 y, al fallar el guardado, las devuelve. Segundo intento: reserva 2.
+        verify(productoDAO, times(2)).descontarStock(producto, 2);
+        verify(productoDAO).reponerStock("producto-1", 2);
+        assertEquals(8, producto.getStock());
     }
 
     @Test
@@ -283,7 +312,7 @@ class CarritoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"oculto", "premium", "stock", "precio"})
+    @ValueSource(strings = {"oculto", "premium", "precio"})
     void rechazaLineaAnteriorQueYaNoPuedeAdquirirse(String motivo) {
         Carrito anterior = new Carrito("cliente-a").conCantidad("otro", 2);
         prepararCarrito(anterior);
@@ -306,8 +335,9 @@ class CarritoServiceTests {
     }
 
     @Test
-    void altasSucesivasConservanStockYRechazoConservaUltimoCarritoGuardado() {
+    void altasSucesivasReservanStockYRechazoConservaUltimoCarritoGuardado() {
         prepararProducto();
+        simularStockReal(producto);
         AtomicReference<Carrito> persistido = new AtomicReference<>();
         when(carritoDAO.findById("cliente-a"))
                 .thenAnswer(invocation -> Optional.ofNullable(persistido.get()));
@@ -318,23 +348,26 @@ class CarritoServiceTests {
         });
 
         assertEquals(3, servicio.anadirProducto("producto-1", 3).cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
+        assertEquals(7, producto.getStock());
         assertEquals(5, servicio.anadirProducto("producto-1", 2).cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
+        assertEquals(5, producto.getStock());
         Carrito anterior = persistido.get();
 
+        // Solo quedan 5 libres: pedir 6 más se rechaza sin tocar el carrito ni el stock.
         assertThrows(IllegalArgumentException.class, () -> servicio.anadirProducto("producto-1", 6));
 
         assertSame(anterior, persistido.get());
         assertEquals(5, persistido.get().cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
+        assertEquals(5, producto.getStock());
         verify(carritoDAO, times(2)).save(any());
         verify(productoDAO, times(3)).findById("producto-1");
+        verify(productoDAO).descontarStock(producto, 3);
+        verify(productoDAO).descontarStock(producto, 2);
         verifyNoMoreInteractions(productoDAO);
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {0, 2, 4})
+    @ValueSource(ints = {0, 1})
     void vuelveAConsultarStockSiCambiaEntreOperaciones(int stockActual) {
         prepararProducto();
         AtomicReference<Carrito> persistido = new AtomicReference<>();
@@ -361,17 +394,19 @@ class CarritoServiceTests {
         assertSame(anterior, persistido.get());
         assertEquals(3, persistido.get().cantidadDe("producto-1"));
         assertEquals(stockActual, actualizado.getStock());
-        assertEquals(10, producto.getStock());
         verify(carritoDAO).save(any());
         verify(productoDAO, times(2)).findById("producto-1");
+        verify(productoDAO).descontarStock(producto, 3);
         verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
-    void carritoAbandonadoNoReservaStockParaOtroCliente() {
+    void stockReservadoEnUnCarritoNoLoPuedeCogerOtroCliente() {
         prepararCarrito(null);
+        simularStockReal(producto);
         when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Carrito carritoA = servicio.anadirProducto("producto-1", 10);
+        assertEquals(0, producto.getStock());
 
         Cliente otroCliente = new Cliente();
         otroCliente.setId("cliente-b");
@@ -382,15 +417,14 @@ class CarritoServiceTests {
         when(clienteDAO.findByEmail("otro@example.com")).thenReturn(Optional.of(otroCliente));
         when(carritoDAO.findById("cliente-b")).thenReturn(Optional.empty());
 
-        Carrito carritoB = servicio.anadirProducto("producto-1", 10);
+        // PBI 291: las 10 unidades están reservadas por el cliente A.
+        assertThrows(IllegalArgumentException.class, () -> servicio.anadirProducto("producto-1", 1));
 
         assertEquals("cliente-a", carritoA.getId());
-        assertEquals("cliente-b", carritoB.getId());
         assertEquals(10, carritoA.cantidadDe("producto-1"));
-        assertEquals(10, carritoB.cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
-        verify(productoDAO, times(2)).findById("producto-1");
-        verifyNoMoreInteractions(productoDAO);
+        assertEquals(0, producto.getStock());
+        verify(carritoDAO, never()).save(argThat(c -> c.getId().equals("cliente-b")));
+        verify(productoDAO).descontarStock(producto, 10);
     }
 
     @Test
@@ -419,17 +453,30 @@ class CarritoServiceTests {
     }
 
     @Test
-    void sustituyeCantidadSinSumarNiCambiarStock() {
+    void sustituyeCantidadReservandoSoloLaDiferencia() {
         Carrito anterior = new Carrito("cliente-a").conCantidad("producto-1", 3);
         prepararCarrito(anterior);
         var respuesta = servicio.modificarCantidad("producto-1", 5);
         assertEquals(5, respuesta.productos().getFirst().cantidad());
         assertEquals(new java.math.BigDecimal("50.00"), respuesta.importe());
         assertEquals(3, anterior.cantidadDe("producto-1"));
-        assertEquals(10, producto.getStock());
         verify(carritoDAO).save(argThat(c -> c.cantidadDe("producto-1") == 5));
         verify(productoDAO).findById("producto-1");
+        verify(productoDAO).descontarStock(producto, 2);
         verifyNoMoreInteractions(productoDAO);
+    }
+
+    @Test
+    void bajarLaCantidadDevuelveLaDiferenciaAlStock() {
+        Carrito anterior = new Carrito("cliente-a").conCantidad("producto-1", 5);
+        prepararCarrito(anterior);
+        simularStockReal(producto);
+        var respuesta = servicio.modificarCantidad("producto-1", 2);
+        assertEquals(2, respuesta.productos().getFirst().cantidad());
+        verify(carritoDAO).save(argThat(c -> c.cantidadDe("producto-1") == 2));
+        verify(productoDAO).reponerStock("producto-1", 3);
+        verify(productoDAO, never()).descontarStock(any(), anyInt());
+        assertEquals(13, producto.getStock());
     }
 
     @ParameterizedTest
@@ -442,7 +489,8 @@ class CarritoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {11, Integer.MAX_VALUE})
+    // PBI 291: hay 3 reservadas y 10 libres, así que el máximo es 13.
+    @ValueSource(ints = {14, Integer.MAX_VALUE})
     void modificacionRechazaExcesoSinGuardar(int cantidad) {
         Carrito anterior = new Carrito("cliente-a").conCantidad("producto-1", 3);
         prepararCarrito(anterior);
@@ -455,15 +503,13 @@ class CarritoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"eliminado", "oculto", "agotado", "premium", "stock", "precio"})
+    @ValueSource(strings = {"eliminado", "oculto", "premium", "precio"})
     void consultaConservaLineasNoDisponiblesSinImporte(String motivo) {
         prepararCliente();
         when(carritoDAO.findById("cliente-a")).thenReturn(Optional.of(
                 new Carrito("cliente-a").conCantidad("producto-1", 3)));
         if (motivo.equals("oculto")) producto.setEsVisible(false);
-        if (motivo.equals("agotado")) producto.setStock(0);
         if (motivo.equals("premium")) producto.setSoloPremium(true);
-        if (motivo.equals("stock")) producto.setStock(2);
         if (motivo.equals("precio")) producto.setPrecio(Double.NaN);
         when(productoDAO.findById("producto-1")).thenReturn(
                 motivo.equals("eliminado") ? Optional.empty() : Optional.of(producto));
@@ -476,6 +522,18 @@ class CarritoServiceTests {
         assertEquals(3, linea.cantidad());
         assertEquals(new java.math.BigDecimal("0.00"), respuesta.importe());
         verify(carritoDAO, never()).save(any());
+    }
+
+    // PBI 291: lo del carrito ya está reservado, así que no se marca como agotado aunque no quede stock libre.
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2})
+    void consultaNoMarcaAgotadoLoQueYaEstaReservado(int stockLibre) {
+        producto.setStock(stockLibre);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 3));
+        var linea = servicio.consultarCarrito().productos().getFirst();
+        assertTrue(linea.disponible());
+        assertNull(linea.aviso());
+        assertEquals(new java.math.BigDecimal("30.00"), linea.subtotal());
     }
 
     @Test
@@ -493,16 +551,18 @@ class CarritoServiceTests {
     @Test
     void eliminaProductoInexistenteEnCatalogoSinBloquearOtrasLineas() {
         prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 2).conCantidad("borrado", 1));
+        // El DAO real falla al reponer un producto que ya no existe; el carrito se actualiza igualmente.
+        doThrow(new OptimisticLockingFailureException("no existe")).when(productoDAO).reponerStock("borrado", 1);
         var respuesta = servicio.eliminarProducto("borrado");
         assertEquals(1, respuesta.productos().size());
         assertEquals(new java.math.BigDecimal("20.00"), respuesta.importe());
         verify(carritoDAO).save(argThat(c -> c.cantidadDe("borrado") == 0 && c.cantidadDe("producto-1") == 2));
-        assertEquals(10, producto.getStock());
+        verify(productoDAO).reponerStock("borrado", 1);
         verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
-    void eliminarUltimaLineaMantieneDocumentoVacio() {
+    void eliminarUltimaLineaMantieneDocumentoVacioYDevuelveElStock() {
         prepararCliente();
         when(carritoDAO.findById("cliente-a")).thenReturn(Optional.of(
                 new Carrito("cliente-a").conCantidad("producto-1", 1)));
@@ -510,7 +570,8 @@ class CarritoServiceTests {
         assertTrue(respuesta.productos().isEmpty());
         assertEquals(new java.math.BigDecimal("0.00"), respuesta.importe());
         verify(carritoDAO).save(argThat(c -> c.getId().equals("cliente-a") && c.getProductos().isEmpty()));
-        verifyNoInteractions(productoDAO);
+        verify(productoDAO).reponerStock("producto-1", 1);
+        verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
@@ -546,15 +607,23 @@ class CarritoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"oculto", "agotado", "precio"})
+    @ValueSource(strings = {"oculto", "precio"})
     void noModificaLineaNoDisponible(String motivo) {
         prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 2));
         if (motivo.equals("oculto")) producto.setEsVisible(false);
-        if (motivo.equals("agotado")) producto.setStock(0);
         if (motivo.equals("precio")) producto.setPrecio(null);
         assertThrows(IllegalArgumentException.class, () -> servicio.modificarCantidad("producto-1", 1));
         verify(carritoDAO, never()).save(any());
         verify(productoDAO, never()).save(any());
+    }
+
+    @Test
+    void sinStockLibreNoSePuedeSubirLaCantidad() {
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 2));
+        producto.setStock(0);
+        assertThrows(IllegalArgumentException.class, () -> servicio.modificarCantidad("producto-1", 3));
+        verify(carritoDAO, never()).save(any());
+        verify(productoDAO, never()).descontarStock(any(), anyInt());
     }
 
     @Test
@@ -638,25 +707,27 @@ class CarritoServiceTests {
     }
 
     @Test
-    void modificacionRevalidaStockReducidoTrasConflicto() {
+    void modificacionDevuelveLaReservaYRevalidaStockTrasConflicto() {
         prepararCliente();
         Carrito original = new Carrito("cliente-a").conCantidad("producto-1", 2);
         when(carritoDAO.findById("cliente-a")).thenReturn(Optional.of(original));
         when(productoDAO.findById("producto-1")).thenReturn(Optional.of(producto));
         when(carritoDAO.save(any())).thenAnswer(invocation -> {
-            producto.setStock(3);
+            producto.setStock(2);
             throw new OptimisticLockingFailureException("conflicto");
         });
+        // Subir de 2 a 5 necesita 3 libres; tras el conflicto solo quedan 2.
         assertThrows(IllegalArgumentException.class, () -> servicio.modificarCantidad("producto-1", 5));
         assertEquals(2, original.cantidadDe("producto-1"));
-        assertEquals(3, producto.getStock());
         verify(carritoDAO).save(any());
         verify(productoDAO, times(2)).findById("producto-1");
+        verify(productoDAO).descontarStock(producto, 3);
+        verify(productoDAO).reponerStock("producto-1", 3);
         verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
-    void descartaTodasLasLineasSoloDelPropietarioSinTocarProductos() {
+    void descartaTodasLasLineasSoloDelPropietarioDevolviendoElStock() {
         prepararCliente();
         Carrito original = new Carrito("cliente-a").conCantidad("producto-1", 3).conCantidad("eliminado", 2);
         org.springframework.test.util.ReflectionTestUtils.setField(original, "version", 7L);
@@ -669,7 +740,9 @@ class CarritoServiceTests {
         assertEquals(2, original.getProductos().size());
         verify(carritoDAO).findById("cliente-a");
         verifyNoMoreInteractions(carritoDAO);
-        verifyNoInteractions(productoDAO);
+        verify(productoDAO).reponerStock("producto-1", 3);
+        verify(productoDAO).reponerStock("eliminado", 2);
+        verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
@@ -707,7 +780,10 @@ class CarritoServiceTests {
         verify(carritoDAO).save(argThat(c -> Long.valueOf(2).equals(c.getVersion()) && c.getProductos().isEmpty()));
         assertEquals(1, anterior.getProductos().size());
         assertEquals(2, reciente.getProductos().size());
-        verifyNoInteractions(productoDAO);
+        // Solo se devuelve el stock del carrito que se llegó a vaciar (el reciente).
+        verify(productoDAO).reponerStock("producto-1", 2);
+        verify(productoDAO).reponerStock("otro", 1);
+        verifyNoMoreInteractions(productoDAO);
     }
 
     @Test
