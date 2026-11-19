@@ -142,8 +142,14 @@ class PedidosVendedorServiceTests {
                 EstadoPedido.FINALIZADO,
                 linea("p2", VENDEDOR_ID, 1, "20.00"));
 
+        // Un pedido que el cliente canceló: va al histórico para que el vendedor sepa que no lo envía.
+        Pedido cancelado = pedido(
+                "pedido-cancelado",
+                EstadoPedido.CANCELADO,
+                linea("p3", VENDEDOR_ID, 1, "15.00"));
+
         when(pedidoDAO.findByVendedorId(VENDEDOR_ID))
-                .thenReturn(List.of(activo, finalizado));
+                .thenReturn(List.of(activo, finalizado, cancelado));
 
         List<PedidoVendedorResponse> activos = servicio.consultarActivos(EMAIL);
 
@@ -152,8 +158,9 @@ class PedidosVendedorServiceTests {
         assertEquals(1, activos.size());
         assertEquals("pedido-activo", activos.get(0).id());
 
-        assertEquals(1, historico.size());
-        assertEquals("pedido-finalizado", historico.get(0).id());
+        assertEquals(List.of("pedido-finalizado", "pedido-cancelado"),
+                historico.stream().map(PedidoVendedorResponse::id).toList());
+        assertEquals(EstadoPedido.CANCELADO, historico.get(1).estado());
     }
 
     @Test
@@ -440,6 +447,23 @@ class PedidosVendedorServiceTests {
         assertThrows(
                 TransicionEstadoPedidoException.class,
                 () -> servicio.aceptarPedido(EMAIL, "pedido-finalizado"));
+
+        verify(pedidoDAO, never()).actualizarEstado(any(), any(), any(), any(), anyList());
+    }
+
+    @Test
+    void noAceptaPedidoCancelado() {
+        Pedido cancelado = pedido(
+                "pedido-cancelado",
+                EstadoPedido.CANCELADO,
+                linea("producto-1", VENDEDOR_ID, 1, "10.00"));
+
+        when(pedidoDAO.findById("pedido-cancelado"))
+                .thenReturn(Optional.of(cancelado));
+
+        assertThrows(
+                TransicionEstadoPedidoException.class,
+                () -> servicio.aceptarPedido(EMAIL, "pedido-cancelado"));
 
         verify(pedidoDAO, never()).actualizarEstado(any(), any(), any(), any(), anyList());
     }

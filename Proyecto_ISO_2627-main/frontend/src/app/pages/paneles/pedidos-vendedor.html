@@ -53,7 +53,7 @@
         <p>Los pedidos aparecerán aquí cuando los clientes completen el pago.</p>
         } @else {
         <p class="estado-titulo">Tu histórico está vacío</p>
-        <p>Los pedidos finalizados aparecerán aquí.</p>
+        <p>Los pedidos finalizados o cancelados aparecerán aquí.</p>
         }
     </div>
     } @else {
@@ -129,6 +129,9 @@
             <span class="chip" [class]="'chip ' + claseChip(detalle.estado)">{{ textoEstado(detalle.estado) }}</span>
         </p>
         <p>Cliente: {{ detalle.clienteNombre }}</p>
+        @if (detalle.estado === 'CANCELADO') {
+            <p class="nota">El cliente canceló este pedido: no tienes que enviarlo y sus unidades han vuelto a tu stock.</p>
+        }
 
         <h3>Productos de tu tienda</h3>
 

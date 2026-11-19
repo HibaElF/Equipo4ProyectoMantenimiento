@@ -43,7 +43,8 @@ public class PedidoService {
         this.compra = new CompraPedido(carritoService, carritoDAO, productoDAO, metodoPagoDAO, vendedorDAO, pedidoDAO);
     }
 
-    public Pedido realizarPedido(String direccionId, String metodoPagoId, String operacionId) {
+    // HU-50: devuelve un pedido por cada vendedor del carrito.
+    public List<Pedido> realizarPedido(String direccionId, String metodoPagoId, String operacionId) {
         validarIdentificador(direccionId, "La dirección es obligatoria.");
         validarIdentificador(metodoPagoId, "El método de pago es obligatorio.");
         String operacion = IdempotenciaPedido.normalizarOperacion(operacionId);
@@ -199,11 +200,16 @@ public class PedidoService {
                 .toList();
     }
 
+    // El histórico incluye los cancelados para que el cliente vea qué pasó con ellos.
+    private static final Set<EstadoPedido> ESTADOS_HISTORICO = Set.of(
+        EstadoPedido.FINALIZADO,
+        EstadoPedido.CANCELADO);
+
     public List<PedidoConsultaResponse> consultarHistoricoPedidos() {
         Cliente cliente = carritoService.obtenerClienteAutenticado();
 
         return pedidoDAO.findByClienteId(cliente.getId()).stream()
-                .filter(pedido -> pedido.getEstado() == EstadoPedido.FINALIZADO)
+                .filter(pedido -> ESTADOS_HISTORICO.contains(pedido.getEstado()))
                 .map(PedidoConsultaResponse::de)
                 .toList();
     }

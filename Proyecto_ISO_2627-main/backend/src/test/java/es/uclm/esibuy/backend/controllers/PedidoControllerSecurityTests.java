@@ -6,11 +6,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -90,10 +90,18 @@ class PedidoControllerSecurityTests {
         vendedor.setId("v1");
         vendedor.setNombreComercial("Tienda");
         when(vendedores.findByNombreComercial("Tienda")).thenReturn(Optional.of(vendedor));
-        AtomicReference<Pedido> persistido = new AtomicReference<>();
-        when(pedidos.findById(anyString())).thenAnswer(i -> Optional.ofNullable(persistido.get()));
-        when(pedidos.insert(any(Pedido.class))).thenAnswer(i -> { persistido.set(i.getArgument(0)); return persistido.get(); });
-        when(pedidos.save(any(Pedido.class))).thenAnswer(i -> { persistido.set(i.getArgument(0)); return persistido.get(); });
+        // HU-50: los pedidos guardados, por id; la repetición de una compra los busca por compraId.
+        Map<String, Pedido> persistidos = new LinkedHashMap<>();
+        when(pedidos.findByCompraIdAndClienteId(anyString(), anyString())).thenAnswer(i -> persistidos.values().stream()
+                .filter(p -> i.getArgument(0).equals(p.getCompraId()) && i.getArgument(1).equals(p.getClienteId()))
+                .toList());
+        when(pedidos.insert(any(Pedido.class))).thenAnswer(i -> guardar(persistidos, i.getArgument(0)));
+        when(pedidos.save(any(Pedido.class))).thenAnswer(i -> guardar(persistidos, i.getArgument(0)));
+    }
+
+    private static Pedido guardar(Map<String, Pedido> persistidos, Pedido pedido) {
+        persistidos.put(pedido.getId(), pedido);
+        return pedido;
     }
 
     private MockHttpServletRequestBuilder peticion(String contenido) {
@@ -108,10 +116,12 @@ class PedidoControllerSecurityTests {
                 + "\"subtotal\":1,\"importe\":1,\"descuento\":100,\"stock\":999,\"estado\":\"FINALIZADO\"}";
         String respuesta = mvc.perform(peticion(contenido).param("clienteId", "cliente-b")
                         .header("X-Cliente-Id", "cliente-b"))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.importe").value(180))
-                .andExpect(jsonPath("$.lineas[0].precioCompra").value(90))
-                .andExpect(jsonPath("$.lineas[0].cantidad").value(2))
-                .andExpect(jsonPath("$.estado").value("PAGADO_COMPLETADO"))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.importeTotal").value(180))
+                .andExpect(jsonPath("$.pedidos.length()").value(1))
+                .andExpect(jsonPath("$.pedidos[0].importe").value(180))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].precioCompra").value(90))
+                .andExpect(jsonPath("$.pedidos[0].lineas[0].cantidad").value(2))
+                .andExpect(jsonPath("$.pedidos[0].estado").value("PAGADO_COMPLETADO"))
                 .andReturn().getResponse().getContentAsString();
         assertFalse(respuesta.contains("token-que-no-debe-devolverse"));
         assertSame(carritoAjeno, datosCarritos.get("cliente-b"));

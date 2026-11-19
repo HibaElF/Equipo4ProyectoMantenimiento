@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { environment } from '../../../environments/environment';
-import { CheckoutService, CrearPedidoRequest, ErrorPreparacionPago } from './checkout.service';
+import { CheckoutService, CompraResponse, CrearPedidoRequest, ErrorPreparacionPago } from './checkout.service';
 
 describe('CheckoutService - HU-26', () => {
   let servicio: CheckoutService;
@@ -26,7 +26,8 @@ describe('CheckoutService - HU-26', () => {
   });
 
   it('envía solo selecciones y clave con sesión y CSRF', () => {
-    servicio.pagar(request).subscribe();
+    let compra: CompraResponse | undefined;
+    servicio.pagar(request).subscribe(respuesta => compra = respuesta);
     const csrf = http.expectOne(`${environment.apiUrl}/usuarios/csrf`);
     expect(csrf.request.withCredentials).toBe(true);
     csrf.flush({ token: 'csrf-compra' });
@@ -35,7 +36,10 @@ describe('CheckoutService - HU-26', () => {
     expect(pago.request.body).toEqual(request);
     expect(pago.request.withCredentials).toBe(true);
     expect(pago.request.headers.get('X-XSRF-TOKEN')).toBe('csrf-compra');
-    pago.flush({ id: 'pedido' });
+    pago.flush({ pedidos: [{ id: 'pedido-a' }, { id: 'pedido-b' }], importeTotal: 45 });
+    // HU-50: la respuesta trae un pedido por vendedor y el total cobrado.
+    expect(compra?.pedidos.map(pedido => pedido.id)).toEqual(['pedido-a', 'pedido-b']);
+    expect(compra?.importeTotal).toBe(45);
   });
 
   it('no envía el pedido si falla la obtención de CSRF', () => {
@@ -51,7 +55,7 @@ describe('CheckoutService - HU-26', () => {
     http.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 'csrf' });
     const pago = http.expectOne(`${environment.apiUrl}/cliente/pedidos`);
     expect(pago.request.body).toEqual(request);
-    pago.flush({ id: 'pedido' });
+    pago.flush({ pedidos: [{ id: 'pedido' }], importeTotal: 1 });
   });
 
   it('conserva operaciones por usuario y permite recuperarlas', () => {

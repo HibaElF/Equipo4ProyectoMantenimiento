@@ -38,14 +38,20 @@ export interface PedidoResponse {
   metodoPagoId: string;
 }
 
+// HU-50: al pagar se crea un pedido por vendedor.
+export interface CompraResponse {
+  pedidos: PedidoResponse[];
+  importeTotal: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CheckoutService {
   private readonly http = inject(HttpClient);
 
-  pagar(request: CrearPedidoRequest): Observable<PedidoResponse> {
+  pagar(request: CrearPedidoRequest): Observable<CompraResponse> {
     return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(
       catchError(fallo => throwError(() => new ErrorPreparacionPago(fallo))),
-      switchMap(({ token }) => this.http.post<PedidoResponse>(`${environment.apiUrl}/cliente/pedidos`, {
+      switchMap(({ token }) => this.http.post<CompraResponse>(`${environment.apiUrl}/cliente/pedidos`, {
         direccionId: request.direccionId, metodoPagoId: request.metodoPagoId, operacionId: request.operacionId
       }, {
         withCredentials: true, headers: new HttpHeaders({ 'X-XSRF-TOKEN': token })

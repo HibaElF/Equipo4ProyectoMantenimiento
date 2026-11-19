@@ -7,8 +7,8 @@ import java.util.HexFormat;
 import java.util.UUID;
 
 /*
- * HU-26 - Clave de operación que hace idempotente la compra: el id del pedido se deriva del
- * cliente y de la operación, así que repetir la misma petición devuelve el mismo pedido.
+ * HU-26 - Clave de operación que hace idempotente la compra: los ids de la compra y de sus pedidos
+ * se derivan del cliente y de la operación, así que repetir la misma petición devuelve los mismos pedidos.
  */
 final class IdempotenciaPedido {
 
@@ -23,10 +23,19 @@ final class IdempotenciaPedido {
         return UUID.fromString(operacionId).toString();
     }
 
-    static String identificadorPedido(String clienteId, String operacionId) {
+    static String identificadorCompra(String clienteId, String operacionId) {
+        return resumen(clienteId + ":" + operacionId);
+    }
+
+    // HU-50: cada vendedor de la compra tiene su propio pedido.
+    static String identificadorPedido(String clienteId, String operacionId, String vendedorId) {
+        return resumen(clienteId + ":" + operacionId + ":" + vendedorId);
+    }
+
+    private static String resumen(String texto) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest((clienteId + ":" + operacionId).getBytes(StandardCharsets.UTF_8)));
+                    .digest(texto.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException(exception);
         }
