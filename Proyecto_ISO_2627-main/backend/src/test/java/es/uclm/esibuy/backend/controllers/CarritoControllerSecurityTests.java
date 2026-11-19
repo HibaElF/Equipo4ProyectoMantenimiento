@@ -164,7 +164,8 @@ class CarritoControllerSecurityTests {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {11, Integer.MAX_VALUE})
+    // PBI 291: el cliente ya tiene 2 reservadas y quedan 10 libres, así que el máximo es 12.
+    @ValueSource(ints = {13, Integer.MAX_VALUE})
     void excesoDeStockPorApiConservaElCarrito(int cantidad) throws Exception {
         Map<String, Carrito> carritos = prepararCarritos(true);
         Carrito original = carritos.get("cliente-a");

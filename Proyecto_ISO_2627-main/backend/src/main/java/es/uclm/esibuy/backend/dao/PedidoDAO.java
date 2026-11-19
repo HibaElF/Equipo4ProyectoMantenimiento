@@ -18,6 +18,9 @@ public interface PedidoDAO extends MongoRepository<Pedido, String> {
 
     Optional<Pedido> findByIdAndClienteId(String id, String clienteId);
 
+    // HU-50: los pedidos (uno por vendedor) que se crearon en la misma compra.
+    List<Pedido> findByCompraIdAndClienteId(String compraId, String clienteId);
+
     // Cambio atómico: solo se aplica si el pedido sigue en el estado esperado y contiene productos del vendedor.
     @Query("{ '_id': ?0, 'estado': ?1, 'lineas.vendedorId': ?2 }")
     @Update("{ '$set': { 'estado': ?3, 'historialEstados': ?4 } }")

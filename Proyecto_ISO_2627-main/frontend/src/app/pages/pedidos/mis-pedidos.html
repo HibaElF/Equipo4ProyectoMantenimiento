@@ -55,6 +55,9 @@
             </div>
 
             <div class="resumen">
+              @if (vendedoresDe(pedido)) {
+                <p><strong>Vendedor:</strong> {{ vendedoresDe(pedido) }}</p>
+              }
               <p><strong>Productos:</strong> {{ pedido.lineas.length }}</p>
               <p><strong>Total:</strong> {{ pedido.importe | number:'1.2-2' }} €</p>
             </div>
@@ -100,7 +103,7 @@
     } @else if (pedidosHistoricos().length === 0) {
       <div class="estado-vacio">
         <h3>Tu histórico está vacío</h3>
-        <p>Los pedidos finalizados aparecerán aquí.</p>
+        <p>Los pedidos finalizados o cancelados aparecerán aquí.</p>
       </div>
     } @else {
       <div class="lista-pedidos">
@@ -117,6 +120,9 @@
             </div>
 
             <div class="resumen">
+              @if (vendedoresDe(pedido)) {
+                <p><strong>Vendedor:</strong> {{ vendedoresDe(pedido) }}</p>
+              }
               <p><strong>Productos:</strong> {{ pedido.lineas.length }}</p>
               <p><strong>Total:</strong> {{ pedido.importe | number:'1.2-2' }} €</p>
             </div>
@@ -153,6 +159,9 @@
       </div>
 
       <p><strong>Estado actual:</strong> {{ textoEstado(pedido.estado) }}</p>
+      @if (vendedoresDe(pedido)) {
+        <p><strong>Vendido y enviado por:</strong> {{ vendedoresDe(pedido) }}</p>
+      }
       <div class="acciones-pedido">
         @if (puedeCancelar(pedido.estado)) {
           <button
@@ -313,14 +322,15 @@
 
       <h3>Seguimiento e historial de estados</h3>
       <ol class="historial">
-        @for (estado of estadosSeguimiento; track estado; let indice = $index; let ultimo = $last) {
+        @for (estado of estadosSeguimientoDetalle(); track estado; let indice = $index; let ultimo = $last) {
           @let cambio = cambioEstado(pedido.historialEstados, estado);
           <li
             [class.completado]="cambio"
+            [class.paso-cancelado]="estado === 'CANCELADO'"
             [class.conector-completado]="!ultimo && conectorCompletado(
               pedido.historialEstados,
               estado,
-              estadosSeguimiento[indice + 1]
+              estadosSeguimientoDetalle()[indice + 1]
             )">
             <span class="punto" aria-hidden="true"></span>
             <div>

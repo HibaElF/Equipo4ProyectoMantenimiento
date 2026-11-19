@@ -128,7 +128,14 @@ class PedidoMongoIntegrationTests {
         }
     }
 
+    // Compras de un solo vendedor: se crea un único pedido.
     private Pedido pagar(String cliente, String operacion) {
+        List<Pedido> compra = pagarCompra(cliente, operacion);
+        assertEquals(1, compra.size());
+        return compra.getFirst();
+    }
+
+    private List<Pedido> pagarCompra(String cliente, String operacion) {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 cliente + "@example.com", null, List.of(new SimpleGrantedAuthority("ROLE_CLIENTE"))));
         try {
@@ -212,6 +219,47 @@ class PedidoMongoIntegrationTests {
         assertEquals(2, pedido.getLineas().size());
         assertEquals(1, pedidos.count());
         assertTrue(carritos.findById("a").orElseThrow().getProductos().isEmpty());
+    }
+
+    @Test
+    void compraConDosVendedoresCreaUnPedidoPorVendedorYCadaUnoAceptaElSuyo() {
+        prepararDosProductos();
+        VendedorDAO vendedores = new MongoRepositoryFactory(template).getRepository(VendedorDAO.class);
+        Vendedor otro = new Vendedor();
+        otro.setNombreComercial("Tienda dos");
+        otro.setEmail("tienda2@example.com");
+        otro.setActivada(true);
+        vendedores.save(otro);
+        template.updateFirst(Query.query(Criteria.where("id").is("producto-2")),
+                new Update().set("vendedor", "Tienda dos"), Producto.class);
+
+        String operacion = nuevaOperacion();
+        List<Pedido> compra = pagarCompra("a", operacion);
+
+        assertEquals(2, compra.size());
+        assertEquals(2, pedidos.count());
+        Pedido deTienda = compra.stream()
+                .filter(p -> p.getLineas().getFirst().nombreVendedor().equals("Tienda")).findFirst().orElseThrow();
+        Pedido deOtra = compra.stream()
+                .filter(p -> p.getLineas().getFirst().nombreVendedor().equals("Tienda dos")).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("200.00"), deTienda.getImporte());
+        assertEquals(new BigDecimal("60.00"), deOtra.getImporte());
+        assertEquals(deTienda.getCompraId(), deOtra.getCompraId());
+        assertEquals(8, productos.findById("producto").orElseThrow().getStock());
+        assertEquals(2, productos.findById("producto-2").orElseThrow().getStock());
+
+        // Repetir la operación devuelve los mismos pedidos sin cobrar otra vez.
+        assertEquals(compra.stream().map(Pedido::getId).sorted().toList(),
+                pagarCompra("a", operacion).stream().map(Pedido::getId).sorted().toList());
+        assertEquals(2, pedidos.count());
+        assertEquals(8, productos.findById("producto").orElseThrow().getStock());
+
+        new PedidosVendedorService(pedidos, vendedores).aceptarPedido("tienda2@example.com", deOtra.getId());
+
+        Pedido enviado = pedidos.findById(deOtra.getId()).orElseThrow();
+        assertEquals(EstadoPedido.TRAMITADO_ENVIADO, enviado.getEstado());
+        assertEquals(deOtra.getCompraId(), enviado.getCompraId());
+        assertEquals(EstadoPedido.PAGADO_COMPLETADO, pedidos.findById(deTienda.getId()).orElseThrow().getEstado());
     }
 
     @Test

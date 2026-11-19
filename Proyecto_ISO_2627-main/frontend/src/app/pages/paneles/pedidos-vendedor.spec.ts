@@ -147,6 +147,29 @@ describe('PedidosVendedor - HU-35', () => {
     expect(texto()).toContain('Tu histórico está vacío');
   });
 
+  it('muestra en el histórico los pedidos cancelados, sin acción y con aviso en el detalle', () => {
+    const cancelado: PedidoVendedor = { ...pedido, id: 'pedido-cancelado', estado: 'CANCELADO' };
+    servicioMock.consultarHistorico.mockReturnValue(of([cancelado]));
+
+    componente.cambiarPestana('historico');
+
+    expect(texto()).toContain('Cancelado');
+    expect(texto()).not.toContain('Aceptar y enviar');
+    expect(fixture.nativeElement.querySelector('.cabecera-pedido .chip')?.classList).toContain('chip-peligro');
+    expect(componente.textoEstado('CANCELADO')).toBe('Cancelado');
+
+    componente.pedidoSeleccionado.set(cancelado);
+    expect(texto()).toContain('El cliente canceló este pedido: no tienes que enviarlo');
+  });
+
+  it('el histórico vacío explica que incluye los cancelados', () => {
+    servicioMock.consultarHistorico.mockReturnValue(of([]));
+
+    componente.cambiarPestana('historico');
+
+    expect(texto()).toContain('Los pedidos finalizados o cancelados aparecerán aquí.');
+  });
+
   it('permite cerrar el detalle', () => {
     componente.abrirDetalle(pedido);
     expect(componente.pedidoSeleccionado()).not.toBeNull();

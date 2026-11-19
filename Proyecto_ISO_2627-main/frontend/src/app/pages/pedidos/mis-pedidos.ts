@@ -5,6 +5,7 @@ import {
   ElementRef,
   OnInit,
   ViewChild,
+  computed,
   inject,
   signal
 } from '@angular/core';
@@ -76,6 +77,18 @@ export class MisPedidos implements OnInit {
     'TRAMITADO_ENVIADO',
     'FINALIZADO'
   ];
+
+  // Un pedido cancelado muestra los pasos que llegó a dar y termina en «Cancelado».
+  readonly estadosSeguimientoDetalle = computed<EstadoPedido[]>(() => {
+    const pedido = this.pedidoSeleccionado();
+    if (pedido?.estado !== 'CANCELADO') {
+      return this.estadosSeguimiento;
+    }
+    const recorridos = this.estadosSeguimiento.filter((estado) =>
+      this.cambioEstado(pedido.historialEstados, estado) !== undefined
+    );
+    return [...recorridos, 'CANCELADO'];
+  });
 
   readonly estrellas = [1, 2, 3, 4, 5];
 
@@ -321,6 +334,10 @@ export class MisPedidos implements OnInit {
         this.pedidosActivos.update((pedidos) =>
           pedidos.filter((actual) => actual.id !== pedidoCancelado.id)
         );
+        this.pedidosHistoricos.update((pedidos) => [
+          pedidoCancelado,
+          ...pedidos.filter((actual) => actual.id !== pedidoCancelado.id)
+        ]);
         if (this.pedidoSeleccionado()?.id === pedidoCancelado.id) {
           this.cerrarDetalle();
         }
@@ -482,6 +499,12 @@ export class MisPedidos implements OnInit {
       case 'CANCELADO':
         return 'Cancelado';
     }
+  }
+
+  // HU-50: cada pedido es de un vendedor (los antiguos pueden tener varios).
+  vendedoresDe(pedido: PedidoCliente): string {
+    return [...new Set(pedido.lineas.map((linea) => linea.nombreVendedor).filter((nombre) => !!nombre))]
+      .join(', ');
   }
 
   referenciaPedido(id: string): string {

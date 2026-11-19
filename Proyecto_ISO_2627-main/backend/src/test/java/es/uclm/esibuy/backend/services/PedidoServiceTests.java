@@ -6,9 +6,9 @@ import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.mongodb.MongoException;
 import org.junit.jupiter.api.AfterEach;
@@ -105,7 +105,36 @@ class PedidoServiceTests {
         lenient().when(vendedores.findByNombreComercial("Tienda original")).thenReturn(Optional.of(vendedor));
     }
 
-    private Pedido pagar() { return servicio.realizarPedido("direccion-a", "metodo-a", operacion); }
+    private List<Pedido> pagar() { return servicio.realizarPedido("direccion-a", "metodo-a", operacion); }
+
+    private Producto productoDeOtraTienda() {
+        Producto otro = new Producto();
+        otro.setId("producto-2");
+        otro.setNombre("Producto de otra tienda");
+        otro.setPrecio(10.0);
+        otro.setStock(5);
+        otro.setEsVisible(true);
+        otro.setVendedor("Tienda dos");
+        Vendedor vendedor = new Vendedor();
+        vendedor.setId("vendedor-2");
+        vendedor.setNombreComercial("Tienda dos");
+        when(vendedores.findByNombreComercial("Tienda dos")).thenReturn(Optional.of(vendedor));
+        when(productos.findById("producto-2")).thenReturn(Optional.of(otro));
+        return otro;
+    }
+
+    // Pedido pagado con la misma dirección y método que usa pagar().
+    private Pedido pedidoDeLaCompra(String id) {
+        Direccion direccion = new Direccion();
+        direccion.setId("direccion-a");
+        return Pedido.builder().id(id).compraId("compra-1").clienteId("cliente-a")
+                .lineas(List.of(new LineaPedido("producto-1", "Teclado", new BigDecimal("20.00"),
+                        1, "vendedor-1", "Tienda")))
+                .estado(EstadoPedido.EN_PROCESO).importe(new BigDecimal("20.00"))
+                .fechaCreacion(Instant.parse("2026-11-01T10:00:00Z"))
+                .direccionEnvio(direccion).metodoPagoId("metodo-a").build()
+                .pagado(Instant.parse("2026-11-01T10:01:00Z"));
+    }
 
     private Pedido pedidoConEstado(String id, EstadoPedido estadoFinal) {
         Instant fechaInicial = Instant.parse("2026-11-01T10:00:00Z");
@@ -136,7 +165,9 @@ class PedidoServiceTests {
                 pedidoConEstado("pedido-proceso", EstadoPedido.EN_PROCESO),
                 pedidoConEstado("pedido-pagado", EstadoPedido.PAGADO_COMPLETADO),
                 pedidoConEstado("pedido-enviado", EstadoPedido.TRAMITADO_ENVIADO),
-                pedidoConEstado("pedido-finalizado", EstadoPedido.FINALIZADO));
+                pedidoConEstado("pedido-finalizado", EstadoPedido.FINALIZADO),
+                pedidoConEstado("pedido-cancelado", EstadoPedido.PAGADO_COMPLETADO)
+                        .cancelar(Instant.parse("2026-11-01T11:00:00Z")));
         when(pedidos.findByClienteId("cliente-a")).thenReturn(delCliente);
 
         List<PedidoConsultaResponse> activos = servicio.consultarPedidosActivos();
@@ -144,8 +175,9 @@ class PedidoServiceTests {
 
         assertEquals(List.of("pedido-proceso", "pedido-pagado", "pedido-enviado"),
                 activos.stream().map(PedidoConsultaResponse::id).toList());
-        assertEquals(List.of("pedido-finalizado"),
+        assertEquals(List.of("pedido-finalizado", "pedido-cancelado"),
                 historico.stream().map(PedidoConsultaResponse::id).toList());
+        assertEquals(EstadoPedido.CANCELADO, historico.get(1).estado());
         assertEquals(List.of(EstadoPedido.EN_PROCESO, EstadoPedido.PAGADO_COMPLETADO,
                         EstadoPedido.TRAMITADO_ENVIADO, EstadoPedido.FINALIZADO),
                 historico.getFirst().historialEstados().stream()
@@ -331,13 +363,17 @@ class PedidoServiceTests {
     void compraCalculadaEnServidorConSnapshotYCarritoVacio(boolean premium) {
         cliente.setEsPremium(premium);
         compra();
-        Pedido pedido = pagar();
+        List<Pedido> compraRealizada = pagar();
+        assertEquals(1, compraRealizada.size());
+        Pedido pedido = compraRealizada.getFirst();
         assertEquals(EstadoPedido.PAGADO_COMPLETADO, pedido.getEstado());
+        assertNotNull(pedido.getCompraId());
         assertEquals(new BigDecimal(premium ? "130.00" : "180.00"), pedido.getImporte());
         assertEquals(new BigDecimal(premium ? "65.00" : "90.00"), pedido.getLineas().getFirst().precioCompra());
         assertEquals("vendedor-1", pedido.getLineas().getFirst().vendedorId());
         assertNotNull(pedido.getFechaPago());
-        verify(productos).descontarStock(producto, 2);
+        // PBI 291: el stock ya se reservó en el carrito.
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos).save(argThat(c -> c.getProductos().isEmpty() && c.getId().equals("cliente-a")));
         verify(pedidos).insert(argThat((Pedido p) -> p.getEstado() == EstadoPedido.EN_PROCESO));
         verify(pedidos).save(pedido);
@@ -350,14 +386,15 @@ class PedidoServiceTests {
     }
 
     @Test
-    void repeticionDevuelveElMismoPedidoSinDescontarOtraVez() {
+    void repeticionDevuelveElMismoPedidoSinEscribirOtraVez() {
         compra();
-        AtomicReference<Pedido> guardado = new AtomicReference<>();
-        when(pedidos.findById(anyString())).thenAnswer(i -> Optional.ofNullable(guardado.get()));
-        doAnswer(i -> { guardado.set(i.getArgument(0)); return guardado.get(); }).when(pedidos).save(any());
-        Pedido primero = pagar();
-        assertSame(primero, pagar());
-        verify(productos, times(1)).descontarStock(any(), anyInt());
+        List<Pedido> guardados = new ArrayList<>();
+        when(pedidos.findByCompraIdAndClienteId(anyString(), eq("cliente-a")))
+                .thenAnswer(i -> List.copyOf(guardados));
+        doAnswer(i -> { guardados.add(i.getArgument(0)); return i.getArgument(0); }).when(pedidos).save(any());
+        List<Pedido> primera = pagar();
+        assertEquals(primera, pagar());
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos, times(1)).save(any());
         verify(pedidos, times(1)).insert(any(Pedido.class));
         assertThrows(es.uclm.esibuy.backend.exceptions.OperacionPedidoConflictivaException.class,
@@ -377,12 +414,10 @@ class PedidoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"eliminado", "oculto", "stock", "agotado", "premium", "precio", "cantidad"})
+    @ValueSource(strings = {"eliminado", "oculto", "premium", "precio", "cantidad"})
     void productoNoAdquiribleRechazaSinEscrituras(String motivo) {
         switch (motivo) {
             case "oculto" -> producto.setEsVisible(false);
-            case "stock" -> producto.setStock(1);
-            case "agotado" -> producto.setStock(0);
             case "premium" -> producto.setSoloPremium(true);
             case "precio" -> producto.setPrecio(Double.NaN);
             case "cantidad" -> carrito = carrito.conCantidad("producto-1", 0);
@@ -395,6 +430,20 @@ class PedidoServiceTests {
         verify(pedidos, never()).insert(any(Pedido.class));
         verify(carritos, never()).save(any());
         verify(transacciones).rollback(any());
+    }
+
+    // PBI 291: las unidades del carrito ya están reservadas, así que aunque el stock libre
+    // sea menor que la cantidad (o cero) la compra se puede pagar y no se descuenta otra vez.
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void compraLoReservadoAunqueNoQuedeStockLibre(int stockLibre) {
+        producto.setStock(stockLibre);
+        compra();
+        List<Pedido> compraRealizada = pagar();
+        assertEquals(1, compraRealizada.size());
+        assertEquals(EstadoPedido.PAGADO_COMPLETADO, compraRealizada.getFirst().getEstado());
+        verify(productos, never()).descontarStock(any(), anyInt());
+        verify(carritos).save(argThat(c -> c.getProductos().isEmpty()));
     }
 
     @Test
@@ -437,12 +486,11 @@ class PedidoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"stock", "pedido", "carrito"})
+    @ValueSource(strings = {"pedido", "carrito"})
     void falloDeEscrituraSolicitaRollbackSinCommit(String punto) {
         compra();
         RuntimeException error = new IllegalStateException("Persistencia no disponible");
         switch (punto) {
-            case "stock" -> doThrow(error).when(productos).descontarStock(any(), anyInt());
             case "pedido" -> doThrow(error).when(pedidos).save(any());
             case "carrito" -> doThrow(error).when(carritos).save(any());
             default -> throw new AssertionError();
@@ -459,7 +507,8 @@ class PedidoServiceTests {
         error.addLabel(MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL);
         doThrow(error).when(transacciones).commit(any());
         assertThrows(MongoException.class, this::pagar);
-        verify(productos, times(1)).descontarStock(any(), anyInt());
+        verify(pedidos, times(1)).insert(any(Pedido.class));
+        verify(productos, never()).descontarStock(any(), anyInt());
     }
 
     @Test
@@ -467,7 +516,7 @@ class PedidoServiceTests {
         cuenta();
         MongoException error = new MongoException("Conflicto transitorio");
         error.addLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL);
-        when(pedidos.findById(anyString())).thenThrow(error);
+        when(pedidos.findByCompraIdAndClienteId(anyString(), anyString())).thenThrow(error);
         assertThrows(MongoException.class, this::pagar);
         verify(transacciones, times(3)).rollback(any());
         verifyNoInteractions(productos);
@@ -492,10 +541,68 @@ class PedidoServiceTests {
         segundo.setEsVisible(true);
         segundo.setVendedor("Tienda original");
         when(productos.findById("producto-2")).thenReturn(Optional.of(segundo));
-        Pedido pedido = pagar();
+        List<Pedido> compraRealizada = pagar();
+        assertEquals(1, compraRealizada.size());
+        Pedido pedido = compraRealizada.getFirst();
         assertEquals(new BigDecimal("210.00"), pedido.getImporte());
         assertEquals(2, pedido.getLineas().size());
-        verify(productos).descontarStock(segundo, 3);
+        verify(productos, never()).descontarStock(any(), anyInt());
+    }
+
+    @Test
+    void compraConVariosVendedoresCreaUnPedidoPorVendedor() {
+        carrito = carrito.conCantidad("producto-2", 3);
+        compra();
+        productoDeOtraTienda();
+
+        List<Pedido> compraRealizada = pagar();
+
+        assertEquals(2, compraRealizada.size());
+        Pedido primero = compraRealizada.get(0);
+        Pedido segundo = compraRealizada.get(1);
+        assertEquals(List.of("vendedor-1"), primero.getLineas().stream().map(LineaPedido::vendedorId).toList());
+        assertEquals(List.of("vendedor-2"), segundo.getLineas().stream().map(LineaPedido::vendedorId).toList());
+        assertEquals(new BigDecimal("180.00"), primero.getImporte());
+        assertEquals(new BigDecimal("30.00"), segundo.getImporte());
+        assertEquals(primero.getCompraId(), segundo.getCompraId());
+        assertNotEquals(primero.getId(), segundo.getId());
+        assertTrue(compraRealizada.stream().allMatch(p -> p.getEstado() == EstadoPedido.PAGADO_COMPLETADO));
+        verify(pedidos, times(2)).insert(any(Pedido.class));
+        verify(pedidos, times(2)).save(any(Pedido.class));
+        verify(productos, never()).descontarStock(any(), anyInt());
+        verify(carritos, times(1)).save(argThat(c -> c.getProductos().isEmpty()));
+        verify(transacciones).commit(any());
+    }
+
+    @Test
+    void repetirUnaCompraConVariosVendedoresDevuelveTodosSusPedidos() {
+        carrito = carrito.conCantidad("producto-2", 1);
+        compra();
+        productoDeOtraTienda();
+        List<Pedido> guardados = new ArrayList<>();
+        when(pedidos.findByCompraIdAndClienteId(anyString(), eq("cliente-a")))
+                .thenAnswer(i -> List.copyOf(guardados));
+        doAnswer(i -> { guardados.add(i.getArgument(0)); return i.getArgument(0); }).when(pedidos).save(any());
+
+        List<Pedido> primera = pagar();
+
+        assertEquals(primera, pagar());
+        verify(pedidos, times(2)).insert(any(Pedido.class));
+        verify(productos, never()).descontarStock(any(), anyInt());
+    }
+
+    @Test
+    void repetirUnaCompraConUnPedidoYaEnviadoEsConflictiva() {
+        cuenta();
+        Pedido pagado = pedidoDeLaCompra("pedido-a");
+        Pedido enviado = pedidoDeLaCompra("pedido-b")
+                .cambiarEstado(EstadoPedido.TRAMITADO_ENVIADO, Instant.parse("2026-11-01T12:00:00Z"));
+        when(pedidos.findByCompraIdAndClienteId(anyString(), eq("cliente-a"))).thenReturn(List.of(pagado, enviado));
+
+        assertThrows(es.uclm.esibuy.backend.exceptions.OperacionPedidoConflictivaException.class, this::pagar);
+
+        verify(pedidos, never()).insert(any(Pedido.class));
+        verifyNoInteractions(productos, carritos);
     }
 
     @Test

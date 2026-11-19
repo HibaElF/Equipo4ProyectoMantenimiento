@@ -80,8 +80,8 @@ describe('Checkout - HU-26', () => {
     const pago = obtenerPago();
     expect(Object.keys(pago.request.body).sort()).toEqual(['direccionId', 'metodoPagoId', 'operacionId']);
     expect(TestBed.inject(CheckoutService).obtenerOperacion('a@example.com')).toEqual(pago.request.body);
-    pago.flush({ id: 'pedido-1', estado: 'PAGADO_COMPLETADO', importe: 150, direccionEnvio: direccion,
-      lineas: [{ productoId: 'p1', nombreProducto: 'Producto A', precioCompra: 75, cantidad: 2 }] });
+    pago.flush({ importeTotal: 150, pedidos: [{ id: 'pedido-1', estado: 'PAGADO_COMPLETADO', importe: 150,
+      direccionEnvio: direccion, lineas: [{ productoId: 'p1', nombreProducto: 'Producto A', precioCompra: 75, cantidad: 2 }] }] });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Compra completada');
     expect(fixture.nativeElement.textContent).toContain('Importe pagado:');
@@ -90,6 +90,37 @@ describe('Checkout - HU-26', () => {
     expect(TestBed.inject(CheckoutService).obtenerOperacion('a@example.com')).toBeNull();
     fixture.componentInstance.pagar();
     http.expectNone(`${api}/usuarios/csrf`);
+  });
+
+  it('con productos de dos vendedores avisa y muestra un pedido por vendedor (HU-50)', () => {
+    const deOtraTienda: LineaCarritoResponse = { ...linea, productoId: 'p2', nombre: 'Producto B', vendedor: 'Tienda B' };
+    crear(); cargar([{ ...linea, vendedor: 'Tienda A' }, deOtraTienda]); seleccionar();
+    expect(fixture.nativeElement.textContent).toContain('se creará un pedido por vendedor');
+
+    fixture.componentInstance.pagar();
+    obtenerPago().flush({ importeTotal: 210, pedidos: [
+      { id: 'pedido-tienda-a', estado: 'PAGADO_COMPLETADO', importe: 180, direccionEnvio: direccion,
+        lineas: [{ productoId: 'p1', nombreProducto: 'Producto A', precioCompra: 90, cantidad: 2,
+          vendedorId: 'va', nombreVendedor: 'Tienda A' }] },
+      { id: 'pedido-tienda-b', estado: 'PAGADO_COMPLETADO', importe: 30, direccionEnvio: direccion,
+        lineas: [{ productoId: 'p2', nombreProducto: 'Producto B', precioCompra: 30, cantidad: 1,
+          vendedorId: 'vb', nombreVendedor: 'Tienda B' }] }
+    ] });
+    fixture.detectChanges();
+
+    const texto: string = fixture.nativeElement.textContent;
+    expect(texto).toContain('Tu compra se ha dividido en 2 pedidos, uno por vendedor.');
+    expect(texto).toContain('pedido-tienda-a');
+    expect(texto).toContain('pedido-tienda-b');
+    expect(texto).toContain('Tienda A');
+    expect(texto).toContain('Tienda B');
+    expect(texto).toContain('210.00 €');
+    expect(fixture.nativeElement.querySelectorAll('.confirmation-order').length).toBe(2);
+  });
+
+  it('con un solo vendedor no avisa de que se dividirá la compra', () => {
+    crear(); cargar([{ ...linea, vendedor: 'Tienda A' }]);
+    expect(fixture.nativeElement.textContent).not.toContain('se creará un pedido por vendedor');
   });
 
   it('conserva una operación pendiente si falla CSRF con 400 antes del reintento', () => {
@@ -174,7 +205,8 @@ describe('Checkout - HU-26', () => {
     fixture.componentInstance.pagar();
     const pago = obtenerPago();
     expect(pago.request.body).toEqual(request);
-    pago.flush({ id: 'ya-pagado', estado: 'PAGADO_COMPLETADO', importe: 180, lineas: [], direccionEnvio: direccion });
+    pago.flush({ importeTotal: 180,
+      pedidos: [{ id: 'ya-pagado', estado: 'PAGADO_COMPLETADO', importe: 180, lineas: [], direccionEnvio: direccion }] });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('ya-pagado');
   });
@@ -231,7 +263,8 @@ describe('Checkout - HU-26', () => {
     const pago = obtenerPago();
     expect(pago.request.body.direccionId).toBe('d1');
     expect(pago.request.body.metodoPagoId).toBe('m1');
-    pago.flush({ id: 'pedido', estado: 'PAGADO_COMPLETADO', lineas: [], importe: 180, direccionEnvio: direccion });
+    pago.flush({ importeTotal: 180,
+      pedidos: [{ id: 'pedido', estado: 'PAGADO_COMPLETADO', lineas: [], importe: 180, direccionEnvio: direccion }] });
   });
 
   it('permite recargar cuando falla la consulta de métodos', () => {

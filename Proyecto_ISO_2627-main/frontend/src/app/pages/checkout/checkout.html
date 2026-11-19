@@ -11,7 +11,7 @@
     <p class="aviso aviso-error" role="alert">{{ error() }}</p>
   }
 
-  @if (pedido(); as confirmado) {
+  @if (compra(); as confirmada) {
     <section class="confirmation-card tarjeta" aria-labelledby="pedido-confirmado">
       <div class="confirmation-banner">
         <span class="confirmation-mark" aria-hidden="true">✓</span>
@@ -20,32 +20,55 @@
           <p><output>El pago se ha completado correctamente.</output></p>
         </div>
       </div>
+      @if (confirmada.pedidos.length > 1) {
+        <p class="confirmation-split">
+          Tu compra se ha dividido en {{ confirmada.pedidos.length }} pedidos, uno por vendedor.
+          Cada vendedor envía el suyo y puedes seguirlos por separado en «Mis pedidos».
+        </p>
+      }
       <dl class="confirmation-details">
         <div>
-          <dt>Pedido</dt>
-          <dd class="referencia">{{ confirmado.id }}</dd>
-        </div>
-        <div>
-          <dt>Estado</dt>
-          <dd>{{ confirmado.estado === 'PAGADO_COMPLETADO' ? 'Pagado / Completado' : confirmado.estado }}</dd>
-        </div>
-        <div>
           <dt>Importe pagado:</dt>
-          <dd class="precio">{{ confirmado.importe | number: '1.2-2' }} €</dd>
+          <dd class="precio">{{ confirmada.importeTotal | number: '1.2-2' }} €</dd>
         </div>
       </dl>
-      <ul class="confirmation-products">
-        @for (linea of confirmado.lineas; track linea.productoId) {
-          <li>
-            <span>{{ linea.nombreProducto }} × {{ linea.cantidad }}</span>
-            <strong>{{ linea.precioCompra | number: '1.2-2' }} € por unidad</strong>
-          </li>
-        }
-      </ul>
-      <p class="confirmation-shipping">
-        Envío a {{ confirmado.direccionEnvio.calle }}, {{ confirmado.direccionEnvio.numero }},
-        {{ confirmado.direccionEnvio.ciudad }}.
-      </p>
+      @for (confirmado of confirmada.pedidos; track confirmado.id) {
+        <article class="confirmation-order" [attr.aria-label]="'Pedido ' + confirmado.id">
+          <dl class="confirmation-details">
+            <div>
+              <dt>Pedido</dt>
+              <dd class="referencia">{{ confirmado.id }}</dd>
+            </div>
+            @if (vendedorDe(confirmado)) {
+              <div>
+                <dt>Vendedor</dt>
+                <dd>{{ vendedorDe(confirmado) }}</dd>
+              </div>
+            }
+            <div>
+              <dt>Estado</dt>
+              <dd>{{ confirmado.estado === 'PAGADO_COMPLETADO' ? 'Pagado / Completado' : confirmado.estado }}</dd>
+            </div>
+            <div>
+              <dt>Importe</dt>
+              <dd>{{ confirmado.importe | number: '1.2-2' }} €</dd>
+            </div>
+          </dl>
+          <ul class="confirmation-products">
+            @for (linea of confirmado.lineas; track linea.productoId) {
+              <li>
+                <span>{{ linea.nombreProducto }} × {{ linea.cantidad }}</span>
+                <strong>{{ linea.precioCompra | number: '1.2-2' }} € por unidad</strong>
+              </li>
+            }
+          </ul>
+        </article>
+      }
+      @if (direccionDe(confirmada); as direccion) {
+        <p class="confirmation-shipping">
+          Envío a {{ direccion.calle }}, {{ direccion.numero }}, {{ direccion.ciudad }}.
+        </p>
+      }
       <div class="confirmation-actions">
         <a class="boton-principal" routerLink="/cliente/pedidos">Ver mis pedidos</a>
         <a class="boton-secundario" routerLink="/cliente">Seguir comprando</a>
@@ -117,6 +140,12 @@
             <strong>Total:</strong>
             <strong class="precio">{{ carrito()!.importe | number: '1.2-2' }} €</strong>
           </div>
+          @if (numeroVendedores() > 1) {
+            <p class="checkout-help checkout-split">
+              Tu carrito tiene productos de {{ numeroVendedores() }} vendedores: se creará un pedido por vendedor
+              y cada uno enviará el suyo.
+            </p>
+          }
         </section>
 
         @if (!pendiente()) {

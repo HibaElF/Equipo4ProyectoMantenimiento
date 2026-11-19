@@ -11,7 +11,9 @@ import { CarritoResponse, CarritoService } from '../carrito/carrito.service';
 import { DireccionResponse, DireccionesService } from '../direcciones/direcciones.service';
 import { AuthService } from '../login/auth.service';
 import { MetodoPagoResponse, PagosService } from '../pagos/pagos.service';
-import { CheckoutService, CrearPedidoRequest, ErrorPreparacionPago, PedidoResponse } from './checkout.service';
+import {
+  CheckoutService, CompraResponse, CrearPedidoRequest, ErrorPreparacionPago, PedidoResponse
+} from './checkout.service';
 
 @Component({
   selector: 'app-checkout',
@@ -39,8 +41,8 @@ export class Checkout {
   readonly procesando = signal(false);
   readonly error = signal('');
   readonly pendiente = signal<CrearPedidoRequest | null>(null);
-  readonly pedido = signal<PedidoResponse | null>(null);
-  readonly puedePagar = computed(() => !this.cargando() && !this.procesando() && !this.pedido() && !!this.email()
+  readonly compra = signal<CompraResponse | null>(null);
+  readonly puedePagar = computed(() => !this.cargando() && !this.procesando() && !this.compra() && !!this.email()
     && (!!this.pendiente() || (!!this.carrito()?.productos.length
       && this.carrito()?.productos.every(linea => linea.disponible)
       && this.direcciones().some(d => d.id === this.direccionId())
@@ -49,7 +51,7 @@ export class Checkout {
   // M4: explica qué falta cuando «Pagar» está desactivado.
   readonly motivoPagoDesactivado = computed(() => {
     const carrito = this.carrito();
-    if (this.puedePagar() || this.cargando() || this.procesando() || this.pedido() || this.pendiente() || !carrito) {
+    if (this.puedePagar() || this.cargando() || this.procesando() || this.compra() || this.pendiente() || !carrito) {
       return '';
     }
     if (carrito.productos.some(linea => !linea.disponible)) {
@@ -63,10 +65,14 @@ export class Checkout {
     return '';
   });
 
+  // HU-50: con productos de varios vendedores se crea un pedido por vendedor.
+  readonly numeroVendedores = computed(() =>
+    new Set((this.carrito()?.productos ?? []).map(linea => linea.vendedor).filter(vendedor => !!vendedor)).size);
+
   constructor() { this.cargar(); }
 
   cargar(limpiarError = true): void {
-    if (this.cargando() || this.procesando() || this.pedido()) return;
+    if (this.cargando() || this.procesando() || this.compra()) return;
     this.cargando.set(true);
     if (limpiarError) this.error.set('');
     this.email.set('');
@@ -129,8 +135,8 @@ export class Checkout {
     this.procesando.set(true);
     this.error.set('');
     this.servicio.pagar(request).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: pedido => {
-        this.pedido.set(pedido);
+      next: compra => {
+        this.compra.set(compra);
         this.procesando.set(false);
         this.servicio.limpiarOperacion(this.email());
         this.pendiente.set(null);
@@ -148,6 +154,15 @@ export class Checkout {
         if (rechazado) this.cargar(false);
       }
     });
+  }
+
+  // Todos los pedidos de la compra van a la misma dirección.
+  direccionDe(compra: CompraResponse): DireccionResponse | null {
+    return compra.pedidos.find(pedido => pedido.direccionEnvio)?.direccionEnvio ?? null;
+  }
+
+  vendedorDe(pedido: PedidoResponse): string {
+    return [...new Set(pedido.lineas.map(linea => linea.nombreVendedor).filter(nombre => !!nombre))].join(', ');
   }
 
   urlImagen(imagen: string): string {
