@@ -1,5 +1,7 @@
 package es.uclm.esibuy.backend.services;
 
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 
 import org.springframework.security.authentication.BadCredentialsException;
@@ -15,11 +17,13 @@ import es.uclm.esibuy.backend.model.Usuario;
 public class AuthService {
 
     private static final String MENSAJE_ERROR_CREDENCIALES = "Correo o contraseña incorrectos.";
+    private static final SecureRandom GENERADOR_ALEATORIO = new SecureRandom();
 
     private final UsuarioDAO usuarioDAO;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
     private final AuditoriaService auditoriaService;
+    private volatile String hashSenuelo;
 
     public AuthService(
             UsuarioDAO usuarioDAO,
@@ -47,8 +51,16 @@ public class AuthService {
         Usuario usuario = usuarioDAO.findByEmail(correoNormalizado)
                 .orElse(null);
 
-        if (usuario == null || usuario.getContrasenaHash() == null
-                || !passwordEncoder.matches(contrasena, usuario.getContrasenaHash())) {
+        boolean credencialesValidas;
+        if (usuario == null || usuario.getContrasenaHash() == null) {
+            // Se ejecuta bcrypt igualmente para que el tiempo de respuesta no revele si la cuenta existe.
+            passwordEncoder.matches(contrasena, hashSenuelo());
+            credencialesValidas = false;
+        } else {
+            credencialesValidas = passwordEncoder.matches(contrasena, usuario.getContrasenaHash());
+        }
+
+        if (!credencialesValidas) {
             int retryAfter = loginAttemptService.registrarFallo(correoNormalizado);
             auditoriaService.registrarIntentoLoginFallido();
             if (retryAfter > 0) {
@@ -73,6 +85,22 @@ public class AuthService {
 
         loginAttemptService.registrarExito(correoNormalizado);
         return usuario;
+    }
+
+    private String hashSenuelo() {
+        String hash = hashSenuelo;
+        if (hash == null) {
+            synchronized (this) {
+                hash = hashSenuelo;
+                if (hash == null) {
+                    byte[] aleatorio = new byte[24];
+                    GENERADOR_ALEATORIO.nextBytes(aleatorio);
+                    hash = passwordEncoder.encode(Base64.getEncoder().encodeToString(aleatorio));
+                    hashSenuelo = hash;
+                }
+            }
+        }
+        return hash;
     }
 
     public Usuario buscarPorCorreo(String correo) {

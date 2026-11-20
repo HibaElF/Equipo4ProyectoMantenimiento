@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -92,6 +97,40 @@ class AuthServiceTests {
 
         assertEquals("Correo o contraseña incorrectos.", error.getMessage());
         verify(auditoriaService).registrarIntentoLoginFallido();
+        verify(loginAttemptService).registrarFallo(CORREO);
+        verify(passwordEncoder).matches(eq(CONTRASENA), any());
+    }
+
+    @Test
+    void ejecutaLaComprobacionDeContrasenaTambienConUsuarioSinHash() {
+        Cliente cliente = crearCliente(true, false);
+        cliente.setContrasenaHash(null);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
+
+        BadCredentialsException error = assertThrows(
+                BadCredentialsException.class,
+                () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        assertEquals("Correo o contraseña incorrectos.", error.getMessage());
+        verify(passwordEncoder).matches(eq(CONTRASENA), any());
+        verify(loginAttemptService).registrarFallo(CORREO);
+    }
+
+    @Test
+    void correoInexistenteComparaContraUnHashSenueloConElFormatoDeUnHashReal() {
+        PasswordEncoder encoderReal = spy(new PepperedBCryptPasswordEncoder(
+                "test-pepper-that-is-never-used-outside-tests-123456", 4));
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.empty());
+        AuthService service = new AuthService(usuarioDAO, encoderReal, loginAttemptService, auditoriaService);
+
+        assertThrows(BadCredentialsException.class, () -> service.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+        assertThrows(BadCredentialsException.class, () -> service.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        ArgumentCaptor<String> hashes = ArgumentCaptor.forClass(String.class);
+        verify(encoderReal, times(2)).matches(eq(CONTRASENA), hashes.capture());
+        assertTrue(hashes.getAllValues().get(0).startsWith("{bcrypt-pepper-v1}"));
+        assertEquals(hashes.getAllValues().get(0), hashes.getAllValues().get(1));
+        verify(encoderReal, times(1)).encode(any());
     }
 
     @Test

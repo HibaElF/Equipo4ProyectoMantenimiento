@@ -6,20 +6,20 @@
 
 | Dato | Valor |
 |---|---|
-| Fecha | `[COMPLETAR]` |
-| Rama | `[COMPLETAR]` |
-| Commit de partida | `[COMPLETAR]` |
-| Backend: pruebas / fallos / omitidas | `[COMPLETAR]` |
-| Backend: cobertura de líneas (JaCoCo) | `[COMPLETAR]` |
-| Frontend: pruebas / cobertura | `[COMPLETAR o «no medido: Node insuficiente»]` |
-| Versiones (Java, Node, Docker) | `[COMPLETAR]` |
+| Fecha | 2026-11-20 |
+| Rama | `refactor/arreglo_seguridad` |
+| Commit de partida | `5c16a3b` |
+| Backend: pruebas / fallos / omitidas | 1238 / 0 / 15 (`BackendApplicationTests` excluida) |
+| Backend: cobertura de líneas (JaCoCo) | 89,88 % (3934 cubiertas, 443 sin cubrir) |
+| Frontend: pruebas / cobertura | 530 pruebas en 39 ficheros, 0 fallos / líneas 78,69 %, sentencias 77,86 %, ramas 71,14 %, funciones 68,54 % |
+| Versiones (Java, Node, Docker) | Java 23 (compila a 21), Node 26.13.1 (npm 11.20.0), Docker 29.8.2 |
 
 ## Tareas
 
 | Fase | Tarea | Título | Prioridad | Estado | Rama / commit | Fecha | Notas |
 |---|---|---|---|---|---|---|---|
 | 0 | — | Preparación y línea base | — | Pendiente | | | |
-| 1 | T-08 | Respuesta de login en tiempo constante | Media | Pendiente | | | |
+| 1 | T-08 | Respuesta de login en tiempo constante | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1240 pruebas, 0 fallos, 89,91 %. Pendiente medir a mano 100 intentos (criterio de tiempos). |
 | 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Pendiente | | | |
 | 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Pendiente | | | |
 | 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Pendiente | | | |
@@ -46,7 +46,8 @@
 
 | Fecha | Tarea | Decisión |
 |---|---|---|
-| | | |
+| 2026-11-20 | General | Son 22 tareas (se omitió una). `debugsonar.txt` lo elimina el usuario. |
+| 2026-11-20 | Secretos | El token de Sonar se queda de momento en el `.properties`. |
 
 El token de sonar se tiene que quedar en el propierties por orden del profesor
 
