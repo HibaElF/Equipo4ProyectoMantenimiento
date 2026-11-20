@@ -19,8 +19,8 @@
 | Fase | Tarea | Título | Prioridad | Estado | Rama / commit | Fecha | Notas |
 |---|---|---|---|---|---|---|---|
 | 0 | — | Preparación y línea base | — | Pendiente | | | |
-| 1 | T-08 | Respuesta de login en tiempo constante | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1240 pruebas, 0 fallos, 89,91 %. Pendiente medir a mano 100 intentos (criterio de tiempos). |
-| 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Pendiente | | | |
+| 1 | T-08 | Respuesta de login en tiempo constante | Media | Hecha | `73fa664` | 2026-11-20 | Suite: 1240 pruebas, 0 fallos, 89,91 %. Pendiente medir a mano 100 intentos (criterio de tiempos). |
+| 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1262 pruebas, 0 fallos, 89,96 %. `PasswordPolicy.datosPersonalesDe(Usuario)` reutilizable en T-05. |
 | 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Pendiente | | | |
 | 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Pendiente | | | |
 | 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Pendiente | | | |
@@ -64,4 +64,4 @@ Al terminar cada fase, anota aquí qué requisitos (RQ) quedan afectados para qu
 
 | Fase | Requisitos afectados | Nota |
 |---|---|---|
-| | | |
+| 1 | RQ-05 | T-08 (tiempo constante del login) y T-07 (datos personales al restablecer) afectan a los criterios «Comparación en tiempo constante» y «La contraseña no contiene datos personales». Suite completa: 1262 pruebas, 0 fallos, 89,96 %. |

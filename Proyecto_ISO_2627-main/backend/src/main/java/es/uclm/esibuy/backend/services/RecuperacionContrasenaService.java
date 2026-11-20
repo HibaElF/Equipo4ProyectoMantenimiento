@@ -123,7 +123,7 @@ public class RecuperacionContrasenaService {
         Usuario usuario = usuarioDAO.findById(tokenGuardado.getUsuarioId())
                 .orElseThrow(TokenRecuperacionInvalidoException::new);
 
-        passwordPolicy.validate(nuevaContrasena);
+        passwordPolicy.validate(nuevaContrasena, PasswordPolicy.datosPersonalesDe(usuario));
 
         List<String> hashesRecientes =
                 new ArrayList<>(usuario.getHistorialContrasenasHash());

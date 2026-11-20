@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -16,10 +18,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import es.uclm.esibuy.backend.exceptions.InvalidRegistrationException;
+import es.uclm.esibuy.backend.model.Cliente;
+import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.model.Vendedor;
 
 @Component
 public class PasswordPolicy {
 	private static final String CAMPO_CONTRASENA = "contrasena";
+	private static final DateTimeFormatter FORMATO_FECHA_IDENTIFICATIVA = DateTimeFormatter.ofPattern("ddMMyyyy");
 
 	private final Set<String> commonPasswords;
 
@@ -100,6 +106,30 @@ public class PasswordPolicy {
 			}
 		}
 		return false;
+	}
+
+	// Mismos datos que se comprueban en el registro de cada tipo de usuario.
+	public static List<String> datosPersonalesDe(Usuario usuario) {
+		if (usuario == null) {
+			return List.of();
+		}
+		List<String> datos = new ArrayList<>();
+		datos.add(usuario.getNombre());
+		datos.add(usuario.getApellidos());
+		datos.add(usuario.getEmail());
+		datos.add(usuario.getTelefono());
+		if (usuario instanceof Cliente cliente) {
+			datos.add(cliente.getFechaNacimiento() == null
+					? null
+					: cliente.getFechaNacimiento().format(FORMATO_FECHA_IDENTIFICATIVA));
+			datos.add(cliente.getDniNif());
+		} else if (usuario instanceof Vendedor vendedor) {
+			datos.add(vendedor.getNombreComercial());
+			datos.add(vendedor.getDniNif());
+		}
+		return datos.stream()
+				.filter(dato -> dato != null && !dato.isBlank())
+				.toList();
 	}
 
 	private static boolean contains(String value, java.util.function.IntPredicate predicate) {

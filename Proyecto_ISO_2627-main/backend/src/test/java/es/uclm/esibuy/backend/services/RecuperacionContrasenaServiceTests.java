@@ -147,7 +147,7 @@ class RecuperacionContrasenaServiceTests {
 
         servicio.completar(TOKEN, NUEVA_CONTRASENA);
 
-        verify(passwordPolicy).validate(NUEVA_CONTRASENA);
+        verify(passwordPolicy).validate(NUEVA_CONTRASENA, PasswordPolicy.datosPersonalesDe(cliente));
         verify(passwordPolicy).matchesRecentPassword(
                 eq(NUEVA_CONTRASENA), any(), eq(passwordEncoder));
         verify(tokenDAO).consumirSiValido(eq("token-doc-1"), any(Instant.class));
@@ -198,7 +198,7 @@ class RecuperacionContrasenaServiceTests {
         when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
         org.mockito.Mockito.doThrow(new InvalidRegistrationException(
                 "contrasena", "La contraseña no cumple los requisitos."))
-                .when(passwordPolicy).validate(NUEVA_CONTRASENA);
+                .when(passwordPolicy).validate(NUEVA_CONTRASENA, PasswordPolicy.datosPersonalesDe(cliente));
 
         assertThrows(InvalidRegistrationException.class,
                 () -> servicio.completar(TOKEN, NUEVA_CONTRASENA));
