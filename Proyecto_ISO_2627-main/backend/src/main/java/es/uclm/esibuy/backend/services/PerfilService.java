@@ -25,11 +25,14 @@ public class PerfilService {
     private final UsuarioDAO usuarioDAO;
     private final MongoTemplate mongoTemplate;
     private final AdministradorService administradorService;
+    private final AuditoriaService auditoriaService;
 
     public PerfilService(
             UsuarioDAO usuarioDAO,
             MongoTemplate mongoTemplate,
-            AdministradorService administradorService) {
+            AdministradorService administradorService,
+            AuditoriaService auditoriaService) {
+        this.auditoriaService = auditoriaService;
         this.usuarioDAO = usuarioDAO;
         this.mongoTemplate = mongoTemplate;
         this.administradorService = administradorService;
@@ -66,6 +69,7 @@ public class PerfilService {
         }
         usuario.setEmailOtpActivado(activado);
         usuarioDAO.save(usuario);
+        auditoriaService.registrarCodigoPorCorreo(usuario.getId(), activado);
     }
 
     private Usuario buscarUsuarioAutenticado(String emailAutenticado) {

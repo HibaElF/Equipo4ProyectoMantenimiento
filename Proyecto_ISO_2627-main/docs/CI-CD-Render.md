@@ -255,6 +255,14 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Registro de auditoría de seguridad
+
+- Las acciones sensibles (login correcto, fallido y bloqueado, alta y baja de TOTP y del código por correo, administración de usuarios, alta y baja de cuentas, recuperación de contraseña) se guardan en la colección `auditoria` de MongoDB y también se escriben en el log.
+- Cada registro contiene fecha, tipo, resultado, actor seudonimizado (HMAC con el pepper), objetivo (identificador interno), IP y `correlationId`. No contiene correos, contraseñas, códigos ni tokens.
+- **Retención: 12 meses.** La aplica un índice TTL (`app.auditoria.retencion=365d`, en `application.properties`). El índice se crea al arrancar por primera vez; si se cambia la retención con la colección ya creada, hay que recrear ese índice en Atlas.
+- **Consulta:** `GET /administrador/auditoria?pagina=0&tamano=20` (solo `ADMIN`, tamaño máximo 100). La API no ofrece ninguna operación para modificar o borrar registros.
+- **Limitación conocida:** el usuario de MongoDB que usa la aplicación conserva permisos de escritura sobre toda la base de datos, así que a nivel de base de datos podría borrar o modificar registros. Restringirlo (un rol que solo permita insertar y consultar `auditoria`) corresponde a la tarea T-28, que lleva otro miembro del equipo.
+
 ## 9. Integración definitiva y versionado
 
 Durante el desarrollo del Sprint 2, se ha utilizado la rama `release/sprint2` para realizar las pruebas de integración y despliegue continuo sin afectar a `main`.

@@ -54,10 +54,12 @@ public class TotpService {
     private final PasswordEncoder passwordEncoder;
     private final TotpSecurityStore securityStore;
     private final MongoTemplate mongoTemplate;
+    private final AuditoriaService auditoriaService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     public TotpService(UsuarioDAO usuarioDAO, TotpCryptoService cryptoService, PasswordEncoder passwordEncoder,
-            TotpSecurityStore securityStore, MongoTemplate mongoTemplate) {
+            TotpSecurityStore securityStore, MongoTemplate mongoTemplate, AuditoriaService auditoriaService) {
+        this.auditoriaService = auditoriaService;
         this.usuarioDAO = usuarioDAO;
         this.cryptoService = cryptoService;
         this.passwordEncoder = passwordEncoder;
@@ -206,6 +208,7 @@ public class TotpService {
         usuario.setCaducidadTotpPendiente(null);
         usuario.setCodigosRespaldoTotp(hashes);
         usuario.setTotpActivado(true);
+        auditoriaService.registrarTotpActivado(usuario.getId());
         return new TwoFactorConfirmationResponse(true, backupCodes);
     }
 
@@ -226,6 +229,7 @@ public class TotpService {
         usuario.setCodigosRespaldoTotp(List.of());
         usuario.setTotpActivado(false);
         usuario.setCaducidadTotpPendiente(null);
+        auditoriaService.registrarTotpDesactivado(usuario.getId());
     }
 
     public List<String> generarCodigosRespaldo() {

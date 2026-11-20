@@ -117,6 +117,7 @@ class AuthControllerSecurityTests {
         assertNotNull(sesion);
         assertEquals(30 * 60, sesion.getMaxInactiveInterval());
         assertTrue(sesion.getAttribute(SesionAbsolutaFilter.ATRIBUTO_SESION_AUTENTICADA_EN) instanceof Instant);
+        verify(authService).registrarLoginCompletado(cliente);
 
         mockMvc.perform(get("/usuarios/sesion-actual").session(sesion))
                 .andExpect(status().isOk())

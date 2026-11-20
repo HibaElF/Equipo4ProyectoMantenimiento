@@ -210,6 +210,15 @@ class AuthServiceTests {
             }
 
     @Test
+    void registraElLoginCompletadoConElCorreoYElIdDelUsuario() {
+        Cliente cliente = crearCliente(true, false);
+
+        authService.registrarLoginCompletado(cliente);
+
+        verify(auditoriaService).registrarLoginCorrecto(CORREO, cliente.getId());
+    }
+
+    @Test
     void rechazaUsuarioBloqueadoConElMismoErrorGenerico() {
         Cliente cliente = crearCliente(true, true);
         when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));

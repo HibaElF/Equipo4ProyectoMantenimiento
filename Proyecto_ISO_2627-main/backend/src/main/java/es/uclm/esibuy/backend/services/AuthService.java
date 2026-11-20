@@ -87,6 +87,11 @@ public class AuthService {
         return usuario;
     }
 
+    // Se invoca cuando el login queda completo (tras los factores adicionales, si los hay).
+    public void registrarLoginCompletado(Usuario usuario) {
+        auditoriaService.registrarLoginCorrecto(usuario.getEmail(), usuario.getId());
+    }
+
     private String hashSenuelo() {
         String hash = hashSenuelo;
         if (hash == null) {

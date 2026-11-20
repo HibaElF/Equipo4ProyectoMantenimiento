@@ -384,6 +384,7 @@ public class AuthController {
         var context = ContextoAutenticacion.crear(usuarioValidado.getEmail(), obtenerRol(usuarioValidado));
         ContextoAutenticacion.establecer(context);
         securityContextRepository.saveContext(context, request, response);
+        authService.registrarLoginCompletado(usuarioValidado);
     }
 
     @GetMapping("/sesion-actual")

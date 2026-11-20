@@ -165,6 +165,8 @@ public class AdministradorService {
 		Usuario usuarioGuardado =
 				usuarioDAO.save(usuario);
 
+		auditoriaService.registrarUsuarioModificado(usuarioGuardado.getId());
+
 		return UsuarioAdministracionResponse.desde(
 				usuarioGuardado);
 	}
@@ -288,6 +290,8 @@ public class AdministradorService {
 			usuario.setActivada(true);
 
 			usuarioDAO.save(usuario);
+
+			auditoriaService.registrarUsuarioActivado(usuario.getId());
 		}
 	}
 
@@ -326,6 +330,8 @@ public class AdministradorService {
 
 			sesionService.cerrarSesiones(
 					usuario.getEmail());
+
+			auditoriaService.registrarUsuarioBloqueado(usuario.getId());
 		}
 	}
 
@@ -361,6 +367,8 @@ public class AdministradorService {
 			usuario.setBloqueada(false);
 
 			usuarioDAO.save(usuario);
+
+			auditoriaService.registrarUsuarioDesbloqueado(usuario.getId());
 		}
 	}
 

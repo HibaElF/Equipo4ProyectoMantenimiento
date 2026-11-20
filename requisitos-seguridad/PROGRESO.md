@@ -23,7 +23,7 @@
 | 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1262 pruebas, 0 fallos, 89,96 %. `PasswordPolicy.datosPersonalesDe(Usuario)` reutilizable en T-05. |
 | 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1281 pruebas, 0 fallos, 90,05 %. `Seudonimizador` (bean) reutilizable en T-19/T-09/T-25. Variable opcional `LOG_FORMAT`. Pendiente verificar a mano el JSON y `X-Correlation-Id` con la app arrancada. |
 | 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1288 pruebas, 0 fallos, 90,05 %. 67 `IllegalArgumentException` migradas a `DatosNoValidosException`; 10 se quedan como error interno. 500 genérico con correlationId vía `ManejadorErroresInesperados` (resolver de último recurso). |
-| 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Pendiente | | | |
+| 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1309 pruebas, 0 fallos, 90,34 %. Colección `auditoria` solo inserción con TTL 365d; `GET /administrador/auditoria` (ADMIN). `AuditoriaService.registrarEvento(...)` listo para T-05 y T-09. Limitación: el usuario de MongoDB puede borrar (T-28, de otro miembro). |
 | 3 | T-05 | Cambio de contraseña del usuario autenticado | Media | Pendiente | | | |
 | 3 | T-13 | Rotar el identificador de sesión al cambiar los factores de autenticación | Baja | Pendiente | | | |
 | 3 | T-06 | Caducidad de contraseñas a los 30 días | Media | Pendiente | | | |
@@ -48,6 +48,8 @@
 |---|---|---|
 | 2026-11-20 | General | Son 22 tareas (se omitió una). `debugsonar.txt` lo elimina el usuario. |
 | 2026-11-20 | Secretos | El token de Sonar se queda de momento en el `.properties`. |
+| 2026-11-20 | T-20 | Se migran 67 `IllegalArgumentException` a `DatosNoValidosException` (10 se quedan como error interno); el 500 genérico va en un `HandlerExceptionResolver` de último recurso. |
+| 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
 
 El token de sonar se tiene que quedar en el propierties por orden del profesor
 
@@ -56,6 +58,8 @@ El token de sonar se tiene que quedar en el propierties por orden del profesor
 | Tarea | Acción | Hecha |
 |---|---|---|
 | T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
+| T-18 | Opcional: definir `LOG_FORMAT` en Render (por defecto `ecs`, JSON) y comprobar `X-Correlation-Id` y la línea JSON con la app arrancada | No |
+| T-19 | Comprobar con MongoDB real que se crea el índice TTL `ttl_auditoria_fecha` y que `GET /administrador/auditoria` lista eventos | No |
 
 
 ## Notas para el chat de auditoría
@@ -64,4 +68,5 @@ Al terminar cada fase, anota aquí qué requisitos (RQ) quedan afectados para qu
 
 | Fase | Requisitos afectados | Nota |
 |---|---|---|
+| 2 | RQ-15 | T-18 (logs JSON con correlationId), T-20 (errores genéricos sin detalles internos) y T-19 (auditoría persistida y protegida) afectan a «Logs estructurados», «Errores genéricos al cliente» y «Registros de auditoría securizados». Suite completa: backend 1309 pruebas, 0 fallos, 90,34 %; frontend 530 pruebas, 78,69 %. |
 | 1 | RQ-05 | T-08 (tiempo constante del login) y T-07 (datos personales al restablecer) afectan a los criterios «Comparación en tiempo constante» y «La contraseña no contiene datos personales». Suite completa: 1262 pruebas, 0 fallos, 89,96 %. |

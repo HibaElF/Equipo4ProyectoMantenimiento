@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 
@@ -90,6 +91,7 @@ class AdministradorServiceHU06Tests {
 
                 verify(usuarioDAO).save(usuario);
                 verify(sesionService).cerrarSesiones("cliente@example.com");
+                verify(auditoriaService).registrarUsuarioBloqueado("usuario-id");
         }
 
         @Test
@@ -134,6 +136,7 @@ class AdministradorServiceHU06Tests {
 
                 verify(usuarioDAO).save(usuario);
                 verifyNoInteractions(sesionService);
+                verify(auditoriaService).registrarUsuarioDesbloqueado("usuario-id");
         }
 
         @Test
@@ -246,5 +249,24 @@ class AdministradorServiceHU06Tests {
 
                 verify(usuarioDAO, never()).save(any(Usuario.class));
                 verifyNoInteractions(sesionService);
+                verifyNoInteractions(auditoriaService);
+        }
+
+        @Test
+        void activarUsuarioRegistraElEventoSoloSiCambiaElEstado() {
+                Cliente pendiente = new Cliente();
+                pendiente.setId("usuario-id");
+                pendiente.setActivada(false);
+                Cliente activo = new Cliente();
+                activo.setId("activo-id");
+                activo.setActivada(true);
+                when(usuarioDAO.findById("usuario-id")).thenReturn(Optional.of(pendiente));
+                when(usuarioDAO.findById("activo-id")).thenReturn(Optional.of(activo));
+
+                servicio.activarUsuario("usuario-id");
+                servicio.activarUsuario("activo-id");
+
+                verify(auditoriaService).registrarUsuarioActivado("usuario-id");
+                verifyNoMoreInteractions(auditoriaService);
         }
 }

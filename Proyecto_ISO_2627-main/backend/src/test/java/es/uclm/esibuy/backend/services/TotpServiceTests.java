@@ -43,6 +43,7 @@ class TotpServiceTests {
     private MongoTemplate mongo;
     private TotpCryptoService crypto;
     private TotpService service;
+    private AuditoriaService auditoria;
     private Cliente user;
 
     @BeforeEach
@@ -50,7 +51,8 @@ class TotpServiceTests {
         store = mock(TotpSecurityStore.class);
         mongo = mock(MongoTemplate.class);
         crypto = new TotpCryptoService(Base64.getEncoder().encodeToString(new byte[32]));
-        service = new TotpService(mock(UsuarioDAO.class), crypto, encoder, store, mongo);
+        auditoria = mock(AuditoriaService.class);
+        service = new TotpService(mock(UsuarioDAO.class), crypto, encoder, store, mongo, auditoria);
         user = new Cliente();
         user.setId("usuario-1");
         user.setActivada(true);
@@ -154,11 +156,13 @@ class TotpServiceTests {
         assertThrows(IllegalArgumentException.class, () -> service.desactivar(user, "incorrecto"));
         assertTrue(user.isTotpActivado());
         verifyNoInteractions(mongo);
+        verify(auditoria, never()).registrarTotpDesactivado(anyString());
         when(store.consumirIntervalo(eq(user.getId()), eq(SECRET), anyLong())).thenReturn(true);
         service.desactivar(user, codigoActual());
         assertFalse(user.isTotpActivado());
         assertNull(user.getSecretoTotpCifrado());
         assertTrue(user.getCodigosRespaldoTotp().isEmpty());
+        verify(auditoria).registrarTotpDesactivado("usuario-1");
     }
 
     @Test
@@ -169,6 +173,7 @@ class TotpServiceTests {
         assertThrows(IllegalArgumentException.class, () -> service.confirmarConfiguracion(user, codigoActual()));
         assertFalse(user.isTotpActivado());
         verifyNoInteractions(mongo);
+        verify(auditoria, never()).registrarTotpActivado(anyString());
     }
 
     @Test
@@ -186,6 +191,7 @@ class TotpServiceTests {
             assertTrue(encoder.matches(response.backupCodes().get(i), user.getCodigosRespaldoTotp().get(i)));
         }
         assertFalse(service.verificarSegundoFactor(user, code));
+        verify(auditoria).registrarTotpActivado("usuario-1");
     }
 
     @Test

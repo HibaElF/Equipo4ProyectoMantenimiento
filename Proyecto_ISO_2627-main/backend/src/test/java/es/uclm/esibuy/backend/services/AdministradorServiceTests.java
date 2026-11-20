@@ -159,6 +159,7 @@ class AdministradorServiceTests {
 		assertEquals(LocalDate.of(2024, 1, 10), administrador.getFechaIncorporacion());
 		assertEquals("Nombre actualizado", administrador.getNombre());
 		assertEquals("Toledo", administrador.getSede());
+		verify(auditoriaService).registrarUsuarioModificado("admin-1");
 	}
 
 	@Test
