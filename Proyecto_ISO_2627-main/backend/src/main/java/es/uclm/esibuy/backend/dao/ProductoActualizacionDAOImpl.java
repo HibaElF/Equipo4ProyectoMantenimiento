@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
 import es.uclm.esibuy.backend.model.Producto;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 public class ProductoActualizacionDAOImpl implements ProductoActualizacionDAO {
     private static final String CAMPO_STOCK = "stock";
@@ -36,7 +37,7 @@ public class ProductoActualizacionDAOImpl implements ProductoActualizacionDAO {
 
     @Override
     public void descontarStock(Producto producto, int cantidad) {
-        if (cantidad <= 0) throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+        if (cantidad <= 0) throw new DatosNoValidosException("La cantidad debe ser mayor que cero.");
         Query query = Query.query(Criteria.where("id").is(producto.getId())
                 .and(CAMPO_STOCK).gte(cantidad).and("esVisible").is(true)
                 .and("precio").is(producto.getPrecio())
@@ -47,14 +48,14 @@ public class ProductoActualizacionDAOImpl implements ProductoActualizacionDAO {
         long modificados = mongoTemplate.updateFirst(query, new Update().inc(CAMPO_STOCK, -cantidad), Producto.class)
                 .getModifiedCount();
         if (modificados != 1) {
-            throw new IllegalArgumentException("El producto ha cambiado o no hay stock suficiente.");
+            throw new DatosNoValidosException("El producto ha cambiado o no hay stock suficiente.");
         }
     }
 
     @Override
     public void reponerStock(String productoId, int cantidad) {
         if (productoId == null || productoId.isBlank() || cantidad <= 0) {
-            throw new IllegalArgumentException("El producto y la cantidad deben ser válidos.");
+            throw new DatosNoValidosException("El producto y la cantidad deben ser válidos.");
         }
 
         long modificados = mongoTemplate.updateFirst(

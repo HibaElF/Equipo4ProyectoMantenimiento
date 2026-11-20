@@ -24,6 +24,7 @@ import es.uclm.esibuy.backend.exceptions.UsuarioNoEncontradoException;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Direccion;
 import es.uclm.esibuy.backend.model.MetodoPago;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class ClienteService {
@@ -140,7 +141,7 @@ public class ClienteService {
                         throw new UsuarioNoEncontradoException();
                 }
                 if (esPremium == null) {
-                        throw new IllegalArgumentException("El tipo de cliente es obligatorio.");
+                        throw new DatosNoValidosException("El tipo de cliente es obligatorio.");
                 }
 
                 Cliente cliente = clienteDAO.findByEmail(emailAutenticado)

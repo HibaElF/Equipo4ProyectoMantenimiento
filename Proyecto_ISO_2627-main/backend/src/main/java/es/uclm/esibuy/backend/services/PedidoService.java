@@ -23,6 +23,7 @@ import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.dto.PedidoConsultaResponse;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class PedidoService {
@@ -172,7 +173,7 @@ public class PedidoService {
     }
 
     private void validarIdentificador(String id, String mensaje) {
-        if (id == null || id.isBlank() || id.length() > 128) throw new IllegalArgumentException(mensaje);
+        if (id == null || id.isBlank() || id.length() > 128) throw new DatosNoValidosException(mensaje);
     }
 
     private boolean esTransitoria(Throwable exception) {

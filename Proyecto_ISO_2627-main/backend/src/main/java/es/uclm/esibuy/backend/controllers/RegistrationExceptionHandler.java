@@ -1,5 +1,7 @@
 package es.uclm.esibuy.backend.controllers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -13,6 +15,7 @@ import es.uclm.esibuy.backend.dto.RegistroPublicoResponse;
 import es.uclm.esibuy.backend.exceptions.CategoriaConProductosException;
 import es.uclm.esibuy.backend.exceptions.CategoriaNoEncontradaException;
 import es.uclm.esibuy.backend.exceptions.CorreoYaRegistradoException;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 import es.uclm.esibuy.backend.exceptions.DuplicateRegistrationException;
 import es.uclm.esibuy.backend.exceptions.EstadoProductoException;
 import es.uclm.esibuy.backend.exceptions.InvalidProductException;
@@ -29,6 +32,9 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class RegistrationExceptionHandler {
+	private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationExceptionHandler.class);
+	static final String MENSAJE_SOLICITUD_NO_VALIDA = "La solicitud no es válida.";
+
 	@ExceptionHandler(CorreoYaRegistradoException.class)
 	public ResponseEntity<RegistroPublicoResponse> handlePublicDuplicateEmail() {
 		return ResponseEntity.accepted().body(RegistroPublicoResponse.confirmacion());
@@ -107,10 +113,19 @@ public class RegistrationExceptionHandler {
 				.body(new ApiErrorResponse(exception.getMessage()));
 	}
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<ApiErrorResponse> handleInvalidQuery(IllegalArgumentException exception) {
+	// Mensaje pensado para el usuario: se devuelve tal cual.
+	@ExceptionHandler(DatosNoValidosException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidData(DatosNoValidosException exception) {
 		return ResponseEntity.badRequest()
 				.body(new ApiErrorResponse(exception.getMessage()));
+	}
+
+	// Cualquier otra IllegalArgumentException (por ejemplo de una librería) no expone su mensaje.
+	@ExceptionHandler(IllegalArgumentException.class)
+	public ResponseEntity<ApiErrorResponse> handleInvalidQuery(IllegalArgumentException exception) {
+		LOGGER.warn("Petición rechazada por un argumento no válido.", exception);
+		return ResponseEntity.badRequest()
+				.body(new ApiErrorResponse(MENSAJE_SOLICITUD_NO_VALIDA));
 	}
 
 	// El límite multipart del contenedor (5 MB) se responde igual que el resto de imágenes rechazadas.

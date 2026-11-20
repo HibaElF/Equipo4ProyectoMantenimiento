@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class ProductoImagenService {
@@ -74,7 +75,7 @@ public class ProductoImagenService {
 
         if (!"local".equals(almacenamiento)
                 && !"mongo".equals(almacenamiento)) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "Almacenamiento de imágenes desconocido: "
                             + almacenamiento);
         }
@@ -90,7 +91,7 @@ public class ProductoImagenService {
         }
 
         if (imagen.getSize() > TAMANO_MAXIMO) {
-            throw new IllegalArgumentException(MENSAJE_IMAGEN_NO_VALIDA);
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
         }
 
         byte[] contenido;
@@ -106,7 +107,7 @@ public class ProductoImagenService {
                 || !tipo.contentType.equals(imagen.getContentType())
                 || !tieneExtensionSegura(imagen.getOriginalFilename(), tipo)
                 || !terminaCorrectamente(contenido, tipo)) {
-            throw new IllegalArgumentException(MENSAJE_IMAGEN_NO_VALIDA);
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
         }
 
         // El nombre original nunca se usa: se genera uno propio con una extensión de la lista blanca.
@@ -215,7 +216,7 @@ public class ProductoImagenService {
         Path archivo = directorio.resolve(nombre).normalize();
 
         if (!archivo.startsWith(directorio)) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "La ruta de la imagen no es válida.");
         }
 

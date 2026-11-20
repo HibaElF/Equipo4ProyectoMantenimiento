@@ -22,7 +22,7 @@
 | 1 | T-08 | Respuesta de login en tiempo constante | Media | Hecha | `73fa664` | 2026-11-20 | Suite: 1240 pruebas, 0 fallos, 89,91 %. Pendiente medir a mano 100 intentos (criterio de tiempos). |
 | 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1262 pruebas, 0 fallos, 89,96 %. `PasswordPolicy.datosPersonalesDe(Usuario)` reutilizable en T-05. |
 | 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1281 pruebas, 0 fallos, 90,05 %. `Seudonimizador` (bean) reutilizable en T-19/T-09/T-25. Variable opcional `LOG_FORMAT`. Pendiente verificar a mano el JSON y `X-Correlation-Id` con la app arrancada. |
-| 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Pendiente | | | |
+| 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1288 pruebas, 0 fallos, 90,05 %. 67 `IllegalArgumentException` migradas a `DatosNoValidosException`; 10 se quedan como error interno. 500 genérico con correlationId vía `ManejadorErroresInesperados` (resolver de último recurso). |
 | 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Pendiente | | | |
 | 3 | T-05 | Cambio de contraseña del usuario autenticado | Media | Pendiente | | | |
 | 3 | T-13 | Rotar el identificador de sesión al cambiar los factores de autenticación | Baja | Pendiente | | | |

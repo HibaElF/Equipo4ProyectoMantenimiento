@@ -8,6 +8,7 @@ import es.uclm.esibuy.backend.model.Administrador;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Usuario;
 import es.uclm.esibuy.backend.model.Vendedor;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /*
  * HU07 - Campos específicos de cada tipo de usuario que el administrador puede modificar.
@@ -41,7 +42,7 @@ final class DatosRolUsuario {
 		if (request.categoriaId() != null) {
 			String categoriaId = request.categoriaId().trim();
 			if (categoriaId.isBlank() || !categoriaDAO.existsById(categoriaId)) {
-				throw new IllegalArgumentException("La categoría seleccionada no existe.");
+				throw new DatosNoValidosException("La categoría seleccionada no existe.");
 			}
 			vendedor.setCategoriaId(categoriaId);
 		}
@@ -52,7 +53,7 @@ final class DatosRolUsuario {
 			ModificarUsuarioRequest request) {
 
 		if (request.fechaNacimiento() == null) {
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"La fecha de nacimiento es obligatoria.");
 		}
 
@@ -62,7 +63,7 @@ final class DatosRolUsuario {
 		if (request.fechaNacimiento()
 				.isAfter(fechaLimite)) {
 
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"El cliente debe ser mayor de edad.");
 		}
 
@@ -81,7 +82,7 @@ final class DatosRolUsuario {
 
 	private static void validarDniNif(String dniNif) {
 		if (!dniNif.matches("^\\d{8}[A-Za-z]$")) {
-			throw new IllegalArgumentException("El DNI/NIF debe tener 8 números y una letra.");
+			throw new DatosNoValidosException("El DNI/NIF debe tener 8 números y una letra.");
 		}
 	}
 }

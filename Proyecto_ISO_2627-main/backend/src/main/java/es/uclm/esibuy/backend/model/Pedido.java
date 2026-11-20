@@ -12,6 +12,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 import org.springframework.data.mongodb.core.mapping.FieldType;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Document(collection = "pedidos")
 @TypeAlias("pedido")
@@ -163,7 +164,7 @@ public class Pedido {
 
     public Pedido cambiarEstado(EstadoPedido nuevoEstado, Instant fecha) {
     if (nuevoEstado == null || fecha == null) {
-        throw new IllegalArgumentException("El estado y la fecha son obligatorios.");
+        throw new DatosNoValidosException("El estado y la fecha son obligatorios.");
     }
     if (nuevoEstado == estado) {
         return this;

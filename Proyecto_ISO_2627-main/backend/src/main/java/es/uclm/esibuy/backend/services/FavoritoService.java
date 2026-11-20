@@ -21,6 +21,7 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class FavoritoService {
@@ -225,7 +226,7 @@ public class FavoritoService {
     private void validarIdProducto(String productoId) {
 
         if (productoId == null || productoId.isBlank()) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El identificador del producto es obligatorio."
             );
         }

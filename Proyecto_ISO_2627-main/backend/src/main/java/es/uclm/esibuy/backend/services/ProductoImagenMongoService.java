@@ -9,6 +9,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.model.ProductoImagenDocumento;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class ProductoImagenMongoService {
@@ -64,7 +65,7 @@ public class ProductoImagenMongoService {
 
     private static void validarNombre(String nombre) {
         if (!esNombreValido(nombre)) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "La ruta de la imagen no es válida.");
         }
     }

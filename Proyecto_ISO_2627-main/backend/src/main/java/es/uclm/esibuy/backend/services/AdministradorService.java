@@ -28,6 +28,7 @@ import es.uclm.esibuy.backend.exceptions.UltimoAdministradorException;
 import es.uclm.esibuy.backend.exceptions.UsuarioNoEncontradoException;
 import es.uclm.esibuy.backend.model.Administrador;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 import jakarta.validation.Validator;
 
 @Service
@@ -109,7 +110,7 @@ public class AdministradorService {
 			ModificarUsuarioRequest request) {
 
 		if (request == null) {
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"Los datos de modificación son obligatorios.");
 		}
 
@@ -123,14 +124,14 @@ public class AdministradorService {
 		if (request.nombre() == null ||
 				request.nombre().isBlank()) {
 
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"El nombre es obligatorio.");
 		}
 
 		if (request.apellidos() == null ||
 				request.apellidos().isBlank()) {
 
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"Los apellidos son obligatorios.");
 		}
 
@@ -171,7 +172,7 @@ public class AdministradorService {
 	private void validarTelefono(String telefono) {
 		if (telefono != null && !telefono.isBlank()
 				&& !telefono.matches("^\\+?[0-9\\s().-]{7,20}$")) {
-			throw new IllegalArgumentException("Introduce un teléfono válido o deja el campo vacío.");
+			throw new DatosNoValidosException("Introduce un teléfono válido o deja el campo vacío.");
 		}
 	}
 
@@ -182,7 +183,7 @@ public class AdministradorService {
 
 		String url = imagenPerfil.trim();
 		if (url.length() > 1000) {
-			throw new IllegalArgumentException("La URL de la imagen de perfil no puede superar 1000 caracteres.");
+			throw new DatosNoValidosException("La URL de la imagen de perfil no puede superar 1000 caracteres.");
 		}
 
 		try {
@@ -190,11 +191,11 @@ public class AdministradorService {
 			if (!"https".equalsIgnoreCase(uri.getScheme())
 					|| uri.getHost() == null
 					|| uri.getUserInfo() != null) {
-				throw new IllegalArgumentException(
+				throw new DatosNoValidosException(
 						"La imagen de perfil debe utilizar una URL HTTPS válida.");
 			}
 		} catch (IllegalArgumentException exception) {
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"La imagen de perfil debe utilizar una URL HTTPS válida.", exception);
 		}
 	}

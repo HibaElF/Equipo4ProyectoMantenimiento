@@ -25,6 +25,7 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /**
  * HU-39: listas de productos del usuario autenticado. Los favoritos (HU-31) son
@@ -187,7 +188,7 @@ public class ListaProductosService {
 
     private void validarIdProducto(String productoId) {
         if (productoId == null || productoId.isBlank()) {
-            throw new IllegalArgumentException("El identificador del producto es obligatorio.");
+            throw new DatosNoValidosException("El identificador del producto es obligatorio.");
         }
     }
 
@@ -217,11 +218,11 @@ public class ListaProductosService {
         String recortado = nombre == null ? "" : nombre.trim();
 
         if (recortado.isEmpty()) {
-            throw new IllegalArgumentException("El nombre de la lista es obligatorio.");
+            throw new DatosNoValidosException("El nombre de la lista es obligatorio.");
         }
 
         if (recortado.length() > MAX_NOMBRE) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El nombre de la lista no puede superar " + MAX_NOMBRE + " caracteres.");
         }
 

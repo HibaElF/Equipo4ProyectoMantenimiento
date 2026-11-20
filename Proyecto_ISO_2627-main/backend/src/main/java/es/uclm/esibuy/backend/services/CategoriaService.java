@@ -15,6 +15,7 @@ import es.uclm.esibuy.backend.exceptions.CategoriaNoEncontradaException;
 import es.uclm.esibuy.backend.exceptions.NombreCategoriaDuplicadoException;
 import es.uclm.esibuy.backend.model.Categoria;
 import es.uclm.esibuy.backend.model.Producto;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class CategoriaService {
@@ -114,10 +115,10 @@ public class CategoriaService {
 
     private void validarCampos(String nombre, String descripcion) {
         if (nombre == null || nombre.isBlank()) {
-            throw new IllegalArgumentException("El nombre es obligatorio");
+            throw new DatosNoValidosException("El nombre es obligatorio");
         }
         if (descripcion == null || descripcion.isBlank()) {
-            throw new IllegalArgumentException("La descripcion es obligatoria");
+            throw new DatosNoValidosException("La descripcion es obligatoria");
         }
     }
 }

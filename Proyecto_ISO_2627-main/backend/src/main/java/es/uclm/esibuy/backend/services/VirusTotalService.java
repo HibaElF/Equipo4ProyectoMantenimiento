@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClient;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /** Analiza imágenes antes de publicarlas usando VirusTotal. */
 @Service
@@ -118,7 +119,7 @@ public class VirusTotalService {
         int maliciosos = raiz.at("/data/attributes/stats/malicious").asInt();
         int sospechosos = raiz.at("/data/attributes/stats/suspicious").asInt();
         if (maliciosos > 0 || sospechosos > 0) {
-            throw new IllegalArgumentException("La imagen ha sido rechazada por VirusTotal.");
+            throw new DatosNoValidosException("La imagen ha sido rechazada por VirusTotal.");
         }
         return true;
     }

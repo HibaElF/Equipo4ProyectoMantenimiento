@@ -35,6 +35,7 @@ import es.uclm.esibuy.backend.dao.TotpSecurityStore;
 import es.uclm.esibuy.backend.dto.TwoFactorConfirmationResponse;
 import es.uclm.esibuy.backend.exceptions.TooManyTwoFactorAttemptsException;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class TotpService {
@@ -173,7 +174,7 @@ public class TotpService {
 
     public Usuario buscarUsuario(String email) {
         return usuarioDAO.findByEmail(email.trim().toLowerCase(Locale.ROOT))
-                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado."));
+                .orElseThrow(() -> new DatosNoValidosException("Usuario no encontrado."));
     }
 
     public TwoFactorConfirmationResponse confirmarConfiguracion(Usuario usuario, String code) {
@@ -181,12 +182,12 @@ public class TotpService {
         String pending = usuario.getSecretoTotpPendienteCifrado();
         if (usuario.isTotpActivado() || pending == null || usuario.getCaducidadTotpPendiente() == null
                 || !Instant.now().isBefore(usuario.getCaducidadTotpPendiente())) {
-            throw new IllegalArgumentException("No hay una configuración TOTP pendiente. Genera un QR nuevo.");
+            throw new DatosNoValidosException("No hay una configuración TOTP pendiente. Genera un QR nuevo.");
         }
         String secret = descifrar(pending);
         Long step = intervaloValido(secret, code);
         if (step == null || !securityStore.consumirIntervalo(usuario.getId(), secret, step)) {
-            throw new IllegalArgumentException("El código TOTP no es válido o ya se ha utilizado.");
+            throw new DatosNoValidosException("El código TOTP no es válido o ya se ha utilizado.");
         }
         var backupCodes = generarCodigosRespaldo();
         var hashes = backupCodes.stream().map(passwordEncoder::encode).toList();
@@ -198,7 +199,7 @@ public class TotpService {
                         .and(CAMPO_TOTP_ACTIVADO).ne(true).and(CAMPO_SECRETO_TOTP_PENDIENTE_CIFRADO).is(pending)
                         .and(CAMPO_CADUCIDAD_TOTP_PENDIENTE).gt(Date.from(Instant.now()))),
                 update, Usuario.class).getModifiedCount() != 1) {
-            throw new IllegalArgumentException("La configuración ha cambiado. Genera un QR nuevo.");
+            throw new DatosNoValidosException("La configuración ha cambiado. Genera un QR nuevo.");
         }
         usuario.setSecretoTotpCifrado(encrypted);
         usuario.setSecretoTotpPendienteCifrado(null);
@@ -210,7 +211,7 @@ public class TotpService {
 
     public void desactivar(Usuario usuario, String code) {
         if (!verificarSegundoFactor(usuario, code)) {
-            throw new IllegalArgumentException("El código del segundo factor no es válido o ya se ha utilizado.");
+            throw new DatosNoValidosException("El código del segundo factor no es válido o ya se ha utilizado.");
         }
         if (mongoTemplate.updateFirst(Query.query(cuentaActiva(usuario)
                         .and(CAMPO_TOTP_ACTIVADO).is(true)
@@ -218,7 +219,7 @@ public class TotpService {
                 new Update().set(CAMPO_TOTP_ACTIVADO, false).unset(CAMPO_SECRETO_TOTP_CIFRADO)
                         .unset(CAMPO_SECRETO_TOTP_PENDIENTE_CIFRADO).unset(CAMPO_CADUCIDAD_TOTP_PENDIENTE)
                         .set(CAMPO_CODIGOS_RESPALDO_TOTP, List.of()), Usuario.class).getModifiedCount() != 1) {
-            throw new IllegalArgumentException("La configuración de seguridad ha cambiado. Recarga el perfil.");
+            throw new DatosNoValidosException("La configuración de seguridad ha cambiado. Recarga el perfil.");
         }
         usuario.setSecretoTotpCifrado(null);
         usuario.setSecretoTotpPendienteCifrado(null);
@@ -241,7 +242,7 @@ public class TotpService {
         if (mongoTemplate.updateFirst(Query.query(cuentaActiva(usuario).and(CAMPO_TOTP_ACTIVADO).ne(true)),
                 new Update().set(CAMPO_SECRETO_TOTP_PENDIENTE_CIFRADO, encrypted)
                         .set(CAMPO_CADUCIDAD_TOTP_PENDIENTE, Date.from(expires)), Usuario.class).getModifiedCount() != 1) {
-            throw new IllegalArgumentException("No se puede iniciar la configuración del segundo factor.");
+            throw new DatosNoValidosException("No se puede iniciar la configuración del segundo factor.");
         }
         usuario.setSecretoTotpPendienteCifrado(encrypted);
         usuario.setCaducidadTotpPendiente(expires);

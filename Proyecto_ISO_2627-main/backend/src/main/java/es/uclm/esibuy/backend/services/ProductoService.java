@@ -26,6 +26,7 @@ import es.uclm.esibuy.backend.exceptions.StockModificadoException;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 import jakarta.validation.Validator;
 
 @Service
@@ -123,19 +124,19 @@ public class ProductoService {
 
     private static void validarFiltros(FiltroProductosRequest filtros) {
         if (filtros == null) {
-            throw new IllegalArgumentException("Los filtros de productos son obligatorios.");
+            throw new DatosNoValidosException("Los filtros de productos son obligatorios.");
         }
         boolean minimoInvalido = filtros.precioMinimo() != null
                 && (!Double.isFinite(filtros.precioMinimo()) || filtros.precioMinimo() < 0);
         boolean maximoInvalido = filtros.precioMaximo() != null
                 && (!Double.isFinite(filtros.precioMaximo()) || filtros.precioMaximo() < 0);
         if (minimoInvalido || maximoInvalido) {
-            throw new IllegalArgumentException("Los filtros de precio deben ser valores positivos válidos.");
+            throw new DatosNoValidosException("Los filtros de precio deben ser valores positivos válidos.");
         }
         if (filtros.precioMinimo() != null
                 && filtros.precioMaximo() != null
                 && filtros.precioMinimo() > filtros.precioMaximo()) {
-            throw new IllegalArgumentException("El precio mínimo no puede superar el precio máximo.");
+            throw new DatosNoValidosException("El precio mínimo no puede superar el precio máximo.");
         }
     }
 
