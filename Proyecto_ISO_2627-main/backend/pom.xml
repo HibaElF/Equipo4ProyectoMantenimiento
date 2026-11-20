@@ -115,6 +115,8 @@
 				<configuration>
 					<systemPropertyVariables>
 						<app.security.password.pepper>test-pepper-that-is-never-used-outside-tests-123456</app.security.password.pepper>
+						<!-- Las pruebas leen la salida de los logs: texto plano en lugar de JSON. -->
+						<LOG_FORMAT></LOG_FORMAT>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

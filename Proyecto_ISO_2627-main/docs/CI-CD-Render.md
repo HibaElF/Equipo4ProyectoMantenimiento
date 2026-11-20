@@ -128,6 +128,7 @@ Las variables necesarias se configuran en el panel de Render y no se incluyen en
 | `PORT` | Puerto interno utilizado por Spring Boot |
 | `SSL_ENABLED` | Controla el SSL interno del backend |
 | `SESSION_COOKIE_SECURE` | Configura la marca Secure de las cookies |
+| `LOG_FORMAT` | Opcional. Formato de los logs de la consola del servidor: `ecs` (JSON, por defecto) o `logstash`. Vacío en local para texto plano. Cada línea JSON lleva `correlationId`, usuario seudonimizado, IP, endpoint y User-Agent |
 | `FRONTEND_ORIGIN` | Define el origen público permitido |
 | `APP_PRODUCTOS_IMAGENES_ALMACENAMIENTO` | Selecciona MongoDB como almacenamiento de imágenes |
 | `MONGODB_URI` | Cadena privada de conexión a MongoDB Atlas |

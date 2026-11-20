@@ -84,6 +84,18 @@ class AuthControllerSecurityTests {
     private SesionService sesionService;
 
     @Test
+    void lasRespuestasDevuelvenElCorrelationIdDeLaPeticionOUnoNuevo() throws Exception {
+        mockMvc.perform(get("/usuarios/csrf").header("X-Correlation-Id", "abc12345-def6"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("X-Correlation-Id", "abc12345-def6"));
+
+        String generado = mockMvc.perform(get("/usuarios/csrf").header("X-Correlation-Id", "<script>alert(1)</script>"))
+                .andReturn().getResponse().getHeader("X-Correlation-Id");
+        assertNotNull(generado);
+        java.util.UUID.fromString(generado);
+    }
+
+    @Test
     void loginGuardaLaSesionYPermiteRecuperarla() throws Exception {
         Cliente cliente = crearCliente(true);
         when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),

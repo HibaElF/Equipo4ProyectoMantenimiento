@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
@@ -24,8 +25,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import es.uclm.esibuy.backend.security.ContextoLogFilter;
 import es.uclm.esibuy.backend.security.PepperedBCryptPasswordEncoder;
 import es.uclm.esibuy.backend.security.SesionAbsolutaFilter;
+import es.uclm.esibuy.backend.security.Seudonimizador;
 
 @Configuration
 @EnableMethodSecurity
@@ -38,6 +41,13 @@ public class SecurityConfiguration {
         PasswordEncoder passwordEncoder(
                         @Value("${app.security.password.pepper:}") String pepper) {
                 return new PepperedBCryptPasswordEncoder(pepper, 12);
+        }
+
+        // Mismo pepper que el codificador de contraseñas: ya es obligatorio para arrancar.
+        @Bean
+        Seudonimizador seudonimizador(
+                        @Value("${app.security.password.pepper:}") String pepper) {
+                return new Seudonimizador(pepper);
         }
 
         @Bean
@@ -73,10 +83,14 @@ public class SecurityConfiguration {
                         SecurityContextRepository securityContextRepository,
                         CookieCsrfTokenRepository csrfTokenRepository,
                         SessionRegistry sessionRegistry,
+                        Seudonimizador seudonimizador,
                         @Value("${app.security.session.absolute-timeout:8h}") Duration timeoutAbsolutoSesion)
                         throws Exception {
 
                 http
+                                .addFilterAfter(new ContextoLogFilter(seudonimizador),
+                                                SecurityContextHolderFilter.class)
+
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
 
                                 .securityContext(context -> context.securityContextRepository(
