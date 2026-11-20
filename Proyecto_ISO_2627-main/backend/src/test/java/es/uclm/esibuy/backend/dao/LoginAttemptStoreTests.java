@@ -81,6 +81,71 @@ class LoginAttemptStoreTests {
     }
 
     @Test
+    void indicaSiElFalloHaCreadoUnBloqueoNuevoOLaCuentaYaEstabaBloqueada() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("failures", 5).append("backoffStep", 0)
+                        .append("lockUntil", Date.from(now.plusSeconds(20))));
+        // Preparar ventana, contar el fallo y, por último, la actualización condicional que crea el bloqueo.
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null));
+        LoginAttemptStore store = new LoginAttemptStore(mongo, PEPPER);
+
+        ResultadoFalloLogin nuevo = store.registrarFalloDetallado("ana@example.com", now);
+        ResultadoFalloLogin yaBloqueada = store.registrarFalloDetallado("ana@example.com", now.plusSeconds(1));
+
+        assertEquals(new ResultadoFalloLogin(30, true), nuevo);
+        assertFalse(yaBloqueada.nuevoBloqueo());
+        assertTrue(yaBloqueada.retryAfter() > 0);
+    }
+
+    @Test
+    void sinLlegarAlLimiteNoHayBloqueoNiAviso() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("failures", 2).append("backoffStep", 0));
+
+        assertEquals(ResultadoFalloLogin.SIN_BLOQUEO,
+                new LoginAttemptStore(mongo, PEPPER).registrarFalloDetallado("ana@example.com", now));
+    }
+
+    @Test
+    void elAvisoDeBloqueoSoloSeReservaUnaVezPorHoraYCuentaYNoGuardaElCorreo() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(0, 0L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("windowStart", Date.from(now)));
+        LoginAttemptStore store = new LoginAttemptStore(mongo, PEPPER);
+
+        assertTrue(store.reservarAvisoBloqueo("Ana@Example.com", now));
+        assertFalse(store.reservarAvisoBloqueo("ana@example.com", now.plusSeconds(60)));
+
+        ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
+        verify(mongo, org.mockito.Mockito.atLeastOnce()).updateFirst(queries.capture(), any(Update.class), eq(COLLECTION));
+        for (Query consulta : queries.getAllValues()) {
+            assertFalse(consulta.getQueryObject().toJson().contains("example.com"));
+        }
+        // La ventana es de una hora y admite un solo aviso.
+        assertEquals(Date.from(now.minusSeconds(3600)),
+                queries.getAllValues().get(1).getQueryObject().get("windowStart", Document.class).get("$gt"));
+        assertEquals(1, queries.getAllValues().get(1).getQueryObject().get("attempts", Document.class).get("$lt"));
+    }
+
+    @Test
     void cuentaFallosDeCuentaDentroDeUnaVentanaExactaDeDiezMinutos() {
         Instant now = Instant.parse("2026-11-04T12:00:00Z");
         when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));

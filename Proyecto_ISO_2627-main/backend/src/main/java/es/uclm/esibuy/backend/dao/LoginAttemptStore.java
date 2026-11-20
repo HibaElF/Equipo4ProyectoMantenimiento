@@ -28,6 +28,7 @@ public class LoginAttemptStore {
     private static final int WINDOW_SECONDS = 300;
     private static final int EMAIL_OTP_WINDOW_SECONDS = 600;
     private static final int MAX_EMAIL_OTP_SENDS = 5;
+    private static final int AVISO_BLOQUEO_WINDOW_SECONDS = 3600;
     private static final int ACCOUNT_FAILURE_WINDOW_SECONDS = 600;
     private static final int MAX_PAIR_ATTEMPTS = 5;
     private static final int ADAPTIVE_USER_THRESHOLD = 20;
@@ -90,7 +91,21 @@ public class LoginAttemptStore {
                 MAX_EMAIL_OTP_SENDS);
     }
 
+    // Ventana de avisos al titular: como máximo uno por hora y cuenta.
+    public boolean reservarAvisoBloqueo(String email, Instant now) {
+        ensureTtlIndex();
+        return reservarVentana(
+                id("aviso-bloqueo", email.trim().toLowerCase(java.util.Locale.ROOT)),
+                now,
+                AVISO_BLOQUEO_WINDOW_SECONDS,
+                1) == 0;
+    }
+
     public int registrarFallo(String email, Instant now) {
+        return registrarFalloDetallado(email, now).retryAfter();
+    }
+
+    public ResultadoFalloLogin registrarFalloDetallado(String email, Instant now) {
         ensureTtlIndex();
         String accountId = id(TIPO_CUENTA, email);
         prepararVentana(accountId, now, ACCOUNT_FAILURE_WINDOW_SECONDS, true);
@@ -102,7 +117,7 @@ public class LoginAttemptStore {
                 Document.class, COLLECTION);
         int failures = account == null ? 0 : account.getInteger(CAMPO_FAILURES, 0);
         if (failures < MAX_PAIR_ATTEMPTS) {
-            return 0;
+            return ResultadoFalloLogin.SIN_BLOQUEO;
         }
 
         int step = Math.min(account.getInteger(CAMPO_BACKOFF_STEP, 0), BACKOFF_SECONDS.length - 1);
@@ -118,9 +133,9 @@ public class LoginAttemptStore {
                         .set(CAMPO_EXPIRES_AT, Date.from(now.plus(Duration.ofDays(1)))),
                 COLLECTION).getModifiedCount();
         if (updated == 1) {
-            return BACKOFF_SECONDS[step];
+            return new ResultadoFalloLogin(BACKOFF_SECONDS[step], true);
         }
-        return esperaBloqueoCuenta(accountId, now);
+        return new ResultadoFalloLogin(esperaBloqueoCuenta(accountId, now), false);
     }
 
     public void registrarExito(String email, Instant now) {

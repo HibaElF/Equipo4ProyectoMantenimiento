@@ -13,6 +13,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import es.uclm.esibuy.backend.dao.ResultadoFalloLogin;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.exceptions.AccountPendingException;
 import es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException;
@@ -29,6 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
     private final AuditoriaService auditoriaService;
+    private final AvisoBloqueoService avisoBloqueoService;
     private final Clock clock;
     private final Duration vidaMaximaContrasena;
     private volatile String hashSenuelo;
@@ -37,8 +39,9 @@ public class AuthService {
             UsuarioDAO usuarioDAO,
             PasswordEncoder passwordEncoder,
             LoginAttemptService loginAttemptService,
-            AuditoriaService auditoriaService) {
-        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService,
+            AuditoriaService auditoriaService,
+            AvisoBloqueoService avisoBloqueoService) {
+        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService, avisoBloqueoService,
                 Clock.systemUTC(), Duration.ofDays(30));
     }
 
@@ -48,8 +51,9 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             LoginAttemptService loginAttemptService,
             AuditoriaService auditoriaService,
+            AvisoBloqueoService avisoBloqueoService,
             @Value("${app.security.password.max-age:30d}") Duration vidaMaximaContrasena) {
-        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService,
+        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService, avisoBloqueoService,
                 Clock.systemUTC(), vidaMaximaContrasena);
     }
 
@@ -59,12 +63,14 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             LoginAttemptService loginAttemptService,
             AuditoriaService auditoriaService,
+            AvisoBloqueoService avisoBloqueoService,
             Clock clock,
             Duration vidaMaximaContrasena) {
         this.usuarioDAO = usuarioDAO;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptService = loginAttemptService;
         this.auditoriaService = auditoriaService;
+        this.avisoBloqueoService = avisoBloqueoService;
         this.clock = clock;
         this.vidaMaximaContrasena = vidaMaximaContrasena;
     }
@@ -94,10 +100,16 @@ public class AuthService {
         }
 
         if (!credencialesValidas) {
-            int retryAfter = loginAttemptService.registrarFallo(correoNormalizado);
+            ResultadoFalloLogin fallo = loginAttemptService.registrarFalloDetallado(correoNormalizado);
+            int retryAfter = fallo.retryAfter();
             auditoriaService.registrarIntentoLoginFallido();
             if (retryAfter > 0) {
                 auditoriaService.registrarBloqueoLogin(retryAfter);
+                // Solo se avisa si la cuenta existe y este fallo ha creado el bloqueo; con un correo
+                // inexistente no ocurre nada distinto.
+                if (fallo.nuevoBloqueo() && usuario != null) {
+                    avisoBloqueoService.avisar(usuario, retryAfter);
+                }
                 throw new LoginRateLimitException(retryAfter);
             }
             throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);

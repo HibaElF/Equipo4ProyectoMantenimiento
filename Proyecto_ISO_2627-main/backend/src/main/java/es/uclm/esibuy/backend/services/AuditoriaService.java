@@ -48,6 +48,16 @@ public class AuditoriaService {
                 Map.of("retry_after_segundos", String.valueOf(retryAfterSeconds)));
     }
 
+    // Bloqueo nuevo de una cuenta existente por intentos fallidos. La cuenta va seudonimizada y la IP
+    // sale del contexto de la petición; no se guarda el correo.
+    public void registrarBloqueoCuenta(String correo, String usuarioId, int retryAfterSeconds) {
+        LOGGER.warn("evento_seguridad=bloqueo_cuenta usuario_id={} retry_after_segundos={}",
+                usuarioId, retryAfterSeconds);
+        persistir("bloqueo_cuenta", FALLO, null, usuarioId,
+                Map.of("cuenta", seudonimizador.seudonimizar(correo),
+                        "retry_after_segundos", String.valueOf(retryAfterSeconds)));
+    }
+
     public void registrarAltaAdministrador() {
         LOGGER.info("evento_seguridad=alta_administrador resultado=exito");
         persistir("alta_administrador", EXITO, null, null, Map.of());

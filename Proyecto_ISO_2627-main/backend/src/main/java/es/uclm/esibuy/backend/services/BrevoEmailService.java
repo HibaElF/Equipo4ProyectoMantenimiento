@@ -78,6 +78,48 @@ public class BrevoEmailService {
                 .toBodilessEntity();
     }
 
+    /**
+     * Avisa al titular de que su cuenta se ha bloqueado temporalmente por intentos fallidos. Va en
+     * segundo plano para no alterar el tiempo de respuesta del login; los fallos solo se registran.
+     */
+    @Async
+    public void enviarAvisoBloqueoEnSegundoPlano(String destinatario) {
+        try {
+            enviarAvisoBloqueo(destinatario);
+        } catch (RestClientException | IllegalStateException exception) {
+            LOGGER.error("No se pudo enviar el aviso de bloqueo mediante Brevo.", exception);
+        }
+    }
+
+    public void enviarAvisoBloqueo(String destinatario) {
+        if (apiKey.isBlank() || emailRemitente.isBlank()) {
+            throw new IllegalStateException(
+                    "Falta configurar la API de Brevo o el remitente.");
+        }
+
+        Map<String, Object> cuerpo = Map.of(
+                "sender", Map.of(
+                        "name", nombreRemitente,
+                        CAMPO_EMAIL, emailRemitente),
+                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
+                "subject", "Aviso de seguridad de tu cuenta de ESIBuy",
+                "textContent", """
+                        Hemos detectado varios intentos fallidos de acceso a tu cuenta de ESIBuy.
+
+                        Por seguridad, el acceso a tu cuenta se ha bloqueado temporalmente.
+                        Si has sido tú, espera unos minutos e inténtalo de nuevo.
+                        Si no has sido tú, cambia tu contraseña en cuanto puedas.
+                        """);
+
+        restClient.post()
+                .uri("https://api.brevo.com/v3/smtp/email")
+                .header("api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(cuerpo)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public void enviarCodigoAutenticacion(String destinatario, String codigo) {
         if (apiKey.isBlank() || emailRemitente.isBlank()) {
             throw new IllegalStateException(

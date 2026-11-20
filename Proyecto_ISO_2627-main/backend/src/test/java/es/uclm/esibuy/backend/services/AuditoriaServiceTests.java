@@ -134,6 +134,27 @@ class AuditoriaServiceTests {
     }
 
     @Test
+    void elBloqueoDeCuentaGuardaLaCuentaSeudonimizadaLaIpDelContextoYNuncaElCorreo(CapturedOutput salida) {
+        MDC.put("ip", "203.0.113.9");
+        MDC.put("correlationId", "abc12345-def6");
+
+        auditoria.registrarBloqueoCuenta(CORREO, "usuario-1", 30);
+
+        EventoAuditoria evento = eventoGuardado();
+        assertEquals("bloqueo_cuenta", evento.getTipo());
+        assertEquals("fallo", evento.getResultado());
+        assertEquals("anonimo", evento.getActor());
+        assertEquals("usuario-1", evento.getObjetivo());
+        assertEquals("203.0.113.9", evento.getIp());
+        assertEquals("abc12345-def6", evento.getCorrelationId());
+        assertEquals(seudonimizador.seudonimizar(CORREO), evento.getDetalles().get("cuenta"));
+        assertEquals("30", evento.getDetalles().get("retry_after_segundos"));
+        assertFalse(evento.getDetalles().toString().contains("example.com"));
+        assertFalse(salida.getOut().contains(CORREO));
+        assertTrue(salida.getOut().contains("evento_seguridad=bloqueo_cuenta usuario_id=usuario-1"));
+    }
+
+    @Test
     void registraLosCambiosDeSegundoYTercerFactorSinDatosPersonales(CapturedOutput salida) {
         auditoria.registrarTotpActivado("u1");
         auditoria.registrarTotpDesactivado("u1");

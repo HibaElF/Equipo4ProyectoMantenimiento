@@ -38,6 +38,7 @@ class AuthServiceCaducidadTests {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final LoginAttemptService intentos = mock(LoginAttemptService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
+    private final AvisoBloqueoService aviso = mock(AvisoBloqueoService.class);
     private AuthService servicio;
     private Cliente cliente;
 
@@ -51,10 +52,12 @@ class AuthServiceCaducidadTests {
         cliente.setActivada(true);
         when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
         when(encoder.matches(CONTRASENA, "hash")).thenReturn(true);
+        when(intentos.registrarFalloDetallado(anyString()))
+                .thenReturn(es.uclm.esibuy.backend.dao.ResultadoFalloLogin.SIN_BLOQUEO);
     }
 
     private AuthService servicioConPlazo(Duration plazo) {
-        return new AuthService(usuarioDAO, encoder, intentos, auditoria,
+        return new AuthService(usuarioDAO, encoder, intentos, auditoria, aviso,
                 Clock.fixed(AHORA, ZoneOffset.UTC), plazo);
     }
 
@@ -77,7 +80,7 @@ class AuthServiceCaducidadTests {
 
         assertThrows(ContrasenaCaducadaException.class, () -> servicio.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
 
-        verify(intentos, never()).registrarFallo(anyString());
+        verify(intentos, never()).registrarFalloDetallado(anyString());
         verify(auditoria).registrarEvento("login_rechazado", "fallo", "cliente-1",
                 Map.of("motivo", "contrasena_caducada"));
     }
@@ -115,7 +118,7 @@ class AuthServiceCaducidadTests {
 
         assertThrows(BadCredentialsException.class, () -> servicio.autenticar(CORREO, "Incorrecta1!", "127.0.0.1"));
 
-        verify(intentos).registrarFallo(CORREO);
+        verify(intentos).registrarFalloDetallado(CORREO);
     }
 
     @Test
