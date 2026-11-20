@@ -52,6 +52,7 @@ describe('Perfil', () => {
     cambiarTipoCliente: ReturnType<typeof vi.fn>;
     confirmarSegundoFactor: ReturnType<typeof vi.fn>;
     desactivarSegundoFactor: ReturnType<typeof vi.fn>;
+    cambiarContrasena: ReturnType<typeof vi.fn>;
     modificarPreferenciaTercerFactor: ReturnType<typeof vi.fn>;
     darDeBajaCuenta: ReturnType<typeof vi.fn>;
   };
@@ -74,6 +75,7 @@ describe('Perfil', () => {
       cambiarTipoCliente: vi.fn(),
       confirmarSegundoFactor: vi.fn(),
       desactivarSegundoFactor: vi.fn(),
+      cambiarContrasena: vi.fn(),
       darDeBajaCuenta: vi.fn(),
       modificarPreferenciaTercerFactor: vi.fn(),
     };
@@ -151,6 +153,100 @@ describe('Perfil', () => {
     expect(componente.perfil()?.totpActivado).toBe(true);
     expect(componente.errorTOTP()).toBe('Espera 5 minutos.');
     expect(componente.cargandoTOTP()).toBe(false);
+  });
+
+  describe('cambio de contraseña (T-05)', () => {
+    const rellenar = (actual: string, nueva: string, confirmar: string) =>
+      componente.formularioContrasena.setValue({
+        contrasenaActual: actual, nuevaContrasena: nueva, confirmarContrasena: confirmar,
+      });
+
+    it('muestra el formulario de cambio de contraseña en la sección de seguridad', () => {
+      crearComponente(of(perfilCliente));
+
+      const formulario = fixture.nativeElement.querySelector('#cambiar-contrasena-titulo');
+      expect(formulario?.textContent).toContain('Cambiar contraseña');
+      expect(fixture.nativeElement.querySelector('#contrasena-actual')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('#contrasena-nueva')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('#contrasena-confirmar')).not.toBeNull();
+    });
+
+    it('no envía el formulario incompleto o con una contraseña demasiado corta', () => {
+      crearComponente(of(perfilCliente));
+
+      componente.cambiarContrasena();
+      rellenar('ClaveActual9!x', 'corta', 'corta');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).not.toHaveBeenCalled();
+      expect(componente.errorContrasena()).toContain('al menos 8 caracteres');
+    });
+
+    it('no envía la contraseña nueva si la confirmación no coincide', () => {
+      crearComponente(of(perfilCliente));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'OtraDistinta7#');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).not.toHaveBeenCalled();
+      expect(componente.errorContrasena()).toContain('no coinciden');
+    });
+
+    it('cambia la contraseña, limpia el formulario y avisa del cierre de otras sesiones', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(of(undefined));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).toHaveBeenCalledWith({
+        contrasenaActual: 'ClaveActual9!x',
+        nuevaContrasena: 'NuevaClaveSegura7#',
+      });
+      expect(componente.formularioContrasena.getRawValue()).toEqual({
+        contrasenaActual: '', nuevaContrasena: '', confirmarContrasena: '',
+      });
+      expect(componente.mensajeContrasena()).toContain('otras sesiones');
+      expect(componente.errorContrasena()).toBe('');
+      expect(componente.cambiandoContrasena()).toBe(false);
+    });
+
+    it('muestra el mensaje del servidor si la contraseña actual es incorrecta o incumple la política', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 400, error: { error: 'La contraseña actual no es correcta.' } })));
+
+      rellenar('Incorrecta1!', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('La contraseña actual no es correcta.');
+      expect(componente.mensajeContrasena()).toBe('');
+      expect(componente.cambiandoContrasena()).toBe(false);
+      // No se borra lo escrito para poder corregirlo.
+      expect(componente.formularioContrasena.getRawValue().nuevaContrasena).toBe('NuevaClaveSegura7#');
+    });
+
+    it('muestra el bloqueo temporal cuando se agotan los intentos', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 429, error: { error: 'Demasiados intentos. Espera 30 segundos.' } })));
+
+      rellenar('Incorrecta1!', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('Demasiados intentos. Espera 30 segundos.');
+    });
+
+    it('usa un mensaje genérico si el servidor falla', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 500, error: { error: 'detalle interno' } })));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('No se pudo cambiar la contraseña. Inténtalo de nuevo.');
+    });
   });
 
   it('muestra la tarjeta de tipo y el boton Premium para un cliente normal', () => {

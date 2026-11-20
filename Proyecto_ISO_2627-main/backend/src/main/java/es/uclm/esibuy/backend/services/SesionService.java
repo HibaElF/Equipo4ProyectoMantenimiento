@@ -27,6 +27,16 @@ public class SesionService {
 				.forEach(SessionInformation::expireNow);
 	}
 
+	// Expira todas las sesiones del usuario salvo la indicada (la que acaba de cambiar sus credenciales).
+	public void cerrarOtrasSesiones(String email, String idSesionActual) {
+		if (email == null || email.isBlank()) {
+			return;
+		}
+		sessionRegistry.getAllSessions(normalizar(email), false).stream()
+				.filter(sesion -> !sesion.getSessionId().equals(idSesionActual))
+				.forEach(SessionInformation::expireNow);
+	}
+
 	private String normalizar(String email) {
 		return email.trim().toLowerCase(Locale.ROOT);
 	}

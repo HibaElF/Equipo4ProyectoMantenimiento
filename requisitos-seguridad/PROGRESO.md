@@ -24,7 +24,7 @@
 | 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1281 pruebas, 0 fallos, 90,05 %. `Seudonimizador` (bean) reutilizable en T-19/T-09/T-25. Variable opcional `LOG_FORMAT`. Pendiente verificar a mano el JSON y `X-Correlation-Id` con la app arrancada. |
 | 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1288 pruebas, 0 fallos, 90,05 %. 67 `IllegalArgumentException` migradas a `DatosNoValidosException`; 10 se quedan como error interno. 500 genérico con correlationId vía `ManejadorErroresInesperados` (resolver de último recurso). |
 | 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1309 pruebas, 0 fallos, 90,34 %. Colección `auditoria` solo inserción con TTL 365d; `GET /administrador/auditoria` (ADMIN). `AuditoriaService.registrarEvento(...)` listo para T-05 y T-09. Limitación: el usuario de MongoDB puede borrar (T-28, de otro miembro). |
-| 3 | T-05 | Cambio de contraseña del usuario autenticado | Media | Pendiente | | | |
+| 3 | T-05 | Cambio de contraseña del usuario autenticado | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1327 pruebas, 0 fallos, 90,42 %. Frontend: 539 pruebas, 78,8 %. Controlador y servicio nuevos (`CambioContrasena*`) para no tocar `PerfilController`/`PerfilService` (T-04). Sin código de 2º factor. `SesionService.cerrarOtrasSesiones` reutilizable en T-13. |
 | 3 | T-13 | Rotar el identificador de sesión al cambiar los factores de autenticación | Baja | Pendiente | | | |
 | 3 | T-06 | Caducidad de contraseñas a los 30 días | Media | Pendiente | | | |
 | 3 | T-09 | Alertas de intentos fallidos y bloqueos de cuenta | Baja | Pendiente | | | |
@@ -49,6 +49,7 @@
 | 2026-11-20 | General | Son 22 tareas (se omitió una). `debugsonar.txt` lo elimina el usuario. |
 | 2026-11-20 | Secretos | El token de Sonar se queda de momento en el `.properties`. |
 | 2026-11-20 | T-20 | Se migran 67 `IllegalArgumentException` a `DatosNoValidosException` (10 se quedan como error interno); el 500 genérico va en un `HandlerExceptionResolver` de último recurso. |
+| 2026-11-20 | T-05 | El cambio de contraseña no pide código del segundo factor; se implementa en `CambioContrasenaController`/`Service` nuevos en lugar de `PerfilController`. |
 | 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
 
 El token de sonar se tiene que quedar en el propierties por orden del profesor

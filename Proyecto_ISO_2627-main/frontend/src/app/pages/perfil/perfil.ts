@@ -86,6 +86,16 @@ export class Perfil {
   }
   readonly cargandoTOTP = signal(false);
 
+  readonly cambiandoContrasena = signal(false);
+  readonly errorContrasena = signal('');
+  readonly mensajeContrasena = signal('');
+
+  readonly formularioContrasena = this.constructorFormularios.nonNullable.group({
+    contrasenaActual: ['', [Validators.required, Validators.maxLength(128)]],
+    nuevaContrasena: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128)]],
+    confirmarContrasena: ['', [Validators.required, Validators.maxLength(128)]]
+  });
+
   readonly formulario = this.constructorFormularios.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
     apellidos: ['', [Validators.required, Validators.maxLength(150)]],
@@ -483,6 +493,37 @@ export class Perfil {
       error: (error: HttpErrorResponse) => {
         this.cargandoTOTP.set(false);
         this.errorTOTP.set(this.obtenerMensajeError(error, 'No se pudo desactivar el segundo factor.'));
+      }
+    });
+  }
+
+  /** T-05: cambia la contraseña con la sesión iniciada; el servidor cierra las demás sesiones. */
+  cambiarContrasena(): void {
+    this.errorContrasena.set('');
+    this.mensajeContrasena.set('');
+
+    if (this.formularioContrasena.invalid) {
+      this.formularioContrasena.markAllAsTouched();
+      this.errorContrasena.set('Completa los tres campos. La contraseña nueva debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    const { contrasenaActual, nuevaContrasena, confirmarContrasena } = this.formularioContrasena.getRawValue();
+    if (nuevaContrasena !== confirmarContrasena) {
+      this.errorContrasena.set('La contraseña nueva y su confirmación no coinciden.');
+      return;
+    }
+
+    this.cambiandoContrasena.set(true);
+    this.servicioPerfil.cambiarContrasena({ contrasenaActual, nuevaContrasena }).subscribe({
+      next: () => {
+        this.formularioContrasena.reset();
+        this.cambiandoContrasena.set(false);
+        this.mensajeContrasena.set('Contraseña actualizada. Se han cerrado tus otras sesiones.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.cambiandoContrasena.set(false);
+        this.errorContrasena.set(this.obtenerMensajeError(error, 'No se pudo cambiar la contraseña. Inténtalo de nuevo.'));
       }
     });
   }

@@ -73,6 +73,40 @@
         </nav>
       }
 
+      <section class="two-factor-card" aria-labelledby="cambiar-contrasena-titulo">
+        <div class="two-factor-heading">
+          <p class="account-type-kicker">Seguridad</p>
+          <h3 id="cambiar-contrasena-titulo">Cambiar contraseña</h3>
+          <p>Al cambiarla se cerrarán tus sesiones abiertas en otros dispositivos.</p>
+        </div>
+
+        <form [formGroup]="formularioContrasena" (ngSubmit)="cambiarContrasena()" novalidate>
+          <label for="contrasena-actual">Contraseña actual</label>
+          <input id="contrasena-actual" type="password" formControlName="contrasenaActual"
+                 autocomplete="current-password" maxlength="128" />
+
+          <label for="contrasena-nueva">Contraseña nueva</label>
+          <input id="contrasena-nueva" type="password" formControlName="nuevaContrasena"
+                 autocomplete="new-password" maxlength="128" />
+          <small class="field-help">Al menos 8 caracteres, con mayúsculas, minúsculas, números y símbolos.</small>
+
+          <label for="contrasena-confirmar">Repite la contraseña nueva</label>
+          <input id="contrasena-confirmar" type="password" formControlName="confirmarContrasena"
+                 autocomplete="new-password" maxlength="128" />
+
+          @if (errorContrasena()) {
+            <p class="form-message" role="alert">{{ errorContrasena() }}</p>
+          }
+          @if (mensajeContrasena()) {
+            <p class="aviso aviso-exito" role="status">{{ mensajeContrasena() }}</p>
+          }
+
+          <button class="boton-principal" type="submit" [disabled]="cambiandoContrasena()">
+            {{ cambiandoContrasena() ? 'Guardando...' : 'Cambiar contraseña' }}
+          </button>
+        </form>
+      </section>
+
       <section class="two-factor-card" aria-labelledby="segundo-factor-titulo">
         <div class="two-factor-heading">
           <p class="account-type-kicker">Seguridad</p>
@@ -344,7 +378,7 @@
             @if (datos.tipoUsuario === 'ADMIN' && datos.fechaIncorporacion) {
               <p><strong>Fecha de incorporación:</strong> {{ datos.fechaIncorporacion | date: 'dd/MM/yyyy' }} (no modificable)</p>
             }
-            <p class="field-help">La contraseña, direcciones y pagos se gestionan fuera de esta pantalla.</p>
+            <p class="field-help">Las direcciones y los pagos se gestionan fuera de esta pantalla. La contraseña se cambia en la sección Seguridad.</p>
           </div>
 
           @if (mensajeFormulario()) {

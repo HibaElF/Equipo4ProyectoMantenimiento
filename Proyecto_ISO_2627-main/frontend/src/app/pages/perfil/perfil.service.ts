@@ -43,6 +43,11 @@ export interface TwoFactorConfirmationResponse {
   backupCodes: string[];
 }
 
+export interface CambiarContrasenaRequest {
+  contrasenaActual: string;
+  nuevaContrasena: string;
+}
+
 export interface ModificarPerfilRequest {
   nombre: string;
   apellidos: string;
@@ -127,6 +132,10 @@ export class PerfilService {
 
   modificarPreferenciaTercerFactor(activado: boolean): Observable<void> {
     return this.peticionConCsrf<void>('PUT', '/usuarios/3fa/preferencia', { activado });
+  }
+
+  cambiarContrasena(datos: CambiarContrasenaRequest): Observable<void> {
+    return this.peticionConCsrf<void>('PUT', '/usuarios/contrasena', datos);
   }
 
   desactivarSegundoFactor(code: string): Observable<void> {
