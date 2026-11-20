@@ -34,6 +34,9 @@ class PerfilControllerSecurityTests {
     @MockitoBean
     private es.uclm.esibuy.backend.services.TotpService totpService;
 
+    @MockitoBean
+    private es.uclm.esibuy.backend.services.SesionService sesionService;
+
     @Test
     void desactivarRequiereCodigoYNoLlegaAlServicioSiFalta() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete("/usuarios/2fa")

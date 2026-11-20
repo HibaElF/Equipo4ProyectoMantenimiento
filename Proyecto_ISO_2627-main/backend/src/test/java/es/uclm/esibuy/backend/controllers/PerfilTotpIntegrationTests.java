@@ -70,7 +70,8 @@ class PerfilTotpIntegrationTests {
         totpService = spy(new TotpService(usuarioDAO, cryptoService, new BCryptPasswordEncoder(4), securityStore, mongoTemplate,
                 mock(es.uclm.esibuy.backend.services.AuditoriaService.class)));
         when(totpService.generarSecreto()).thenReturn(SECRETO_RFC);
-        PerfilController controller = new PerfilController(mock(PerfilService.class), totpService);
+        PerfilController controller = new PerfilController(mock(PerfilService.class), totpService,
+                mock(es.uclm.esibuy.backend.services.SesionService.class));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new RegistrationExceptionHandler()).build();
     }

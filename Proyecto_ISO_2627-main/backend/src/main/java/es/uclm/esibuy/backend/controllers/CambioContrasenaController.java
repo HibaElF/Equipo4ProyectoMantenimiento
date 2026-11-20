@@ -44,13 +44,7 @@ public class CambioContrasenaController {
 
         // Al cambiar las credenciales se rota el identificador de la sesión actual y se cierran
         // todas las demás del usuario.
-        if (request.getSession(false) != null) {
-            String idNuevo = request.changeSessionId();
-            sesionService.registrarSesion(idNuevo, email);
-            sesionService.cerrarOtrasSesiones(email, idNuevo);
-        } else {
-            sesionService.cerrarSesiones(email);
-        }
+        sesionService.rotarSesion(request, email);
         return ResponseEntity.noContent().build();
     }
 
