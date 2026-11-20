@@ -25,6 +25,8 @@ export class Login {
   hidePassword = true;
   isLoading = signal(false);
   mensajeError = signal('');
+  // T-06: la contraseña es correcta pero ha caducado; se ofrece restablecerla por correo.
+  contrasenaCaducada = signal(false);
   mensajeExito = signal('');
   mensajeInfo = signal('');
   requiereSegundoFactor = signal(false);
@@ -92,6 +94,7 @@ export class Login {
     if (this.loginForm.valid) {
       this.isLoading.set(true);
       this.mensajeError.set('');
+      this.contrasenaCaducada.set(false);
       this.mensajeExito.set('');
 
       const { email, password } = this.loginForm.value;
@@ -135,6 +138,10 @@ export class Login {
           this.isLoading.set(false);
 
           const cuerpo = error.error;
+
+          this.contrasenaCaducada.set(
+            error.status === 403 && cuerpo?.errores?.codigo?.[0] === 'CONTRASENA_CADUCADA'
+          );
 
           this.mensajeError.set(
             typeof cuerpo === 'object' &&

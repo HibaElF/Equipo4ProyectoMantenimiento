@@ -248,6 +248,7 @@ class AuthServiceTests {
         cliente.setContrasenaHash(HASH);
         cliente.setActivada(activado);
         cliente.setBloqueada(bloqueado);
+        cliente.setContrasenaCambiadaEn(java.time.Instant.now());
         return cliente;
     }
 }

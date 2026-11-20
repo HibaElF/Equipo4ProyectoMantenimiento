@@ -62,6 +62,9 @@
           @if (mensajeError()) {
             <p class="aviso aviso-error" role="alert">{{ mensajeError() }}</p>
           }
+          @if (contrasenaCaducada()) {
+            <a class="enlace enlace-caducada" routerLink="/recuperar-contrasena">Restablecer mi contraseña</a>
+          }
           @if (mensajeExito()) {
             <output class="aviso aviso-exito">{{ mensajeExito() }}</output>
           }

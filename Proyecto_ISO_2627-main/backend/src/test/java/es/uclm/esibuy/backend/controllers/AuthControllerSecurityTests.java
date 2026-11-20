@@ -423,6 +423,24 @@ class AuthControllerSecurityTests {
     }
 
     @Test
+    void unaContrasenaCaducadaDevuelve403ConUnCodigoReconocible() throws Exception {
+        when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
+                org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException());
+
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"cliente@example.com","password":"ClaveSegura9!"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errores.codigo[0]").value("CONTRASENA_CADUCADA"))
+                .andExpect(jsonPath("$.error").value(
+                        "Tu contraseña ha caducado. Restablécela desde «He olvidado mi contraseña»."));
+    }
+
+    @Test
     void loginInactivoDevuelveAvisoDeCuentaPendiente() throws Exception {
         when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
                 org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))

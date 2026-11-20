@@ -36,6 +36,9 @@ public abstract class Usuario {
 
 	private List<String> historialContrasenasHash = new ArrayList<>();
 
+	// Fecha del último cambio de contraseña (null en las cuentas anteriores a la caducidad).
+	private Instant contrasenaCambiadaEn;
+
 	private String telefono;
 
 	private String imagenPerfil;
@@ -108,8 +111,17 @@ public abstract class Usuario {
 		return historialContrasenasHash == null ? List.of() : List.copyOf(historialContrasenasHash);
 	}
 
+	public Instant getContrasenaCambiadaEn() {
+		return contrasenaCambiadaEn;
+	}
+
+	public void setContrasenaCambiadaEn(Instant contrasenaCambiadaEn) {
+		this.contrasenaCambiadaEn = contrasenaCambiadaEn;
+	}
+
 	public void registrarContrasenaHash(String contrasenaHash) {
 		this.contrasenaHash = contrasenaHash;
+		this.contrasenaCambiadaEn = Instant.now();
 		if (historialContrasenasHash == null) {
 			historialContrasenasHash = new ArrayList<>();
 		}

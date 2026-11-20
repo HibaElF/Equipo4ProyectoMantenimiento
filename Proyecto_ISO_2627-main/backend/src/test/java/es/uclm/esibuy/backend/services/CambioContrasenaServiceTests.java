@@ -69,6 +69,8 @@ class CambioContrasenaServiceTests {
         org.junit.jupiter.api.Assertions.assertTrue(encoder.matches(NUEVA, cliente.getContrasenaHash()));
         assertEquals(2, cliente.getHistorialContrasenasHash().size());
         verify(auditoria).registrarEvento("cambio_contrasena", "exito", "cliente-1", Map.of());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                cliente.getContrasenaCambiadaEn().isAfter(java.time.Instant.now().minusSeconds(60)));
     }
 
     @Test

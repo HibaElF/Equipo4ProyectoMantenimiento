@@ -1,15 +1,21 @@
 package es.uclm.esibuy.backend.services;
 
 import java.security.SecureRandom;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.exceptions.AccountPendingException;
+import es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException;
 import es.uclm.esibuy.backend.exceptions.LoginRateLimitException;
 import es.uclm.esibuy.backend.model.Usuario;
 
@@ -23,6 +29,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
     private final AuditoriaService auditoriaService;
+    private final Clock clock;
+    private final Duration vidaMaximaContrasena;
     private volatile String hashSenuelo;
 
     public AuthService(
@@ -30,10 +38,35 @@ public class AuthService {
             PasswordEncoder passwordEncoder,
             LoginAttemptService loginAttemptService,
             AuditoriaService auditoriaService) {
+        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService,
+                Clock.systemUTC(), Duration.ofDays(30));
+    }
+
+    @Autowired
+    public AuthService(
+            UsuarioDAO usuarioDAO,
+            PasswordEncoder passwordEncoder,
+            LoginAttemptService loginAttemptService,
+            AuditoriaService auditoriaService,
+            @Value("${app.security.password.max-age:30d}") Duration vidaMaximaContrasena) {
+        this(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService,
+                Clock.systemUTC(), vidaMaximaContrasena);
+    }
+
+    // Con reloj inyectable para poder probar la caducidad con una hora controlada.
+    public AuthService(
+            UsuarioDAO usuarioDAO,
+            PasswordEncoder passwordEncoder,
+            LoginAttemptService loginAttemptService,
+            AuditoriaService auditoriaService,
+            Clock clock,
+            Duration vidaMaximaContrasena) {
         this.usuarioDAO = usuarioDAO;
         this.passwordEncoder = passwordEncoder;
         this.loginAttemptService = loginAttemptService;
         this.auditoriaService = auditoriaService;
+        this.clock = clock;
+        this.vidaMaximaContrasena = vidaMaximaContrasena;
     }
 
     public Usuario autenticar(String correo, String contrasena, String ip) {
@@ -83,8 +116,27 @@ public class AuthService {
             throw new AccountPendingException();
         }
 
+        comprobarCaducidadContrasena(usuario, correoNormalizado);
+
         loginAttemptService.registrarExito(correoNormalizado);
         return usuario;
+    }
+
+    // Solo se evalúa con credenciales correctas y cuenta usable, para no revelar la caducidad a un tercero.
+    // Las cuentas sin fecha (anteriores a esta medida) empiezan a contar en su primer login correcto.
+    private void comprobarCaducidadContrasena(Usuario usuario, String correoNormalizado) {
+        if (usuario.getContrasenaCambiadaEn() == null) {
+            usuario.setContrasenaCambiadaEn(clock.instant());
+            usuarioDAO.save(usuario);
+            return;
+        }
+        if (!clock.instant().isBefore(usuario.getContrasenaCambiadaEn().plus(vidaMaximaContrasena))) {
+            // Las credenciales eran correctas: no cuenta como intento fallido.
+            loginAttemptService.registrarExito(correoNormalizado);
+            auditoriaService.registrarEvento("login_rechazado", "fallo", usuario.getId(),
+                    Map.of("motivo", "contrasena_caducada"));
+            throw new ContrasenaCaducadaException();
+        }
     }
 
     // Se invoca cuando el login queda completo (tras los factores adicionales, si los hay).

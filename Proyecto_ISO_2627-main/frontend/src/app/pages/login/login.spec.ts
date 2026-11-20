@@ -266,4 +266,49 @@ describe('Login', () => {
       'Tu sesión ya no es válida. Es posible que tu cuenta haya sido bloqueada.'
     );
   });
+
+  describe('contraseña caducada (T-06)', () => {
+    const credenciales = { email: 'ana@esibuy.com', password: 'Clave-Segura-1' };
+    const cuerpoCaducada = {
+      error: 'Tu contraseña ha caducado. Restablécela desde «He olvidado mi contraseña».',
+      errores: { codigo: ['CONTRASENA_CADUCADA'] },
+    };
+
+    it('muestra el aviso y ofrece restablecer la contraseña por correo', () => {
+      vi.spyOn(servicioAutenticacion, 'iniciarSesion').mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 403, error: cuerpoCaducada })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+
+      expect(componente.contrasenaCaducada()).toBe(true);
+      expect(componente.mensajeError()).toContain('ha caducado');
+    });
+
+    it('no ofrece el enlace para otros errores 403, como la cuenta pendiente', () => {
+      vi.spyOn(servicioAutenticacion, 'iniciarSesion').mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 403, error: { error: 'Tu cuenta está pendiente de revisión.' } })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+
+      expect(componente.contrasenaCaducada()).toBe(false);
+      expect(componente.mensajeError()).toBe('Tu cuenta está pendiente de revisión.');
+    });
+
+    it('quita el aviso al volver a intentarlo', () => {
+      const iniciar = vi.spyOn(servicioAutenticacion, 'iniciarSesion')
+        .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 403, error: cuerpoCaducada })))
+        .mockReturnValueOnce(throwError(() =>
+          new HttpErrorResponse({ status: 401, error: { error: 'Correo o contraseña incorrectos.' } })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+      expect(componente.contrasenaCaducada()).toBe(true);
+      componente.onSubmit();
+
+      expect(iniciar).toHaveBeenCalledTimes(2);
+      expect(componente.contrasenaCaducada()).toBe(false);
+    });
+  });
 });

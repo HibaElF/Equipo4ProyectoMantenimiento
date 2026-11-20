@@ -47,6 +47,18 @@ describe('Login · plantilla accesible (UI-acceso)', () => {
     expect(raiz.querySelector('#password')?.getAttribute('type')).toBe('text');
   });
 
+  it('ofrece restablecer la contraseña cuando ha caducado (T-06)', () => {
+    expect(raiz.querySelector('.enlace-caducada')).toBeNull();
+
+    fixture.componentInstance.mensajeError.set('Tu contraseña ha caducado.');
+    fixture.componentInstance.contrasenaCaducada.set(true);
+    fixture.detectChanges();
+
+    const enlace = raiz.querySelector('.enlace-caducada');
+    expect(enlace?.textContent?.trim()).toBe('Restablecer mi contraseña');
+    expect(enlace?.getAttribute('href')).toBe('/recuperar-contrasena');
+  });
+
   it('presenta un campo accesible para el tercer factor por correo', () => {
     fixture.componentInstance.requiereVerificacionEmail.set(true);
     fixture.detectChanges();

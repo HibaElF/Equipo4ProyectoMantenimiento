@@ -255,6 +255,13 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Caducidad de contraseñas
+
+- Una contraseña caduca a los **30 días** de su último cambio (`app.security.password.max-age`, por defecto `30d`; admite otros valores como `90d`). No requiere variable de entorno.
+- Quien intenta entrar con una contraseña caducada (credenciales correctas) recibe un 403 con el código `CONTRASENA_CADUCADA` y el login le ofrece restablecerla por correo desde «He olvidado mi contraseña». No cuenta como intento fallido y queda auditado (`login_rechazado`).
+- La fecha (`contrasenaCambiadaEn`) se guarda en el alta, en el cambio de contraseña y en la recuperación.
+- **Cuentas existentes:** no tienen fecha. En su **primer inicio de sesión correcto tras el despliegue** se fija a esa hora y empiezan a contar entonces, por lo que no se bloquean todas a la vez: cada cuenta caduca 30 días después de su primer acceso posterior al despliegue.
+
 ### Registro de auditoría de seguridad
 
 - Las acciones sensibles (login correcto, fallido y bloqueado, alta y baja de TOTP y del código por correo, administración de usuarios, alta y baja de cuentas, recuperación de contraseña) se guardan en la colección `auditoria` de MongoDB y también se escriben en el log.
