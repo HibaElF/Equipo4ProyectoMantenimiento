@@ -1,0 +1,255 @@
+.marco-imagen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 46vh;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ion-border-color);
+}
+
+.marco-imagen img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.marco-imagen > ion-icon {
+  font-size: 56px;
+  color: var(--ion-color-medium);
+}
+
+.esqueleto-imagen {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  margin: 0;
+  border-radius: 0;
+}
+
+.cuerpo {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.nombre {
+  margin: 4px 0 8px;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.precios {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.precio {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+}
+
+.precio-anterior {
+  color: var(--ion-color-medium);
+  text-decoration: line-through;
+}
+
+.distintivo {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.marco-imagen .distintivo {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+}
+
+.premium {
+  background: #7a5418;
+  color: #ffe3a1;
+}
+
+.oferta {
+  background: #b9553e;
+  color: #ffffff;
+}
+
+.descripcion {
+  margin: 14px 0 0;
+  line-height: 1.5;
+}
+
+.datos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.datos div {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.datos dt {
+  font-size: 0.75rem;
+  color: var(--ion-color-medium);
+}
+
+.datos dd {
+  margin: 2px 0 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.aviso-stock {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff2cd;
+  border: 1px solid #e3b24d;
+  color: #563d00;
+  font-weight: 600;
+}
+
+.boton-listas {
+  margin: 4px 0 20px;
+}
+
+.valoraciones h2 {
+  font-size: 1.2rem;
+  margin: 0 0 8px;
+}
+
+.resumen-valoraciones {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.resumen-valoraciones .media {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--ion-color-tertiary);
+}
+
+.resumen-valoraciones p {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+}
+
+.lista-valoraciones {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lista-valoraciones li {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.cabecera-valoracion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--ion-color-medium);
+}
+
+.lista-valoraciones p {
+  margin: 6px 0 0;
+}
+
+.sin-valoraciones {
+  color: var(--ion-color-medium);
+}
+
+.estado {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.estado ion-icon {
+  font-size: 48px;
+  color: var(--ion-color-medium);
+}
+
+/* Zona de compra fija abajo, al alcance del pulgar. */
+.zona-compra ion-toolbar {
+  --background: #ffffff;
+  --color: var(--ion-text-color);
+  color: var(--ion-text-color);
+  --border-color: var(--ion-border-color);
+  padding: 4px 8px;
+}
+
+.compra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-cantidad {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 12px;
+}
+
+.selector-cantidad ion-button {
+  --padding-start: 6px;
+  --padding-end: 6px;
+  --color: var(--ion-color-primary);
+  margin: 0;
+  min-height: 44px;
+}
+
+.selector-cantidad output {
+  min-width: 28px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.boton-anadir {
+  flex: 1;
+  margin: 0;
+}
+
+.agotado {
+  margin: 10px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ion-color-medium);
+}
+
+.ayuda-listas {
+  color: var(--ion-color-medium);
+}
+
+.lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
