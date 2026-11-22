@@ -86,3 +86,9 @@ ion-note.ayuda {
   border: 3px solid var(--ion-color-primary);
   background: #ffffff;
 }
+
+/* Botón de una acción peligrosa en los avisos de confirmación. */
+ion-alert .boton-peligro {
+  color: var(--ion-color-danger) !important;
+  font-weight: 700;
+}

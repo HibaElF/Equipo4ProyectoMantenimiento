@@ -1,5 +1,5 @@
-import { Component, signal } from '@angular/core';
-import { IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
+import { Component, inject, signal } from '@angular/core';
+import { IonBadge, IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
   cart,
@@ -13,6 +13,7 @@ import {
   storefront,
   storefrontOutline
 } from 'ionicons/icons';
+import { CarritoEstadoService } from '../../core/services/carrito-estado.service';
 
 /**
  * Navegación principal del cliente: las mismas secciones que la cabecera de la web
@@ -20,11 +21,13 @@ import {
  */
 @Component({
   selector: 'app-tabs',
-  imports: [IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs],
+  imports: [IonBadge, IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs],
   templateUrl: './tabs.page.html',
   styleUrl: './tabs.page.css'
 })
 export class TabsPage {
+  /** Unidades del carrito: se muestran en un numerito sobre la pestaña Carrito. */
+  readonly unidadesCarrito = inject(CarritoEstadoService).unidades;
   /** Pestaña seleccionada: su icono se muestra relleno (no se depende solo del color). */
   readonly activa = signal('tienda');
 
@@ -49,6 +52,12 @@ export class TabsPage {
       person,
       personOutline
     });
+    inject(CarritoEstadoService).refrescar();
+  }
+
+  etiqueta(p: { tab: string; texto: string }): string {
+    const n = this.unidadesCarrito();
+    return p.tab === 'carrito' && n > 0 ? `Carrito, ${n} ${n === 1 ? 'unidad' : 'unidades'}` : p.texto;
   }
 
   cambio(evento: { tab: string }): void {

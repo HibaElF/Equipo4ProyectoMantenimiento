@@ -96,7 +96,7 @@ export class PerfilPage implements OnInit {
       message: '¿Quieres cerrar la sesión en este dispositivo?',
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
-        { text: 'Cerrar sesión', role: 'destructive', handler: () => this.cerrarSesion() }
+        { text: 'Cerrar sesión', role: 'destructive', cssClass: 'boton-peligro', handler: () => this.cerrarSesion() }
       ]
     });
     await alerta.present();

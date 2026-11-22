@@ -22,3 +22,16 @@ ion-tab-button.tab-selected {
 ion-tab-button ion-icon {
   font-size: 24px;
 }
+
+/* Numerito del carrito sobre el icono. */
+ion-tab-button ion-badge {
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 20px;
+  height: 20px;
+  padding: 3px 5px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #ffffff;
+}
