@@ -1,0 +1,205 @@
+<ion-header>
+  <ion-toolbar>
+    @if (!compra()) {
+      <ion-buttons slot="start">
+        <ion-back-button defaultHref="/carrito" text="Carrito"></ion-back-button>
+      </ion-buttons>
+    }
+    <ion-title>{{ compra() ? 'Compra completada' : 'Confirmar compra' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [attr.aria-busy]="cargando() || procesando()">
+  <div class="contenido">
+    @if (error()) {
+      <p class="aviso aviso-error" role="alert">
+        <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+        {{ error() }}
+      </p>
+    }
+
+    @if (compra(); as confirmada) {
+      <!-- Confirmación -->
+      <section class="confirmacion" aria-labelledby="pedido-confirmado">
+        <ion-icon name="checkmark-circle" class="icono-ok" aria-hidden="true"></ion-icon>
+        <h1 id="pedido-confirmado">¡Compra completada!</h1>
+        <p role="status">El pago se ha completado correctamente.</p>
+        <p class="importe-pagado">{{ confirmada.importeTotal | number: '1.2-2' }} €</p>
+
+        @if (confirmada.pedidos.length > 1) {
+          <p class="nota">
+            Tu compra se ha dividido en {{ confirmada.pedidos.length }} pedidos, uno por vendedor. Cada vendedor envía
+            el suyo y puedes seguirlos por separado en «Pedidos».
+          </p>
+        }
+
+        @for (pedido of confirmada.pedidos; track pedido.id) {
+          <article class="tarjeta pedido" [attr.aria-label]="'Pedido ' + pedido.id">
+            <dl>
+              <div><dt>Pedido</dt><dd class="referencia">{{ pedido.id }}</dd></div>
+              @if (vendedores(pedido)) {
+                <div><dt>Vendedor</dt><dd>{{ vendedores(pedido) }}</dd></div>
+              }
+              <div><dt>Estado</dt><dd>{{ textoEstado(pedido.estado) }}</dd></div>
+              <div><dt>Importe</dt><dd>{{ pedido.importe | number: '1.2-2' }} €</dd></div>
+            </dl>
+            <ul class="productos-pedido">
+              @for (linea of pedido.lineas; track linea.productoId) {
+                <li>
+                  <span>{{ linea.nombreProducto }} × {{ linea.cantidad }}</span>
+                  <strong>{{ linea.precioCompra | number: '1.2-2' }} € / ud.</strong>
+                </li>
+              }
+            </ul>
+          </article>
+        }
+
+        @if (direccionDe(confirmada); as d) {
+          <p class="envio">Envío a {{ d.calle }}, {{ d.numero }}, {{ d.ciudad }}.</p>
+        }
+
+        <ion-button expand="block" color="secondary" (click)="irAPedidos()">Ver mis pedidos</ion-button>
+        <ion-button expand="block" fill="outline" routerLink="/tienda">Seguir comprando</ion-button>
+      </section>
+    } @else if (cargando()) {
+      <div aria-label="Cargando compra">
+        @for (e of [1, 2, 3]; track e) {
+          <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+        }
+      </div>
+    } @else {
+      @if (pendiente()) {
+        <!-- Pago iniciado sin confirmar: se comprueba en vez de cobrar otra vez -->
+        <section class="aviso aviso-pendiente">
+          <h2>{{ procesando() ? 'Procesando pago…' : 'Comprueba tu compra pendiente' }}</h2>
+          <p>Puede que el pago ya se haya completado. Comprueba su resultado antes de iniciar otra compra.</p>
+          <ion-button expand="block" color="secondary" [disabled]="!puedePagar()" (click)="pagar()">
+            {{ procesando() ? 'Procesando…' : 'Comprobar resultado' }}
+          </ion-button>
+        </section>
+      }
+
+      @if (!carrito()) {
+        <ion-button expand="block" fill="outline" [disabled]="procesando()" (click)="cargar()">Reintentar</ion-button>
+      } @else if (carrito()!.productos.length === 0) {
+        @if (!pendiente()) {
+          <section class="estado">
+            <h2>Tu carrito está vacío</h2>
+            <p>Añade productos antes de realizar una compra.</p>
+            <ion-button color="secondary" routerLink="/tienda">Ir al catálogo</ion-button>
+          </section>
+        }
+      } @else {
+        <p class="subtitulo">Elige dónde lo recibes y cómo pagas. El pago es simulado.</p>
+
+        <!-- Resumen de productos -->
+        <section class="tarjeta" aria-labelledby="resumen-compra">
+          <h2 id="resumen-compra">Productos ({{ carrito()!.productos.length }})</h2>
+          <ul class="resumen-productos">
+            @for (linea of carrito()!.productos; track linea.productoId) {
+              <li [class.no-disponible]="!linea.disponible">
+                <span class="nombre">{{ linea.nombre || 'Producto no disponible' }} × {{ linea.cantidad }}</span>
+                <strong>{{ linea.subtotal !== null ? (linea.subtotal | number: '1.2-2') + ' €' : '—' }}</strong>
+                @if (!linea.disponible) {
+                  <p class="aviso-linea">{{ linea.aviso }}</p>
+                }
+              </li>
+            }
+          </ul>
+          @if (numeroVendedores() > 1) {
+            <p class="nota">
+              Tu carrito tiene productos de {{ numeroVendedores() }} vendedores: se creará un pedido por vendedor y cada uno
+              enviará el suyo.
+            </p>
+          }
+        </section>
+
+        @if (!pendiente()) {
+          <!-- Dirección de envío -->
+          <ion-list lines="full" class="opciones">
+            <ion-list-header>
+              <ion-label>
+                <ion-icon name="home-outline" aria-hidden="true"></ion-icon>
+                Dirección de envío
+              </ion-label>
+            </ion-list-header>
+            @if (direcciones().length === 0) {
+              <ion-item lines="none">
+                <ion-note>
+                  No tienes direcciones registradas. Podrás añadirlas en <strong>Perfil → Mis direcciones</strong>.
+                </ion-note>
+              </ion-item>
+            } @else {
+              <ion-radio-group [ngModel]="direccionId()" (ngModelChange)="direccionId.set($event)" aria-label="Dirección de envío">
+                @for (d of direcciones(); track d.id) {
+                  <ion-item>
+                    <ion-radio [value]="d.id" justify="space-between">
+                      <span class="opcion-titulo">{{ d.nombre }}</span>
+                      <span class="opcion-detalle">{{ textoDireccion(d) }}</span>
+                    </ion-radio>
+                  </ion-item>
+                }
+              </ion-radio-group>
+            }
+          </ion-list>
+
+          <!-- Método de pago -->
+          <ion-list lines="full" class="opciones">
+            <ion-list-header>
+              <ion-label>
+                <ion-icon name="card-outline" aria-hidden="true"></ion-icon>
+                Método de pago
+              </ion-label>
+            </ion-list-header>
+            @if (metodos().length === 0) {
+              <ion-item lines="none">
+                <ion-note>
+                  No tienes métodos de pago registrados. Podrás añadirlos en <strong>Perfil → Métodos de pago</strong>.
+                </ion-note>
+              </ion-item>
+            } @else {
+              <ion-radio-group [ngModel]="metodoPagoId()" (ngModelChange)="metodoPagoId.set($event)" aria-label="Método de pago">
+                @for (m of metodos(); track m.id) {
+                  <ion-item>
+                    <ion-radio [value]="m.id" justify="space-between">
+                      <span class="opcion-titulo">{{ m.nombre }}</span>
+                      <span class="opcion-detalle">{{ m.tipo }} · {{ m.datosEnmascarados }}</span>
+                    </ion-radio>
+                  </ion-item>
+                }
+              </ion-radio-group>
+            }
+          </ion-list>
+        }
+      }
+    }
+  </div>
+</ion-content>
+
+<!-- Total y Pagar, fijos abajo -->
+@if (!compra() && !pendiente() && carrito()?.productos?.length) {
+  <ion-footer class="pie-pago">
+    <ion-toolbar>
+      <div class="fila-total">
+        <span>Total</span>
+        <strong>{{ carrito()!.importe | number: '1.2-2' }} €</strong>
+      </div>
+      <ion-button
+        expand="block"
+        color="secondary"
+        [disabled]="!puedePagar()"
+        [attr.aria-describedby]="motivoPagoDesactivado() ? 'motivo-pagar' : null"
+        (click)="pagar()"
+      >
+        @if (procesando()) {
+          <ion-spinner name="crescent" aria-label="Procesando pago"></ion-spinner>
+        } @else {
+          Pagar
+        }
+      </ion-button>
+      @if (motivoPagoDesactivado()) {
+        <ion-text color="danger"><p id="motivo-pagar" class="motivo">{{ motivoPagoDesactivado() }}</p></ion-text>
+      }
+    </ion-toolbar>
+  </ion-footer>
+}
