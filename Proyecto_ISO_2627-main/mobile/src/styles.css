@@ -1,1 +1,88 @@
-/* You can add global styles to this file, and also import other style files */
+/* Estilos globales de la app móvil de ESIBuy. */
+
+/* Tipografías de la web, incluidas en la app para que funcionen sin conexión. */
+@import '@fontsource/dm-sans/400.css';
+@import '@fontsource/dm-sans/500.css';
+@import '@fontsource/dm-sans/700.css';
+@import '@fontsource/playfair-display/600.css';
+
+h1,
+h2,
+.titulo {
+  font-family: var(--esibuy-font-titulos);
+  font-weight: 600;
+  color: var(--ion-color-tertiary);
+}
+
+/* Formularios centrados y legibles también en tablet. */
+.contenedor-formulario {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.mensaje {
+  display: block;
+  margin: 8px 4px 16px;
+}
+
+/* Zonas táctiles de al menos 48 px (accesibilidad). */
+ion-button {
+  min-height: 48px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+}
+
+ion-note.ayuda {
+  display: block;
+  padding: 4px 16px 0;
+  font-size: 0.85rem;
+}
+
+.enlaces-acceso {
+  margin-top: 8px;
+  text-align: center;
+}
+
+/* Lista de requisitos de contraseña. */
+.requisitos {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0 8px;
+}
+
+.requisitos li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--ion-color-medium);
+}
+
+.requisitos li.cumplido {
+  color: var(--ion-color-success);
+}
+
+/* Texto solo para lectores de pantalla. */
+.lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Foto de perfil (registro y perfil). */
+.foto-perfil {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.foto-perfil ion-avatar {
+  width: 96px;
+  height: 96px;
+  border: 3px solid var(--ion-color-primary);
+  background: #ffffff;
+}

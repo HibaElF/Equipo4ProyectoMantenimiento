@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   IonButton,
   IonContent,
@@ -24,6 +24,7 @@ type Paso = 'credenciales' | 'segundo-factor' | 'tercer-factor';
   selector: 'app-login',
   imports: [
     FormsModule,
+    RouterLink,
     IonButton,
     IonContent,
     IonHeader,

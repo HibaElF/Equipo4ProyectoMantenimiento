@@ -1,10 +1,84 @@
-/**
- * Ionic Dark Theme
- * -----------------------------------------------------
- * For more info, please see:
- * https://ionicframework.com/docs/theming/dark-mode
+/*
+ * Tema de ESIBuy: mismos colores y tipografías que la web (frontend/src/styles.css).
+ * La app usa siempre el tema claro, igual que la web.
  */
 
-/* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import '@ionic/angular/css/palettes/dark.system.css';
+:root {
+  --ion-font-family: 'DM Sans', 'Segoe UI', Arial, sans-serif;
+  --esibuy-font-titulos: 'Playfair Display', Georgia, serif;
+
+  --ion-background-color: #f4f7f8;
+  --ion-background-color-rgb: 244, 247, 248;
+  --ion-text-color: #173042;
+  --ion-text-color-rgb: 23, 48, 66;
+  --ion-item-background: #ffffff;
+  --ion-card-background: #ffffff;
+  --ion-toolbar-background: #255b4d;
+  --ion-toolbar-color: #ffffff;
+  --ion-tab-bar-background: #ffffff;
+  --ion-border-color: #d9e3e6;
+
+  --ion-color-primary: #255b4d;
+  --ion-color-primary-rgb: 37, 91, 77;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #215044;
+  --ion-color-primary-tint: #3b6b5f;
+
+  --ion-color-secondary: #b9553e;
+  --ion-color-secondary-rgb: 185, 85, 62;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-contrast-rgb: 255, 255, 255;
+  --ion-color-secondary-shade: #a34b37;
+  --ion-color-secondary-tint: #c06651;
+
+  --ion-color-tertiary: #173042;
+  --ion-color-tertiary-rgb: 23, 48, 66;
+  --ion-color-tertiary-contrast: #ffffff;
+  --ion-color-tertiary-contrast-rgb: 255, 255, 255;
+  --ion-color-tertiary-shade: #142a3a;
+  --ion-color-tertiary-tint: #2e4555;
+
+  --ion-color-success: #255b4d;
+  --ion-color-success-rgb: 37, 91, 77;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-contrast-rgb: 255, 255, 255;
+  --ion-color-success-shade: #215044;
+  --ion-color-success-tint: #3b6b5f;
+
+  --ion-color-warning: #e3b24d;
+  --ion-color-warning-rgb: 227, 178, 77;
+  --ion-color-warning-contrast: #173042;
+  --ion-color-warning-contrast-rgb: 23, 48, 66;
+  --ion-color-warning-shade: #c89d44;
+  --ion-color-warning-tint: #e6ba5f;
+
+  --ion-color-danger: #a63120;
+  --ion-color-danger-rgb: 166, 49, 32;
+  --ion-color-danger-contrast: #ffffff;
+  --ion-color-danger-contrast-rgb: 255, 255, 255;
+  --ion-color-danger-shade: #922b1c;
+  --ion-color-danger-tint: #af4636;
+
+  --ion-color-light: #f4f7f8;
+  --ion-color-light-rgb: 244, 247, 248;
+  --ion-color-light-contrast: #173042;
+  --ion-color-light-contrast-rgb: 23, 48, 66;
+  --ion-color-light-shade: #d7d9da;
+  --ion-color-light-tint: #f5f8f9;
+
+  --ion-color-medium: #536a75;
+  --ion-color-medium-rgb: 83, 106, 117;
+  --ion-color-medium-contrast: #ffffff;
+  --ion-color-medium-contrast-rgb: 255, 255, 255;
+  --ion-color-medium-shade: #495d67;
+  --ion-color-medium-tint: #647983;
+
+  --ion-color-dark: #173042;
+  --ion-color-dark-rgb: 23, 48, 66;
+  --ion-color-dark-contrast: #ffffff;
+  --ion-color-dark-contrast-rgb: 255, 255, 255;
+  --ion-color-dark-shade: #142a3a;
+  --ion-color-dark-tint: #2e4555;
+
+}

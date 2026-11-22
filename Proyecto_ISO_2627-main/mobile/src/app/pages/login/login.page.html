@@ -5,7 +5,7 @@
 </ion-header>
 
 <ion-content class="ion-padding">
-  <div class="contenedor">
+  <div class="contenedor-formulario">
     <h1>Iniciar sesión</h1>
 
     <form (ngSubmit)="enviar()" novalidate>
@@ -60,7 +60,7 @@
         <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
       }
 
-      <ion-button type="submit" expand="block" [disabled]="cargando()">
+      <ion-button type="submit" expand="block" color="secondary" [disabled]="cargando()">
         @if (cargando()) {
           <ion-spinner name="crescent" aria-label="Cargando"></ion-spinner>
         } @else {
@@ -79,5 +79,13 @@
         </ion-button>
       }
     </form>
+
+    @if (paso() === 'credenciales') {
+      <div class="enlaces-acceso">
+        <ion-button fill="clear" routerLink="/recuperar-contrasena">¿Has olvidado tu contraseña?</ion-button>
+        <p>¿No tienes cuenta?</p>
+        <ion-button fill="outline" expand="block" routerLink="/registro">Crear una cuenta</ion-button>
+      </div>
+    }
   </div>
 </ion-content>
