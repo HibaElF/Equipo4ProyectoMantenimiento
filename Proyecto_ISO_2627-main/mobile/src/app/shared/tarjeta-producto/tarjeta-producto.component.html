@@ -1,0 +1,80 @@
+<article class="tarjeta" [class.bloqueada]="bloqueado()">
+  <button
+    type="button"
+    class="zona-principal"
+    [disabled]="bloqueado()"
+    [attr.aria-label]="bloqueado() ? producto().nombre + ', solo para clientes Premium' : 'Ver ' + producto().nombre"
+    (click)="pulsarTarjeta()"
+  >
+    <div class="marco-imagen">
+      @if (imagen(); as src) {
+        <img [src]="src" [alt]="" loading="lazy" (error)="marcarImagenFallida()" />
+      } @else {
+        <ion-icon name="image-outline" class="sin-imagen" aria-hidden="true"></ion-icon>
+      }
+      <div class="distintivos">
+        @if (producto().soloPremium) {
+          <span class="distintivo premium">Premium</span>
+        }
+        @if (rebaja() > 0) {
+          <span class="distintivo oferta">-{{ rebaja() }}%</span>
+        }
+      </div>
+      @if (agotado()) {
+        <span class="estado-agotado">Agotado</span>
+      }
+      @if (bloqueado()) {
+        <div class="capa-bloqueo">
+          <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+          <span>Solo Premium</span>
+        </div>
+      }
+    </div>
+
+    <div class="datos">
+      <h3 class="nombre">{{ producto().nombre }}</h3>
+      <p class="categoria">{{ producto().categoria }}</p>
+      <p class="precios">
+        @if (producto().precio !== null) {
+          <span class="precio">{{ producto().precio | number: '1.2-2' }} €</span>
+          @if (rebaja() > 0) {
+            <span class="precio-anterior">
+              <span class="lector">Antes:</span>{{ producto().precioOriginal | number: '1.2-2' }} €
+            </span>
+          }
+        } @else {
+          <span class="sin-precio">Precio no disponible</span>
+        }
+      </p>
+    </div>
+  </button>
+
+  <button
+    type="button"
+    class="boton-favorito"
+    [class.activo]="esFavorito()"
+    [disabled]="!favoritosDisponibles() || cambiandoFavorito() || bloquearAcciones()"
+    [attr.aria-pressed]="esFavorito()"
+    [attr.aria-label]="(esFavorito() ? 'Quitar ' : 'Guardar ') + producto().nombre + (esFavorito() ? ' de favoritos' : ' en favoritos')"
+    (click)="pulsarFavorito($event)"
+  >
+    <ion-icon [name]="esFavorito() ? 'heart' : 'heart-outline'" aria-hidden="true"></ion-icon>
+  </button>
+
+  <ion-button
+    class="boton-carrito"
+    expand="block"
+    size="small"
+    color="secondary"
+    [disabled]="!puedeAnadir() || anadiendo() || bloquearAcciones()"
+    [attr.aria-label]="'Añadir ' + producto().nombre + ' al carrito'"
+    (click)="pulsarCarrito($event)"
+  >
+    @if (anadiendo()) {
+      <ion-spinner name="crescent" aria-label="Añadiendo"></ion-spinner>
+    } @else {
+      <ion-icon name="cart-outline" slot="start" aria-hidden="true"></ion-icon>
+      {{ agotado() ? 'Agotado' : 'Añadir' }}
+    }
+  </ion-button>
+</article>

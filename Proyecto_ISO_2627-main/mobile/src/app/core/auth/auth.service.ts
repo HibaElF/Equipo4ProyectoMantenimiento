@@ -57,11 +57,17 @@ export class AuthService {
 
   /** Pide un token CSRF y lo envía en la petición POST, como hace la web. */
   postConCsrf<T>(ruta: string, cuerpo: unknown): Observable<T> {
+    return this.peticionConCsrf<T>('POST', ruta, cuerpo);
+  }
+
+  /** Cualquier petición que modifica datos (POST, PUT, PATCH, DELETE) con su token CSRF. */
+  peticionConCsrf<T>(metodo: 'POST' | 'PUT' | 'PATCH' | 'DELETE', ruta: string, cuerpo?: unknown): Observable<T> {
     return this.http
       .get<RespuestaTokenCsrf>(`${this.api}/usuarios/csrf`, { withCredentials: true })
       .pipe(
         switchMap(({ token }) =>
-          this.http.post<T>(`${this.api}${ruta}`, cuerpo, {
+          this.http.request<T>(metodo, `${this.api}${ruta}`, {
+            body: cuerpo ?? undefined,
             withCredentials: true,
             headers: new HttpHeaders({ 'X-XSRF-TOKEN': token })
           })

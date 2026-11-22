@@ -1,7 +1,18 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { cartOutline, heartOutline, personOutline, receiptOutline, storefrontOutline } from 'ionicons/icons';
+import {
+  cart,
+  cartOutline,
+  heart,
+  heartOutline,
+  person,
+  personOutline,
+  receipt,
+  receiptOutline,
+  storefront,
+  storefrontOutline
+} from 'ionicons/icons';
 
 /**
  * Navegación principal del cliente: las mismas secciones que la cabecera de la web
@@ -14,7 +25,33 @@ import { cartOutline, heartOutline, personOutline, receiptOutline, storefrontOut
   styleUrl: './tabs.page.css'
 })
 export class TabsPage {
+  /** Pestaña seleccionada: su icono se muestra relleno (no se depende solo del color). */
+  readonly activa = signal('tienda');
+
+  readonly pestanas = [
+    { tab: 'tienda', texto: 'Tienda', icono: 'storefront' },
+    { tab: 'favoritos', texto: 'Favoritos', icono: 'heart' },
+    { tab: 'carrito', texto: 'Carrito', icono: 'cart' },
+    { tab: 'pedidos', texto: 'Pedidos', icono: 'receipt' },
+    { tab: 'perfil', texto: 'Perfil', icono: 'person' }
+  ];
+
   constructor() {
-    addIcons({ storefrontOutline, heartOutline, cartOutline, receiptOutline, personOutline });
+    addIcons({
+      storefront,
+      storefrontOutline,
+      heart,
+      heartOutline,
+      cart,
+      cartOutline,
+      receipt,
+      receiptOutline,
+      person,
+      personOutline
+    });
+  }
+
+  cambio(evento: { tab: string }): void {
+    this.activa.set(evento.tab);
   }
 }

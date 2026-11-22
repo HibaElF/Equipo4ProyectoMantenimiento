@@ -28,6 +28,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/tienda/tienda.page').then((m) => m.TiendaPage)
       },
       {
+        // La ficha se abre dentro de la pestaña Tienda.
+        path: 'tienda/producto/:id',
+        loadComponent: () => import('./pages/producto/producto.page').then((m) => m.ProductoPage)
+      },
+      {
         path: 'favoritos',
         loadComponent: () => import('./pages/favoritos/favoritos.page').then((m) => m.FavoritosPage)
       },

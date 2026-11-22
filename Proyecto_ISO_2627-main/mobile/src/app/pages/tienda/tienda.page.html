@@ -1,0 +1,184 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Catálogo</ion-title>
+  </ion-toolbar>
+  <ion-toolbar class="barra-busqueda">
+    <ion-searchbar
+      placeholder="Buscar productos"
+      [value]="busqueda()"
+      (ionInput)="buscar($event.detail.value)"
+      (ionClear)="buscar('')"
+      inputmode="search"
+      aria-label="Buscar por nombre"
+    ></ion-searchbar>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <!-- Categorías deslizables y botón de filtros -->
+  <div class="barra-filtros" role="group" aria-label="Filtrar por categoría">
+    <ion-chip
+      class="chip-filtros"
+      [outline]="numeroFiltrosPanel() === 0"
+      [color]="numeroFiltrosPanel() > 0 ? 'primary' : undefined"
+      (click)="abrirFiltros()"
+      [attr.aria-label]="'Más filtros' + (numeroFiltrosPanel() ? ', ' + numeroFiltrosPanel() + ' activos' : '')"
+      role="button"
+    >
+      <ion-icon name="options-outline" aria-hidden="true"></ion-icon>
+      <ion-label>Filtros{{ numeroFiltrosPanel() ? ' (' + numeroFiltrosPanel() + ')' : '' }}</ion-label>
+    </ion-chip>
+    <ion-chip
+      [outline]="categoria() !== ''"
+      [color]="categoria() === '' ? 'primary' : undefined"
+      (click)="categoria() !== '' && elegirCategoria(categoria())"
+      [attr.aria-pressed]="categoria() === ''"
+      role="button"
+    >
+      <ion-label>Todas</ion-label>
+    </ion-chip>
+    @for (cat of categorias(); track cat) {
+      <ion-chip
+        [outline]="categoria() !== cat"
+        [color]="categoria() === cat ? 'primary' : undefined"
+        (click)="elegirCategoria(cat)"
+        [attr.aria-pressed]="categoria() === cat"
+        role="button"
+      >
+        <ion-label>{{ cat }}</ion-label>
+      </ion-chip>
+    }
+  </div>
+
+  <div class="contenido">
+    @if (cargando() && productos().length === 0) {
+      <div class="rejilla" aria-busy="true" aria-label="Cargando productos">
+        @for (e of esqueletos; track $index) {
+          <div class="esqueleto">
+            <ion-skeleton-text [animated]="true" class="esqueleto-imagen"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 80%"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 50%"></ion-skeleton-text>
+          </div>
+        }
+      </div>
+    } @else if (error()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargarProductos()">
+          <ion-icon name="refresh-outline" slot="start" aria-hidden="true"></ion-icon>
+          Reintentar
+        </ion-button>
+      </div>
+    } @else if (productos().length === 0 && !hayFiltros()) {
+      <div class="estado">
+        <p class="estado-titulo">Todavía no hay productos disponibles.</p>
+        <p>Vuelve más tarde: los vendedores añaden productos nuevos cada día.</p>
+      </div>
+    } @else if (productosMostrados().length === 0) {
+      <div class="estado">
+        <p>
+          {{
+            soloFavoritos()
+              ? 'No tienes productos favoritos que coincidan con los filtros.'
+              : 'No se encontraron productos con esos filtros.'
+          }}
+        </p>
+        <ion-button fill="outline" (click)="limpiarFiltros()">Limpiar filtros</ion-button>
+      </div>
+    } @else {
+      <p class="resumen" aria-live="polite">
+        {{ productosMostrados().length }} {{ productosMostrados().length === 1 ? 'producto' : 'productos' }}
+        @if (hayFiltros()) {
+          · <button type="button" class="enlace" (click)="limpiarFiltros()">Limpiar filtros</button>
+        }
+      </p>
+      <ul class="rejilla" aria-label="Productos">
+        @for (producto of productosMostrados(); track producto.id) {
+          <li>
+            <app-tarjeta-producto
+              [producto]="producto"
+              [esFavorito]="idsFavoritos().has(producto.id)"
+              [favoritosDisponibles]="favoritosDisponibles()"
+              [cambiandoFavorito]="cambiandoFavorito() === producto.id"
+              [anadiendo]="anadiendo() === producto.id"
+              [bloquearAcciones]="anadiendo() !== null && anadiendo() !== producto.id"
+              (abrir)="abrirProducto($event)"
+              (alternarFavorito)="alternarFavorito($event)"
+              (anadirAlCarrito)="anadirAlCarrito($event)"
+            ></app-tarjeta-producto>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+
+  <!-- Panel de filtros (precio, disponibilidad y solo favoritos, como en la web) -->
+  <ion-modal
+    [isOpen]="panelFiltros()"
+    (didDismiss)="panelFiltros.set(false)"
+    [initialBreakpoint]="0.75"
+    [breakpoints]="[0, 0.75, 1]"
+  >
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Filtros</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="panelFiltros.set(false)" aria-label="Cerrar filtros">
+              <ion-icon name="close-outline" slot="icon-only" aria-hidden="true"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <ion-list lines="full">
+          <ion-item>
+            <ion-select label="Categoría" labelPlacement="stacked" interface="action-sheet"
+              [value]="categoria()" (ionChange)="categoria.set($event.detail.value)" cancelText="Cancelar">
+              <ion-select-option value="">Todas</ion-select-option>
+              @for (cat of categorias(); track cat) {
+                <ion-select-option [value]="cat">{{ cat }}</ion-select-option>
+              }
+            </ion-select>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Precio mínimo (€)" labelPlacement="stacked" type="number" inputmode="decimal"
+              min="0" step="0.01" [(ngModel)]="borradorMinimo"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Precio máximo (€)" labelPlacement="stacked" type="number" inputmode="decimal"
+              min="0" step="0.01" [(ngModel)]="borradorMaximo"></ion-input>
+          </ion-item>
+          <ion-item lines="none">
+            <ion-label>Disponibilidad</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-segment [(ngModel)]="borradorDisponibilidad" aria-label="Disponibilidad">
+              <ion-segment-button value="todos"><ion-label>Todos</ion-label></ion-segment-button>
+              <ion-segment-button value="disponibles"><ion-label>Con stock</ion-label></ion-segment-button>
+              <ion-segment-button value="agotados"><ion-label>Agotados</ion-label></ion-segment-button>
+            </ion-segment>
+          </ion-item>
+          <ion-item>
+            <ion-toggle [(ngModel)]="borradorSoloFavoritos" [disabled]="!favoritosDisponibles()" justify="space-between">
+              Solo favoritos
+            </ion-toggle>
+          </ion-item>
+        </ion-list>
+
+        @if (errorFiltros()) {
+          <ion-text color="danger" role="alert"><p class="mensaje">{{ errorFiltros() }}</p></ion-text>
+        }
+
+        <ion-button expand="block" color="secondary" (click)="aplicarFiltros()">Aplicar filtros</ion-button>
+        <ion-button expand="block" fill="clear" [disabled]="!hayFiltros()" (click)="limpiarFiltros()">
+          Limpiar filtros
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>
