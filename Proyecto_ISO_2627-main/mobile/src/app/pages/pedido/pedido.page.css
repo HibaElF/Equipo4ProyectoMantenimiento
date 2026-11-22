@@ -1,0 +1,226 @@
+.contenido {
+  padding: 10px 10px 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.tarjeta {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.tarjeta h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.importe {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--ion-color-primary);
+}
+
+.dato {
+  margin: 4px 0 0;
+  font-size: 0.86rem;
+  color: var(--ion-color-medium);
+}
+
+.ref {
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+ion-button {
+  margin: 0 0 12px;
+}
+
+/* Seguimiento vertical */
+.seguimiento {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.seguimiento li {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding-bottom: 14px;
+  color: var(--ion-color-medium);
+}
+
+.seguimiento li:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 2px;
+  background: var(--ion-border-color);
+}
+
+.seguimiento li.hecho:not(:last-child)::before {
+  background: var(--ion-color-primary);
+}
+
+.seguimiento ion-icon {
+  flex-shrink: 0;
+  font-size: 24px;
+  background: #ffffff;
+  z-index: 1;
+}
+
+.seguimiento li.hecho {
+  color: var(--ion-text-color);
+}
+
+.seguimiento li.hecho ion-icon {
+  color: var(--ion-color-primary);
+}
+
+.seguimiento li.cancelado,
+.seguimiento li.cancelado ion-icon {
+  color: var(--ion-color-danger);
+}
+
+.seguimiento li.actual .paso {
+  font-weight: 800;
+}
+
+.paso {
+  display: block;
+  font-weight: 600;
+}
+
+.fecha {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+}
+
+/* Productos */
+.productos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.productos li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ion-border-color);
+}
+
+.productos .nombre {
+  flex: 1;
+  min-width: 0;
+}
+
+.total {
+  padding-top: 10px;
+  font-size: 1.05rem;
+}
+
+.total strong {
+  color: var(--ion-color-primary);
+}
+
+.valoracion {
+  margin-top: 6px;
+}
+
+.valoracion ion-button {
+  margin: 0;
+}
+
+.valorada {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ion-color-success);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.nombre-dir {
+  margin: 0;
+  font-weight: 700;
+}
+
+.estado {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.esqueleto {
+  height: 90px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+}
+
+.esqueleto.alto {
+  height: 140px;
+}
+
+/* Valorar */
+.producto-valorar {
+  margin: 0 0 8px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.selector-estrellas {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.selector-estrellas button {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: none;
+  color: #c98a1b;
+  font-size: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.selector-estrellas button:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+}
+
+.texto-puntuacion {
+  margin: 4px 0 12px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--ion-color-tertiary);
+}
+
+.enviar {
+  margin-top: 16px;
+}
+
+.lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
