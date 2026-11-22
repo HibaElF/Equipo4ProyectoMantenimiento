@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   IonButton,
   IonContent,
@@ -44,6 +44,7 @@ type Paso = 'credenciales' | 'segundo-factor' | 'tercer-factor';
 export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly paso = signal<Paso>('credenciales');
   readonly cargando = signal(false);
@@ -53,6 +54,13 @@ export class LoginPage {
   email = '';
   contrasena = '';
   codigo = '';
+
+  constructor() {
+    // Aviso cuando se llega aquí porque la sesión ha caducado (igual que la web).
+    if (this.route.snapshot.queryParamMap.get('motivo') === 'sesion-expirada') {
+      this.error.set('Tu sesión ya no es válida. Vuelve a iniciar sesión.');
+    }
+  }
 
   enviar(): void {
     this.error.set('');
@@ -152,7 +160,7 @@ export class LoginPage {
       return;
     }
     this.contrasena = '';
-    this.router.navigateByUrl('/inicio', { replaceUrl: true });
+    this.router.navigateByUrl('/tienda', { replaceUrl: true });
   }
 
   private mostrarError(e: HttpErrorResponse, porDefecto?: string): void {

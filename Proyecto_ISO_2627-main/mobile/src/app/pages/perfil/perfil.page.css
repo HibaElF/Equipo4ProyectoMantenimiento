@@ -1,0 +1,25 @@
+.cabecera-perfil {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 8px;
+}
+
+.avatar {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 3px solid var(--ion-color-primary);
+  background: #ffffff;
+}
+
+.correo {
+  margin: 12px 0 0;
+  font-weight: 600;
+  word-break: break-all;
+  text-align: center;
+}
+
+ion-item ion-icon[slot='start'] {
+  color: var(--ion-color-primary);
+}

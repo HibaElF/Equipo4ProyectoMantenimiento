@@ -2,7 +2,6 @@ import { Routes } from '@angular/router';
 import { clienteGuard } from './core/auth/cliente.guard';
 
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'inicio' },
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login.page').then((m) => m.LoginPage)
@@ -18,9 +17,33 @@ export const routes: Routes = [
       import('./pages/recuperar-contrasena/recuperar-contrasena.page').then((m) => m.RecuperarContrasenaPage)
   },
   {
-    path: 'inicio',
+    // Zona del cliente con las pestañas inferiores. Solo para clientes con sesión.
+    path: '',
     canActivate: [clienteGuard],
-    loadComponent: () => import('./pages/inicio/inicio.page').then((m) => m.InicioPage)
+    loadComponent: () => import('./pages/tabs/tabs.page').then((m) => m.TabsPage),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'tienda' },
+      {
+        path: 'tienda',
+        loadComponent: () => import('./pages/tienda/tienda.page').then((m) => m.TiendaPage)
+      },
+      {
+        path: 'favoritos',
+        loadComponent: () => import('./pages/favoritos/favoritos.page').then((m) => m.FavoritosPage)
+      },
+      {
+        path: 'carrito',
+        loadComponent: () => import('./pages/carrito/carrito.page').then((m) => m.CarritoPage)
+      },
+      {
+        path: 'pedidos',
+        loadComponent: () => import('./pages/pedidos/pedidos.page').then((m) => m.PedidosPage)
+      },
+      {
+        path: 'perfil',
+        loadComponent: () => import('./pages/perfil/perfil.page').then((m) => m.PerfilPage)
+      }
+    ]
   },
-  { path: '**', redirectTo: 'inicio' }
+  { path: '**', redirectTo: 'tienda' }
 ];

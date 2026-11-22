@@ -1,0 +1,46 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Mi perfil</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="cabecera-perfil">
+    <img src="avatars/cliente.svg" alt="" class="avatar" />
+    <p class="correo">{{ email() }}</p>
+  </div>
+
+  <ion-list lines="full" inset="true">
+    <ion-list-header><ion-label>Mi cuenta</ion-label></ion-list-header>
+    @for (opcion of cuenta; track opcion.texto) {
+      <ion-item [disabled]="true">
+        <ion-icon [name]="opcion.icono" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>{{ opcion.texto }}</ion-label>
+        <ion-note slot="end">Próximamente</ion-note>
+      </ion-item>
+    }
+  </ion-list>
+
+  <ion-list lines="full" inset="true">
+    <ion-list-header><ion-label>Compras</ion-label></ion-list-header>
+    @for (opcion of compras; track opcion.texto) {
+      <ion-item [disabled]="true">
+        <ion-icon [name]="opcion.icono" slot="start" aria-hidden="true"></ion-icon>
+        <ion-label>{{ opcion.texto }}</ion-label>
+        <ion-note slot="end">Próximamente</ion-note>
+      </ion-item>
+    }
+  </ion-list>
+
+  <ion-list lines="full" inset="true">
+    <ion-item button (click)="confirmarCierreSesion()" detail="false">
+      <ion-icon name="log-out-outline" slot="start" color="danger" aria-hidden="true"></ion-icon>
+      <ion-label color="danger">Cerrar sesión</ion-label>
+    </ion-item>
+    <ion-item [disabled]="true">
+      <ion-icon [name]="baja.icono" slot="start" color="danger" aria-hidden="true"></ion-icon>
+      <ion-label color="danger">{{ baja.texto }}</ion-label>
+      <ion-note slot="end">Próximamente</ion-note>
+    </ion-item>
+  </ion-list>
+</ion-content>
