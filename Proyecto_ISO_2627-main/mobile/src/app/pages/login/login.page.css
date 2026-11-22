@@ -1,0 +1,22 @@
+.contenedor {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin: 16px 0 24px;
+  font-size: 1.6rem;
+}
+
+ion-list {
+  margin-bottom: 16px;
+}
+
+.mensaje {
+  display: block;
+  margin: 8px 4px 16px;
+}
+
+ion-button {
+  min-height: 48px;
+}
