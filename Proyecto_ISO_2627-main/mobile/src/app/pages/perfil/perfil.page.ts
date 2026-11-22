@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   AlertController,
   IonContent,
@@ -29,6 +29,8 @@ import { AuthService } from '../../core/auth/auth.service';
 interface OpcionPerfil {
   texto: string;
   icono: string;
+  /** Pantalla a la que lleva; sin ruta, todavía no está disponible. */
+  ruta?: string;
 }
 
 /**
@@ -38,6 +40,7 @@ interface OpcionPerfil {
 @Component({
   selector: 'app-perfil',
   imports: [
+    RouterLink,
     IonContent,
     IonHeader,
     IonIcon,
@@ -65,8 +68,8 @@ export class PerfilPage implements OnInit {
     { texto: 'Seguridad y segundo factor', icono: 'shield-checkmark-outline' }
   ];
   readonly compras: OpcionPerfil[] = [
-    { texto: 'Mis direcciones', icono: 'home-outline' },
-    { texto: 'Métodos de pago', icono: 'card-outline' },
+    { texto: 'Mis direcciones', icono: 'home-outline', ruta: '/perfil/direcciones' },
+    { texto: 'Métodos de pago', icono: 'card-outline', ruta: '/perfil/metodos-pago' },
     { texto: 'Mis listas', icono: 'list-outline' }
   ];
   readonly baja: OpcionPerfil = { texto: 'Darme de baja', icono: 'trash-outline' };

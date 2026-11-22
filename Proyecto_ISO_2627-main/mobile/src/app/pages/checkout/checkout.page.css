@@ -236,3 +236,12 @@
   font-size: 0.8rem;
   text-align: center;
 }
+
+.anadir {
+  --color: var(--ion-color-primary);
+  font-weight: 700;
+}
+
+.anadir ion-icon {
+  color: var(--ion-color-primary);
+}

@@ -1,0 +1,66 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ direccion ? 'Modificar dirección' : 'Nueva dirección' }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="cerrar()" aria-label="Cerrar sin guardar">
+        <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate class="contenedor-formulario">
+    <ion-list lines="full">
+      <ion-item>
+        <ion-input label="Nombre de la dirección" labelPlacement="stacked" formControlName="nombre" maxlength="50"
+          helperText="Por ejemplo: Casa, Trabajo…" [errorText]="errorDe('nombre')"
+          [class.ion-invalid]="!!errorDe('nombre')" [class.ion-touched]="!!errorDe('nombre')"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input label="Calle" labelPlacement="stacked" formControlName="calle" maxlength="150" autocomplete="address-line1"
+          [errorText]="errorDe('calle')" [class.ion-invalid]="!!errorDe('calle')" [class.ion-touched]="!!errorDe('calle')"></ion-input>
+      </ion-item>
+      <div class="fila-campos">
+        <ion-item>
+          <ion-input label="Número" labelPlacement="stacked" formControlName="numero" maxlength="10"
+            [errorText]="errorDe('numero')" [class.ion-invalid]="!!errorDe('numero')" [class.ion-touched]="!!errorDe('numero')"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input label="Portal" placeholder="Opcional" labelPlacement="stacked" formControlName="portal" maxlength="10"
+            [errorText]="errorDe('portal')" [class.ion-invalid]="!!errorDe('portal')" [class.ion-touched]="!!errorDe('portal')"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-input label="Piso" placeholder="Opcional" labelPlacement="stacked" formControlName="piso" maxlength="10"
+            [errorText]="errorDe('piso')" [class.ion-invalid]="!!errorDe('piso')" [class.ion-touched]="!!errorDe('piso')"></ion-input>
+        </ion-item>
+      </div>
+      <ion-item>
+        <ion-input label="Código postal" labelPlacement="stacked" formControlName="codigoPostal" inputmode="numeric"
+          maxlength="5" autocomplete="postal-code" [errorText]="errorDe('codigoPostal')"
+          [class.ion-invalid]="!!errorDe('codigoPostal')" [class.ion-touched]="!!errorDe('codigoPostal')"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input label="Ciudad" labelPlacement="stacked" formControlName="ciudad" maxlength="80" autocomplete="address-level2"
+          [errorText]="errorDe('ciudad')" [class.ion-invalid]="!!errorDe('ciudad')" [class.ion-touched]="!!errorDe('ciudad')"></ion-input>
+      </ion-item>
+      <ion-item>
+        <ion-input label="Provincia" labelPlacement="stacked" formControlName="provincia" maxlength="80" autocomplete="address-level1"
+          [errorText]="errorDe('provincia')" [class.ion-invalid]="!!errorDe('provincia')" [class.ion-touched]="!!errorDe('provincia')"></ion-input>
+      </ion-item>
+    </ion-list>
+
+    @if (error()) {
+      <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+    }
+
+    <ion-button type="submit" expand="block" color="secondary" [disabled]="guardando()">
+      @if (guardando()) {
+        <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+      } @else {
+        Guardar dirección
+      }
+    </ion-button>
+    <ion-button expand="block" fill="clear" type="button" (click)="cerrar()">Cancelar</ion-button>
+  </form>
+</ion-content>

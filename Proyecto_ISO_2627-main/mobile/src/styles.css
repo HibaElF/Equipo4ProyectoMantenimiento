@@ -92,3 +92,33 @@ ion-alert .boton-peligro {
   color: var(--ion-color-danger) !important;
   font-weight: 700;
 }
+
+/* Varios campos cortos en una fila (número, portal, piso). */
+.fila-campos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fila-campos.dos {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.nota-pago {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #e8f2ed;
+  color: #255b4d;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+ion-segment-button {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+  min-width: 0;
+}

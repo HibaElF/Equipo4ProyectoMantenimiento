@@ -51,6 +51,14 @@ export const routes: Routes = [
       {
         path: 'perfil',
         loadComponent: () => import('./pages/perfil/perfil.page').then((m) => m.PerfilPage)
+      },
+      {
+        path: 'perfil/direcciones',
+        loadComponent: () => import('./pages/direcciones/direcciones.page').then((m) => m.DireccionesPage)
+      },
+      {
+        path: 'perfil/metodos-pago',
+        loadComponent: () => import('./pages/metodos-pago/metodos-pago.page').then((m) => m.MetodosPagoPage)
       }
     ]
   },

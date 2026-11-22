@@ -125,9 +125,7 @@
             </ion-list-header>
             @if (direcciones().length === 0) {
               <ion-item lines="none">
-                <ion-note>
-                  No tienes direcciones registradas. Podrás añadirlas en <strong>Perfil → Mis direcciones</strong>.
-                </ion-note>
+                <ion-note>No tienes direcciones registradas.</ion-note>
               </ion-item>
             } @else {
               <ion-radio-group [ngModel]="direccionId()" (ngModelChange)="direccionId.set($event)" aria-label="Dirección de envío">
@@ -141,6 +139,10 @@
                 }
               </ion-radio-group>
             }
+            <ion-item lines="none" button="true" detail="false" (click)="anadirDireccion()" class="anadir">
+              <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+              <ion-label>Añadir dirección</ion-label>
+            </ion-item>
           </ion-list>
 
           <!-- Método de pago -->
@@ -153,9 +155,7 @@
             </ion-list-header>
             @if (metodos().length === 0) {
               <ion-item lines="none">
-                <ion-note>
-                  No tienes métodos de pago registrados. Podrás añadirlos en <strong>Perfil → Métodos de pago</strong>.
-                </ion-note>
+                <ion-note>No tienes métodos de pago registrados.</ion-note>
               </ion-item>
             } @else {
               <ion-radio-group [ngModel]="metodoPagoId()" (ngModelChange)="metodoPagoId.set($event)" aria-label="Método de pago">
@@ -169,6 +169,10 @@
                 }
               </ion-radio-group>
             }
+            <ion-item lines="none" button="true" detail="false" (click)="anadirMetodo()" class="anadir">
+              <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+              <ion-label>Añadir método de pago</ion-label>
+            </ion-item>
           </ion-list>
         }
       }

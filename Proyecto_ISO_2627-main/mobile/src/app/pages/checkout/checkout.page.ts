@@ -23,10 +23,18 @@ import {
   IonText,
   IonTitle,
   IonToolbar,
+  ModalController,
   NavController
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { alertCircleOutline, cardOutline, checkmarkCircle, homeOutline, warningOutline } from 'ionicons/icons';
+import {
+  addOutline,
+  alertCircleOutline,
+  cardOutline,
+  checkmarkCircle,
+  homeOutline,
+  warningOutline
+} from 'ionicons/icons';
 import { forkJoin } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { Carrito } from '../../core/models/carrito';
@@ -37,6 +45,8 @@ import { CarritoService } from '../../core/services/carrito.service';
 import { CheckoutService, mensajeErrorCheckout } from '../../core/services/checkout.service';
 import { DireccionesService } from '../../core/services/direcciones.service';
 import { PagosService } from '../../core/services/pagos.service';
+import { FormularioDireccionComponent } from '../../shared/formulario-direccion/formulario-direccion.component';
+import { FormularioMetodoPagoComponent } from '../../shared/formulario-metodo-pago/formulario-metodo-pago.component';
 
 /** Confirmar compra: mismo flujo que la web (dirección, método de pago, pago simulado y confirmación). */
 @Component({
@@ -76,6 +86,7 @@ export class CheckoutPage {
   private readonly checkout = inject(CheckoutService);
   private readonly router = inject(Router);
   private readonly nav = inject(NavController);
+  private readonly modales = inject(ModalController);
 
   private readonly email = signal('');
   readonly carrito = signal<Carrito | null>(null);
@@ -128,7 +139,7 @@ export class CheckoutPage {
   );
 
   constructor() {
-    addIcons({ alertCircleOutline, cardOutline, checkmarkCircle, homeOutline, warningOutline });
+    addIcons({ addOutline, alertCircleOutline, cardOutline, checkmarkCircle, homeOutline, warningOutline });
     this.cargar();
   }
 
@@ -238,6 +249,28 @@ export class CheckoutPage {
    */
   ionViewWillEnter(): void {
     if (this.compra()) this.nav.navigateBack('/carrito');
+  }
+
+  /** Añade una dirección sin salir de la compra y la deja elegida. */
+  async anadirDireccion(): Promise<void> {
+    const modal = await this.modales.create({ component: FormularioDireccionComponent });
+    await modal.present();
+    const { data, role } = await modal.onWillDismiss<Direccion>();
+    if (role === 'guardado' && data) {
+      this.direcciones.update((ds) => [...ds, data]);
+      this.direccionId.set(data.id);
+    }
+  }
+
+  /** Añade un método de pago sin salir de la compra y lo deja elegido. */
+  async anadirMetodo(): Promise<void> {
+    const modal = await this.modales.create({ component: FormularioMetodoPagoComponent });
+    await modal.present();
+    const { data, role } = await modal.onWillDismiss<MetodoPago>();
+    if (role === 'guardado' && data) {
+      this.metodos.update((ms) => [...ms, data]);
+      this.metodoPagoId.set(data.id);
+    }
   }
 
   direccionDe(compra: Compra): Direccion | null {
