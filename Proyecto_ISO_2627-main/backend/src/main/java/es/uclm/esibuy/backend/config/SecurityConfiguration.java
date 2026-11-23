@@ -22,6 +22,7 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -39,6 +40,21 @@ import es.uclm.esibuy.backend.security.Seudonimizador;
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfiguration {
+
+        // Política de contenido: el frontend de Angular se sirve desde el propio backend (mismo origen).
+        // style 'unsafe-inline' lo necesita Angular para los estilos de componente; img data: es el QR del
+        // TOTP y https: las imágenes de perfil externas; fonts.gstatic.com sirve los ficheros de la tipografía.
+        static final String POLITICA_CONTENIDO = "default-src 'self'; "
+                        + "script-src 'self'; "
+                        + "style-src 'self' 'unsafe-inline'; "
+                        + "font-src 'self' https://fonts.gstatic.com; "
+                        + "img-src 'self' data: https:; "
+                        + "connect-src 'self'; "
+                        + "object-src 'none'; "
+                        + "base-uri 'self'; "
+                        + "form-action 'self'; "
+                        + "frame-ancestors 'none'";
+        static final String POLITICA_PERMISOS = "camera=(), microphone=(), geolocation=(), payment=()";
 
         private static final String ROL_ADMIN = "ADMIN";
         private static final String RUTA_CATEGORIAS = "/categorias/**";
@@ -102,12 +118,27 @@ public class SecurityConfiguration {
                         ObjectProvider<LoginAttemptStore> almacenIntentos,
                         @Value("${app.security.rate-limit.registro.max-requests:5}") int maximoAltasPorIp,
                         @Value("${app.security.rate-limit.registro.window-seconds:900}") int ventanaAltasSegundos,
+                        @Value("${app.security.csp.report-only:false}") boolean cspSoloInforme,
                         @Value("${app.security.session.absolute-timeout:8h}") Duration timeoutAbsolutoSesion)
                         throws Exception {
 
                 http
                                 .addFilterAfter(new ContextoLogFilter(seudonimizador),
                                                 SecurityContextHolderFilter.class)
+
+                                .headers(headers -> {
+                                        headers.contentSecurityPolicy(csp -> {
+                                                csp.policyDirectives(POLITICA_CONTENIDO);
+                                                // Modo de solo informe: no bloquea, solo avisa en la consola.
+                                                if (cspSoloInforme) {
+                                                        csp.reportOnly();
+                                                }
+                                        });
+                                        headers.referrerPolicy(referrer -> referrer.policy(
+                                                        ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+                                        headers.permissionsPolicyHeader(
+                                                        permisos -> permisos.policy(POLITICA_PERMISOS));
+                                })
 
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
 

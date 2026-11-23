@@ -255,6 +255,14 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Content-Security-Policy y cabeceras de seguridad
+
+- Todas las respuestas (HTML de Angular y API) llevan `Content-Security-Policy`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. Además `Referrer-Policy: strict-origin-when-cross-origin` y `Permissions-Policy` sin cámara, micrófono, geolocalización ni pagos.
+- Por qué cada excepción: `style-src 'unsafe-inline'` lo necesita Angular para los estilos de componente; `img-src data:` es el QR del TOTP y `https:` las imágenes de perfil, que son URL HTTPS externas por diseño; `font-src https://fonts.gstatic.com` sirve los ficheros de la tipografía (Google Fonts).
+- **Modo de solo informe:** `app.security.csp.report-only=true` (en Render, la variable de entorno `APP_SECURITY_CSP_REPORT_ONLY=true`) emite `Content-Security-Policy-Report-Only`: no bloquea, solo avisa en la consola del navegador. Útil para revisar violaciones tras un cambio del frontend. Por defecto es `false` (la política bloquea).
+- **Angular en producción:** `angular.json` tiene `optimization.styles.inlineCritical: false`. Con la opción por defecto Angular añade al `index.html` un `<script>` en línea (la técnica de «critical CSS») que la política bloquearía y la página saldría sin estilos. No lo reactives sin revisar la política.
+- En desarrollo con `ng serve` (puerto 4200) el HTML no pasa por el backend y no lleva la cabecera; solo la prueba con la aplicación empaquetada.
+
 ### Verificación del correo en el alta
 
 - Tras un registro público (cliente o vendedor) nuevo se envía un correo con un enlace `/verificar-correo?token=…`, de **un solo uso y 24 horas** de validez. El token solo se guarda como SHA-256 (colección `tokens_verificacion_correo`, con índice TTL).
