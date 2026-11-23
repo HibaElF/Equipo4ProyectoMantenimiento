@@ -66,12 +66,16 @@ const adultDateValidator: ValidatorFn = (
 };
 
 
+// Mismas reglas que el servidor (T-11): solo espacio normal, no tabuladores ni saltos de línea.
 const optionalPhoneValidator =
-  Validators.pattern(/^\+?[0-9\s().-]{7,20}$/);
+  Validators.pattern(/^\+?[0-9 ().-]{7,20}$/);
 
 
-const optionalImageUrlValidator =
-  Validators.pattern(/^https?:\/\/.+/i);
+// El servidor exige una URL HTTPS de hasta 1000 caracteres.
+const optionalImageUrlValidator = Validators.compose([
+  Validators.maxLength(1000),
+  Validators.pattern(/^https:\/\/[^\s/]+(?:\/\S*)?$/i)
+])!;
 
 
 const passwordRules = [
@@ -150,9 +154,9 @@ export class Register {
 
 
   readonly clienteForm = this.formBuilder.nonNullable.group({
-    nombre: ['', Validators.required],
+    nombre: ['', [Validators.required, Validators.maxLength(100)]],
 
-    apellidos: ['', Validators.required],
+    apellidos: ['', [Validators.required, Validators.maxLength(150)]],
 
     fechaNacimiento: ['', [
       Validators.required,
@@ -171,7 +175,8 @@ export class Register {
 
     email: ['', [
       Validators.required,
-      Validators.email
+      Validators.email,
+      Validators.maxLength(254)
     ]],
 
     telefono: ['', optionalPhoneValidator],
@@ -181,6 +186,7 @@ export class Register {
     contrasena: ['', [
       Validators.required,
       Validators.minLength(8),
+      Validators.maxLength(128),
       passwordRequirementsValidator
     ]],
 
@@ -193,13 +199,13 @@ export class Register {
 
 
   readonly vendedorForm = this.formBuilder.nonNullable.group({
-    nombre: ['', Validators.required],
+    nombre: ['', [Validators.required, Validators.maxLength(100)]],
 
-    apellidos: ['', Validators.required],
+    apellidos: ['', [Validators.required, Validators.maxLength(150)]],
 
     categoriaId: ['', Validators.required],
 
-    nombreComercial: ['', Validators.required],
+    nombreComercial: ['', [Validators.required, Validators.maxLength(100)]],
 
     dniNif: [
       '',
@@ -213,7 +219,8 @@ export class Register {
 
     email: ['', [
       Validators.required,
-      Validators.email
+      Validators.email,
+      Validators.maxLength(254)
     ]],
 
     telefono: ['', optionalPhoneValidator],
@@ -223,6 +230,7 @@ export class Register {
     contrasena: ['', [
       Validators.required,
       Validators.minLength(8),
+      Validators.maxLength(128),
       passwordRequirementsValidator
     ]],
 
@@ -344,6 +352,10 @@ export class Register {
       return 'La contraseña debe cumplir todos los requisitos indicados.';
     }
 
+    if (control.hasError('maxlength') && name !== 'imagenPerfil') {
+      return 'Has superado la longitud máxima permitida.';
+    }
+
     if (control.hasError('underage')) {
       return 'Debes tener al menos 18 años para registrarte como cliente.';
     }
@@ -356,10 +368,10 @@ export class Register {
     }
 
     if (
-      control.hasError('pattern') &&
+      (control.hasError('pattern') || control.hasError('maxlength')) &&
       name === 'imagenPerfil'
     ) {
-      return 'Introduce una URL que empiece por http:// o https://.';
+      return 'Introduce una URL que empiece por https:// (máximo 1000 caracteres).';
     }
 
     return 'Revisa este campo.';

@@ -423,6 +423,24 @@ class AuthControllerSecurityTests {
     }
 
     @Test
+    void elLoginRechazaContrasenasYCorreosDemasiadoLargosConUn400PorCampo() throws Exception {
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"cliente@example.com\",\"password\":\"" + "a".repeat(129) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.password[0]").exists());
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + "a".repeat(250) + "@e.es\",\"password\":\"ClaveSegura9!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.email[0]").exists());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
     void unaContrasenaCaducadaDevuelve403ConUnCodigoReconocible() throws Exception {
         when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
                 org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))

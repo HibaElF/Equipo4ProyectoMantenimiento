@@ -267,6 +267,22 @@ describe('Login', () => {
     );
   });
 
+  it('no envía credenciales demasiado largas (T-11)', () => {
+    const iniciar = vi.spyOn(servicioAutenticacion, 'iniciarSesion');
+
+    componente.loginForm.patchValue({ email: 'a'.repeat(250) + '@e.es', password: 'ClaveSegura9!' });
+    componente.onSubmit();
+    componente.loginForm.patchValue({ email: 'ana@esibuy.com', password: 'a'.repeat(129) });
+    componente.onSubmit();
+
+    expect(componente.loginForm.get('email')?.valid).toBe(true);
+    expect(componente.loginForm.get('password')?.hasError('maxlength')).toBe(true);
+    expect(iniciar).not.toHaveBeenCalled();
+
+    componente.loginForm.patchValue({ email: 'a'.repeat(250) + '@e.es', password: 'ClaveSegura9!' });
+    expect(componente.loginForm.get('email')?.hasError('maxlength')).toBe(true);
+  });
+
   describe('contraseña caducada (T-06)', () => {
     const credenciales = { email: 'ana@esibuy.com', password: 'Clave-Segura-1' };
     const cuerpoCaducada = {

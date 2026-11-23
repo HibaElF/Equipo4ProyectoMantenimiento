@@ -45,8 +45,8 @@ export class Login {
     private route: ActivatedRoute
   ) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', Validators.required]
+      email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
+      password: ['', [Validators.required, Validators.maxLength(128)]]
     });
 
     // Al llegar al login la sesión anterior ya no cuenta (A12).

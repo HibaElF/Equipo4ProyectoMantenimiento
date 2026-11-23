@@ -87,6 +87,74 @@ describe('Register', () => {
     httpMock.expectNone('https://localhost:8443/cliente/register');
   });
 
+  describe('validación de entrada igual que el servidor (T-11)', () => {
+    it('limita la longitud de nombre, apellidos, correo y contraseña', () => {
+      const f = component.clienteForm.controls;
+      f.nombre.setValue('a'.repeat(101));
+      f.apellidos.setValue('a'.repeat(151));
+      f.email.setValue('a'.repeat(250) + '@e.es');
+      f.contrasena.setValue('Aa1!' + 'a'.repeat(125));
+
+      expect(f.nombre.hasError('maxlength')).toBe(true);
+      expect(f.apellidos.hasError('maxlength')).toBe(true);
+      expect(f.email.hasError('maxlength')).toBe(true);
+      expect(f.contrasena.hasError('maxlength')).toBe(true);
+
+      f.nombre.setValue('a'.repeat(100));
+      f.apellidos.setValue('a'.repeat(150));
+      expect(f.nombre.valid).toBe(true);
+      expect(f.apellidos.valid).toBe(true);
+    });
+
+    it('solo admite imágenes de perfil con URL HTTPS de hasta 1000 caracteres', () => {
+      const imagen = component.clienteForm.controls.imagenPerfil;
+
+      for (const invalida of [
+        'perfil.png',
+        'http://cdn.example.com/a.png',
+        'javascript:alert(1)',
+        'https:///sin-host.png',
+        'https://cdn example.com/a.png',
+        'https://cdn.example.com/' + 'a'.repeat(1000),
+      ]) {
+        imagen.setValue(invalida);
+        expect(imagen.invalid, invalida).toBe(true);
+      }
+
+      for (const valida of ['', 'https://cdn.example.com/a.png', 'HTTPS://cdn.example.com/a/b.png?x=1']) {
+        imagen.setValue(valida);
+        expect(imagen.valid, valida).toBe(true);
+      }
+    });
+
+    it('muestra el aviso de HTTPS en la imagen de perfil', () => {
+      component.clienteForm.controls.imagenPerfil.setValue('http://cdn.example.com/a.png');
+      component.clienteForm.controls.imagenPerfil.markAsTouched();
+
+      expect(component.controlError(component.clienteForm, 'imagenPerfil')).toContain('https://');
+    });
+
+    it('rechaza teléfonos con tabuladores o saltos de línea', () => {
+      const telefono = component.clienteForm.controls.telefono;
+
+      telefono.setValue('600\t123123');
+      expect(telefono.invalid).toBe(true);
+      telefono.setValue('600 123 123');
+      expect(telefono.valid).toBe(true);
+    });
+
+    it('los campos del formulario llevan maxlength acorde con el servidor', () => {
+      const maximo = (campo: string) =>
+        fixture.nativeElement.querySelector(`[formControlName="${campo}"]`)?.getAttribute('maxlength');
+
+      expect(maximo('nombre')).toBe('100');
+      expect(maximo('apellidos')).toBe('150');
+      expect(maximo('email')).toBe('254');
+      expect(maximo('imagenPerfil')).toBe('1000');
+      expect(maximo('contrasena')).toBe('128');
+    });
+  });
+
   it('validates all password requirements for customer and seller forms', () => {
     const passwords = [
       'password1!',

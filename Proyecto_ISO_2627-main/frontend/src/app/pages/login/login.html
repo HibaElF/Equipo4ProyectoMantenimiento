@@ -78,6 +78,7 @@
               id="email"
               type="email"
               formControlName="email"
+              maxlength="254"
               autocomplete="email"
               [attr.aria-invalid]="campoInvalido('email')"
               [attr.aria-describedby]="campoInvalido('email') ? 'email-error' : null">
@@ -100,6 +101,7 @@
                 type="password"
                 [type]="hidePassword ? 'password' : 'text'"
                 formControlName="password"
+                maxlength="128"
                 autocomplete="current-password"
                 [attr.aria-invalid]="campoInvalido('password')"
                 [attr.aria-describedby]="campoInvalido('password') ? 'password-error' : null">

@@ -59,6 +59,11 @@ describe('Login · plantilla accesible (UI-acceso)', () => {
     expect(enlace?.getAttribute('href')).toBe('/recuperar-contrasena');
   });
 
+  it('los campos de acceso limitan la longitud como el servidor (T-11)', () => {
+    expect(raiz.querySelector('#email')?.getAttribute('maxlength')).toBe('254');
+    expect(raiz.querySelector('#password')?.getAttribute('maxlength')).toBe('128');
+  });
+
   it('presenta un campo accesible para el tercer factor por correo', () => {
     fixture.componentInstance.requiereVerificacionEmail.set(true);
     fixture.detectChanges();

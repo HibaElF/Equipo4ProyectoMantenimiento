@@ -76,6 +76,7 @@
                             <input
                                 type="text"
                                 formControlName="nombre"
+                                maxlength="100"
                                 autocomplete="given-name"
                             />
 
@@ -89,6 +90,7 @@
                             <input
                                 type="text"
                                 formControlName="apellidos"
+                                maxlength="150"
                                 autocomplete="family-name"
                             />
 
@@ -130,6 +132,7 @@
                             <input
                                 type="email"
                                 formControlName="email"
+                                maxlength="254"
                                 autocomplete="email"
                             />
 
@@ -156,6 +159,7 @@
                             <input
                                 type="url"
                                 formControlName="imagenPerfil"
+                                maxlength="1000"
                                 placeholder="https://..."
                                 (input)="resetAvatarError()"
                             />
@@ -198,6 +202,7 @@
                                     type="password"
                                     [type]="customerPasswordHidden ? 'password' : 'text'"
                                     formControlName="contrasena"
+                                    maxlength="128"
                                     autocomplete="new-password"
                                     (focus)="customerPasswordFocused = true"
                                     (blur)="customerPasswordFocused = !!clienteForm.controls.contrasena.value"
@@ -237,6 +242,7 @@
                                     type="password"
                                     [type]="customerConfirmationHidden ? 'password' : 'text'"
                                     formControlName="repetirContrasena"
+                                    maxlength="128"
                                     autocomplete="off"
                                     (paste)="$event.preventDefault()"
                                     (copy)="$event.preventDefault()"
@@ -287,6 +293,7 @@
                             <input
                                 type="text"
                                 formControlName="nombre"
+                                maxlength="100"
                                 autocomplete="given-name"
                             />
 
@@ -300,6 +307,7 @@
                             <input
                                 type="text"
                                 formControlName="apellidos"
+                                maxlength="150"
                                 autocomplete="family-name"
                             />
 
@@ -350,6 +358,7 @@
                             <input
                                 type="text"
                                 formControlName="nombreComercial"
+                                maxlength="100"
                                 autocomplete="organization"
                             />
 
@@ -377,6 +386,7 @@
                             <input
                                 type="email"
                                 formControlName="email"
+                                maxlength="254"
                                 autocomplete="email"
                             />
 
@@ -403,6 +413,7 @@
                             <input
                                 type="url"
                                 formControlName="imagenPerfil"
+                                maxlength="1000"
                                 placeholder="https://..."
                                 (input)="resetAvatarError()"
                             />
@@ -419,6 +430,7 @@
                                     type="password"
                                     [type]="sellerPasswordHidden ? 'password' : 'text'"
                                     formControlName="contrasena"
+                                    maxlength="128"
                                     autocomplete="new-password"
                                     (focus)="sellerPasswordFocused = true"
                                     (blur)="sellerPasswordFocused = !!vendedorForm.controls.contrasena.value"
@@ -458,6 +470,7 @@
                                     type="password"
                                     [type]="sellerConfirmationHidden ? 'password' : 'text'"
                                     formControlName="repetirContrasena"
+                                    maxlength="128"
                                     autocomplete="off"
                                     (paste)="$event.preventDefault()"
                                     (copy)="$event.preventDefault()"

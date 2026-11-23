@@ -53,6 +53,62 @@ class RegistrationValidationControllerTests {
 	}
 
 	@Test
+	void devuelveErroresPorCampoParaLongitudesTelefonoEImagenInvalidos() throws Exception {
+		String request = """
+				{
+				  "nombre": "%s",
+				  "apellidos": "Lovelace",
+				  "fechaNacimiento": "2000-01-01",
+				  "dniNif": "12345678A",
+				  "email": "ada@example.com",
+				  "contrasena": "%s",
+				  "telefono": "abc",
+				  "imagenPerfil": "http://cdn.example.com/ada.png",
+				  "esPremium": false
+				}
+				""".formatted("a".repeat(101), "a".repeat(129));
+
+		mockMvc.perform(post("/cliente/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(request))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.error").value("Revisa los campos del formulario."))
+				.andExpect(jsonPath("$.errores.nombre[0]").exists())
+				.andExpect(jsonPath("$.errores.contrasena[0]").exists())
+				.andExpect(jsonPath("$.errores.telefono[0]").value("Introduce un teléfono válido o deja el campo vacío."))
+				.andExpect(jsonPath("$.errores.imagenPerfil[0]")
+						.value("La imagen de perfil debe utilizar una URL HTTPS válida."));
+
+		verifyNoInteractions(clienteService);
+	}
+
+	@Test
+	void elAltaDeVendedorTambienRechazaImagenNoHttpsYTelefonoInvalido() throws Exception {
+		String request = """
+				{
+				  "nombre": "Luis",
+				  "apellidos": "Martín",
+				  "dniNif": "12345678A",
+				  "email": "luis@example.com",
+				  "contrasena": "ClaveSegura9!",
+				  "categoriaId": "cat-1",
+				  "nombreComercial": "UrbanStyle",
+				  "telefono": "12",
+				  "imagenPerfil": "perfil.png"
+				}
+				""";
+
+		mockMvc.perform(post("/vendedor/register")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(request))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errores.telefono[0]").exists())
+				.andExpect(jsonPath("$.errores.imagenPerfil[0]").exists());
+
+		verifyNoInteractions(vendedorService);
+	}
+
+	@Test
 	void returnsAllValidationErrorsForAnUnderageCustomerRequest() throws Exception {
 		String underageDate = LocalDate.now().minusYears(17).toString();
 		String request = """
