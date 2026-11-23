@@ -122,3 +122,16 @@ ion-segment-button {
   font-weight: 600;
   min-width: 0;
 }
+
+/* Barra de apartados bajo el título (Pedidos, Favoritos…). */
+.barra-segmento {
+  --background: #ffffff;
+  --color: var(--ion-text-color);
+  padding: 4px 8px;
+}
+
+.barra-segmento ion-segment-button {
+  --color: var(--ion-color-medium);
+  --color-checked: var(--ion-color-primary);
+  --indicator-color: var(--ion-color-primary);
+}

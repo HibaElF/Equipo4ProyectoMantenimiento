@@ -1,7 +1,7 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   IonBackButton,
   IonButton,
@@ -119,6 +119,7 @@ export class ProductoPage {
     () => this.listasPersonales().filter((l) => l.productoIds.includes(this.id)).length
   );
   readonly panelListas = signal(false);
+  private readonly router = inject(Router);
   readonly cargandoListas = signal(false);
   readonly errorListas = signal('');
   readonly modificandoLista = signal<string | null>(null);
@@ -301,5 +302,10 @@ export class ProductoPage {
       buttons: [{ icon: 'close-outline', role: 'cancel', side: 'end', htmlAttributes: { 'aria-label': 'Cerrar aviso' } }]
     });
     await toast.present();
+  }
+
+  irAMisListas(): void {
+    this.panelListas.set(false);
+    this.router.navigate(['/listas']);
   }
 }

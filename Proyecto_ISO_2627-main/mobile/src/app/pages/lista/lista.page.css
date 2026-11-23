@@ -1,0 +1,161 @@
+.contenido {
+  padding: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.cabecera {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.cabecera h1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.corazon {
+  color: var(--ion-color-secondary);
+  flex-shrink: 0;
+}
+
+.cuenta {
+  margin: 4px 0 0;
+  color: var(--ion-color-medium);
+}
+
+.nota {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+}
+
+.acciones-lista {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.acciones-lista ion-button {
+  margin: 0;
+  flex: 1 1 140px;
+  min-height: 44px;
+}
+
+.vacia {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--ion-color-medium);
+}
+
+.productos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.productos li {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.zona-producto {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zona-producto:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+  border-radius: 8px;
+}
+
+.miniatura {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f7f8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.miniatura img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.miniatura ion-icon {
+  font-size: 28px;
+  color: var(--ion-color-medium);
+}
+
+.no-disponible .miniatura img {
+  opacity: 0.55;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.info strong {
+  line-height: 1.25;
+}
+
+.precio {
+  font-weight: 700;
+  color: var(--ion-color-primary);
+}
+
+.aviso-no-disponible {
+  font-size: 0.82rem;
+  color: #7a4b00;
+}
+
+.quitar {
+  margin: 10px 0 0;
+  width: 100%;
+  min-height: 40px;
+}
+
+.estado {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.esqueleto {
+  height: 92px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}
+
+.esqueleto.alto {
+  height: 110px;
+}

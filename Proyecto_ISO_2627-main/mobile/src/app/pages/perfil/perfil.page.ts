@@ -70,7 +70,7 @@ export class PerfilPage implements OnInit {
   readonly compras: OpcionPerfil[] = [
     { texto: 'Mis direcciones', icono: 'home-outline', ruta: '/perfil/direcciones' },
     { texto: 'Métodos de pago', icono: 'card-outline', ruta: '/perfil/metodos-pago' },
-    { texto: 'Mis listas', icono: 'list-outline' }
+    { texto: 'Mis listas', icono: 'list-outline', ruta: '/listas' }
   ];
   readonly baja: OpcionPerfil = { texto: 'Darme de baja', icono: 'trash-outline' };
 

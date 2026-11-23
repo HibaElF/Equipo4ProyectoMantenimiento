@@ -163,7 +163,8 @@
             <ion-text color="danger"><p role="alert">{{ errorListas() }}</p></ion-text>
             <ion-button fill="outline" (click)="cargarListas()">Reintentar</ion-button>
           } @else if (listasPersonales().length === 0) {
-            <p>No tienes listas propias. Podrás crearlas en <strong>Perfil → Mis listas</strong>.</p>
+            <p>No tienes listas propias.</p>
+            <ion-button expand="block" fill="outline" (click)="irAMisListas()">Crea una en Mis listas</ion-button>
           } @else {
             <p class="ayuda-listas">Marca las listas en las que quieres guardar este producto.</p>
             <ion-list lines="full">

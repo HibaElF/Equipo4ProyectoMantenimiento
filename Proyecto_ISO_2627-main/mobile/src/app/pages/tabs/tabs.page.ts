@@ -4,8 +4,8 @@ import { addIcons } from 'ionicons';
 import {
   cart,
   cartOutline,
-  heart,
-  heartOutline,
+  list,
+  listOutline,
   person,
   personOutline,
   receipt,
@@ -17,7 +17,8 @@ import { CarritoEstadoService } from '../../core/services/carrito-estado.service
 
 /**
  * Navegación principal del cliente: las mismas secciones que la cabecera de la web
- * (Catálogo, Favoritos, Carrito, Mis pedidos y Mi perfil; «Mis listas» está dentro de Perfil).
+ * (Catálogo, Listas, Carrito, Mis pedidos y Mi perfil). «Listas» reúne los apartados
+ * «Favoritos» y «Mis listas» del menú de la web; Favoritos es la primera lista.
  */
 @Component({
   selector: 'app-tabs',
@@ -33,7 +34,7 @@ export class TabsPage {
 
   readonly pestanas = [
     { tab: 'tienda', texto: 'Tienda', icono: 'storefront' },
-    { tab: 'favoritos', texto: 'Favoritos', icono: 'heart' },
+    { tab: 'listas', texto: 'Listas', icono: 'list' },
     { tab: 'carrito', texto: 'Carrito', icono: 'cart' },
     { tab: 'pedidos', texto: 'Pedidos', icono: 'receipt' },
     { tab: 'perfil', texto: 'Perfil', icono: 'person' }
@@ -43,8 +44,8 @@ export class TabsPage {
     addIcons({
       storefront,
       storefrontOutline,
-      heart,
-      heartOutline,
+      list,
+      listOutline,
       cart,
       cartOutline,
       receipt,

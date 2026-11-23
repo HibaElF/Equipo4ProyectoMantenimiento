@@ -33,9 +33,18 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/producto/producto.page').then((m) => m.ProductoPage)
       },
       {
-        path: 'favoritos',
+        path: 'listas',
+        loadComponent: () => import('./pages/listas/listas.page').then((m) => m.ListasPage)
+      },
+      {
+        path: 'listas/favoritos',
         loadComponent: () => import('./pages/favoritos/favoritos.page').then((m) => m.FavoritosPage)
       },
+      {
+        path: 'listas/:id',
+        loadComponent: () => import('./pages/lista/lista.page').then((m) => m.ListaPage)
+      },
+      { path: 'favoritos', redirectTo: 'listas/favoritos', pathMatch: 'full' },
       {
         path: 'carrito',
         loadComponent: () => import('./pages/carrito/carrito.page').then((m) => m.CarritoPage)
