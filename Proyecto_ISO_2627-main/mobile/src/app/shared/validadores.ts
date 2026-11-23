@@ -1,4 +1,4 @@
-import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { AbstractControl, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 
 /** Requisitos de contraseña del backend (los mismos que muestra la web). */
 export const REQUISITOS_CONTRASENA = [
@@ -34,6 +34,13 @@ export function fechaMaximaMayorDeEdad(hoy = new Date()): string {
   const dia = Math.min(hoy.getDate(), new Date(anio, mes + 1, 0).getDate());
   return `${anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 }
+
+/**
+ * Correo válido sin contar los espacios de los extremos: el teclado del móvil suele añadir
+ * un espacio al autocompletar, y el valor se recorta antes de enviarlo.
+ */
+export const correoValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
+  typeof control.value === 'string' ? Validators.email({ value: control.value.trim() } as AbstractControl) : null;
 
 export const mayorDeEdadValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null =>
   control.value && control.value > fechaMaximaMayorDeEdad() ? { menorDeEdad: true } : null;

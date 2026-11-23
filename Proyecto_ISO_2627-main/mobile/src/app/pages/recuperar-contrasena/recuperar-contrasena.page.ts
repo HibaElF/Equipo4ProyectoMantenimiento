@@ -26,8 +26,7 @@ import {
   coincidenValidator,
   contrasenaSeguraValidator,
   estadoRequisitos,
-  mensajeErrorApi
-} from '../../shared/validadores';
+  mensajeErrorApi, correoValidator } from '../../shared/validadores';
 
 /*
  * Dos modos, como en la web:
@@ -74,7 +73,7 @@ export class RecuperarContrasenaPage {
   readonly contrasenaCambiada = signal(false);
 
   readonly solicitudForm = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]]
+    email: ['', [Validators.required, correoValidator]]
   });
 
   readonly nuevaForm = this.fb.nonNullable.group(

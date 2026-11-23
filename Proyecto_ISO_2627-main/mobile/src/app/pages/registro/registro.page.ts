@@ -33,8 +33,7 @@ import {
   estadoRequisitos,
   fechaMaximaMayorDeEdad,
   mayorDeEdadValidator,
-  mensajeErrorApi
-} from '../../shared/validadores';
+  mensajeErrorApi, correoValidator } from '../../shared/validadores';
 
 type Campo = 'nombre' | 'apellidos' | 'fechaNacimiento' | 'dniNif' | 'email' | 'telefono' | 'imagenPerfil' | 'contrasena' | 'repetirContrasena';
 
@@ -83,7 +82,7 @@ export class RegistroPage {
       apellidos: ['', Validators.required],
       fechaNacimiento: ['', [Validators.required, mayorDeEdadValidator]],
       dniNif: ['', [Validators.required, Validators.pattern(/^\d{8}[A-Za-z]$/)]],
-      email: ['', [Validators.required, Validators.email]],
+      email: ['', [Validators.required, correoValidator]],
       telefono: ['', Validators.pattern(/^\+?[0-9\s().-]{7,20}$/)],
       imagenPerfil: ['', Validators.pattern(/^https?:\/\/.+/i)],
       tipoCliente: ['normal' as 'normal' | 'premium'],

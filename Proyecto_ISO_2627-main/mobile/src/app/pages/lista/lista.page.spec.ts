@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { provideIonicAngular } from '@ionic/angular';
+import { NavController, provideIonicAngular } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { ListaProductos } from '../../core/models/listas';
 import { ListasService, mensajeErrorListas } from '../../core/services/listas.service';
+import { controladoresFalsos } from '../../testing/controladores-falsos';
 import { ListaPage } from './lista.page';
 
 const producto = { id: 'p1', nombre: 'A', imagen: null, precio: 1, stock: 1, disponible: true, aviso: null };
@@ -86,5 +87,50 @@ describe('ListaPage', () => {
       'Ya tienes una lista con ese nombre.'
     );
     expect(mensajeErrorListas(new HttpErrorResponse({ status: 500, error: { error: 'NullPointer' } }), 'Por defecto')).toBe('Por defecto');
+  });
+});
+
+describe('ListaPage: eliminar la lista', () => {
+  const api = { consultarLista: vi.fn(), eliminarLista: vi.fn() };
+
+  function crear() {
+    const falsos = controladoresFalsos();
+    api.consultarLista.mockReturnValue(of(lista()));
+    TestBed.configureTestingModule({
+      imports: [ListaPage],
+      providers: [
+        provideRouter([]),
+        provideIonicAngular({}),
+        { provide: ListasService, useValue: api },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: 'l1' }) } } },
+        ...falsos.providers
+      ]
+    });
+    const atras = vi.spyOn(TestBed.inject(NavController), 'navigateBack').mockResolvedValue(true);
+    const pagina = TestBed.createComponent(ListaPage).componentInstance;
+    pagina.ionViewWillEnter();
+    return { pagina, atras, ...falsos };
+  }
+
+  beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
+
+  it('pide confirmación, elimina y vuelve a Listas', async () => {
+    api.eliminarLista.mockReturnValue(of(undefined));
+    const { pagina, alertas, atras } = crear();
+    await pagina.confirmarEliminar();
+    expect(alertas.creadas[0].message).toBe('¿Eliminar la lista «Regalos»? Sus productos seguirán en el catálogo.');
+    alertas.pulsar('Eliminar lista');
+    expect(api.eliminarLista).toHaveBeenCalledWith('l1');
+    expect(atras).toHaveBeenCalledWith('/listas');
+  });
+
+  it('si falla se queda en la lista', async () => {
+    api.eliminarLista.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const { pagina, alertas, atras, toasts } = crear();
+    await pagina.confirmarEliminar();
+    alertas.pulsar('Eliminar lista');
+    await Promise.resolve();
+    expect(atras).not.toHaveBeenCalled();
+    expect(toasts.mensajes[0]).toBe('No se pudo eliminar la lista.');
   });
 });

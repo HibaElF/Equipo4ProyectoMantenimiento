@@ -1,6 +1,7 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import {
   coincidenValidator,
+  correoValidator,
   contrasenaSeguraValidator,
   estadoRequisitos,
   fechaMaximaMayorDeEdad,
@@ -40,5 +41,11 @@ describe('validadores', () => {
     expect(mensajeErrorApi({ error: 'Correo ya registrado' }, 'x')).toBe('Correo ya registrado');
     expect(mensajeErrorApi({ errores: { dniNif: ['DNI no válido'] } }, 'x')).toBe('DNI no válido');
     expect(mensajeErrorApi(null, 'Por defecto')).toBe('Por defecto');
+  });
+
+  it('correo: acepta espacios en los extremos (autocompletado del teclado) pero no correos inválidos', () => {
+    expect(correoValidator(new FormControl(' ana@x.es '))).toBeNull();
+    expect(correoValidator(new FormControl('ana@'))).toEqual({ email: true });
+    expect(correoValidator(new FormControl(''))).toBeNull();
   });
 });

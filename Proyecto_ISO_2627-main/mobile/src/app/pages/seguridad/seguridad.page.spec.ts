@@ -5,6 +5,7 @@ import { provideIonicAngular } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { Perfil } from '../../core/models/perfil';
 import { PerfilService } from '../../core/services/perfil.service';
+import { controladoresFalsos } from '../../testing/controladores-falsos';
 import { SeguridadPage, esCodigoDesactivacion, esCodigoTotp } from './seguridad.page';
 
 const perfil = (totpActivado: boolean, emailOtpActivado = false): Perfil => ({
@@ -83,5 +84,65 @@ describe('SeguridadPage', () => {
     pagina.cambiarCorreo({ detail: { checked: false }, target: toggle } as unknown as CustomEvent<{ checked: boolean }>);
     expect(pagina.errorCorreo()).toBe('No se pudo actualizar la configuración de seguridad.');
     expect(pagina.perfil()?.emailOtpActivado).toBe(true);
+  });
+});
+
+describe('SeguridadPage: desactivar y copiar', () => {
+  const api = { consultar: vi.fn(), desactivarSegundoFactor: vi.fn() };
+
+  function crear(p: Perfil) {
+    const falsos = controladoresFalsos();
+    api.consultar.mockReturnValue(of(p));
+    TestBed.configureTestingModule({
+      imports: [SeguridadPage],
+      providers: [provideRouter([]), provideIonicAngular({}), { provide: PerfilService, useValue: api }, ...falsos.providers]
+    });
+    const pagina = TestBed.createComponent(SeguridadPage).componentInstance;
+    pagina.ionViewWillEnter();
+    return { pagina, ...falsos };
+  }
+
+  beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
+
+  it('desactivar exige un código válido y una confirmación', async () => {
+    api.desactivarSegundoFactor.mockReturnValue(of(undefined));
+    const { pagina, alertas } = crear(perfil(true));
+    pagina.codigo = 'x';
+    await pagina.desactivar();
+    expect(alertas.creadas.length).toBe(0);
+    expect(pagina.errorTotp()).toContain('Introduce un código actual');
+
+    pagina.codigo = 'abcd 2345';
+    await pagina.desactivar();
+    alertas.pulsar('Desactivar');
+    expect(api.desactivarSegundoFactor).toHaveBeenCalledWith('ABCD2345');
+    expect(pagina.perfil()?.totpActivado).toBe(false);
+    expect(pagina.mensajeTotp()).toBe('Segundo factor desactivado.');
+  });
+
+  it('código rechazado por el servidor', async () => {
+    api.desactivarSegundoFactor.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'El código no es válido.' } })));
+    const { pagina, alertas } = crear(perfil(true));
+    pagina.codigo = '123456';
+    await pagina.desactivar();
+    alertas.pulsar('Desactivar');
+    expect(pagina.errorTotp()).toBe('El código no es válido.');
+    expect(pagina.perfil()?.totpActivado).toBe(true);
+  });
+
+  it('copia la clave sin espacios y avisa si no se puede copiar', async () => {
+    const escribir = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: escribir }, configurable: true });
+    const { pagina, toasts } = crear(perfil(false));
+    pagina.configuracion.set({ otpauthUri: 'otpauth://totp/E:a?secret=JBSWY3DPEHPK3PXP', qrDataUrl: null });
+    pagina.copiarClave();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(escribir).toHaveBeenCalledWith('JBSWY3DPEHPK3PXP');
+    expect(toasts.mensajes).toContain('Clave copiada.');
+
+    escribir.mockRejectedValue(new Error('sin permiso'));
+    await pagina.copiar('AAAA', 'Códigos');
+    expect(toasts.mensajes.at(-1)).toBe('No se pudo copiar. Anótalo a mano.');
   });
 });

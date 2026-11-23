@@ -5,6 +5,7 @@ import { provideIonicAngular } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { EstadoPedido, PedidoCliente } from '../../core/models/pedido';
 import { PedidosService } from '../../core/services/pedidos.service';
+import { controladoresFalsos } from '../../testing/controladores-falsos';
 import { PedidoPage } from './pedido.page';
 
 function pedido(estado: EstadoPedido, recorridos: EstadoPedido[]): PedidoCliente {
@@ -128,5 +129,61 @@ describe('PedidoPage', () => {
     });
     const pagina = TestBed.createComponent(PedidoPage).componentInstance;
     expect(pagina.error()).toBe('El pedido no existe o no está disponible.');
+  });
+});
+
+describe('PedidoPage: cancelar y confirmar recepción', () => {
+  const api = { consultarDetalle: vi.fn(), consultarEstadoValoracion: vi.fn(), cancelar: vi.fn(), confirmarRecepcion: vi.fn() };
+
+  function crear(p: PedidoCliente) {
+    const falsos = controladoresFalsos();
+    api.consultarDetalle.mockReturnValue(of(p));
+    TestBed.configureTestingModule({
+      imports: [PedidoPage],
+      providers: [
+        provideRouter([]),
+        provideIonicAngular({}),
+        { provide: PedidosService, useValue: api },
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: p.id }) } } },
+        ...falsos.providers
+      ]
+    });
+    return { pagina: TestBed.createComponent(PedidoPage).componentInstance, ...falsos };
+  }
+
+  beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
+
+  it('cancelar pide confirmación con la referencia y actualiza el pedido', async () => {
+    const cancelado = pedido('CANCELADO', ['EN_PROCESO', 'CANCELADO']);
+    api.cancelar.mockReturnValue(of(cancelado));
+    const { pagina, alertas, toasts } = crear(pedido('EN_PROCESO', ['EN_PROCESO']));
+    await pagina.confirmarCancelacion();
+    expect(alertas.creadas[0].message).toBe('¿Quieres cancelar el pedido #123456?');
+    expect(api.cancelar).not.toHaveBeenCalled();
+    alertas.pulsar('Cancelar pedido');
+    expect(api.cancelar).toHaveBeenCalledWith('abcdef123456');
+    expect(pagina.pedido()?.estado).toBe('CANCELADO');
+    await Promise.resolve();
+    expect(toasts.mensajes.length).toBe(1);
+  });
+
+  it('si no se puede cancelar lo avisa', async () => {
+    api.cancelar.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 409, error: { error: 'Ya se ha enviado.' } })));
+    const { pagina, alertas, toasts } = crear(pedido('PAGADO_COMPLETADO', ['PAGADO_COMPLETADO']));
+    await pagina.confirmarCancelacion();
+    alertas.pulsar('Cancelar pedido');
+    await Promise.resolve();
+    expect(toasts.mensajes[0]).toBe('Ya se ha enviado.');
+    expect(pagina.operando()).toBeNull();
+  });
+
+  it('confirmar la recepción lo pasa a finalizado', async () => {
+    api.confirmarRecepcion.mockReturnValue(of(pedido('FINALIZADO', ['FINALIZADO'])));
+    api.consultarEstadoValoracion.mockReturnValue(of({ valorada: false }));
+    const { pagina, alertas } = crear(pedido('TRAMITADO_ENVIADO', ['TRAMITADO_ENVIADO']));
+    await pagina.confirmarRecepcionPedido();
+    alertas.pulsar('Sí, lo he recibido');
+    expect(api.confirmarRecepcion).toHaveBeenCalledWith('abcdef123456');
+    expect(pagina.pedido()?.estado).toBe('FINALIZADO');
   });
 });
