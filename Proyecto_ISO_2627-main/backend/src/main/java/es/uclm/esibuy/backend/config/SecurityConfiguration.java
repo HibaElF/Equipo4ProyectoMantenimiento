@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +30,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import es.uclm.esibuy.backend.security.ContextoLogFilter;
 import es.uclm.esibuy.backend.security.LimiteApiFilter;
 import es.uclm.esibuy.backend.security.LimiteApiService;
+import es.uclm.esibuy.backend.security.LimiteRegistroFilter;
+import es.uclm.esibuy.backend.dao.LoginAttemptStore;
 import es.uclm.esibuy.backend.security.PepperedBCryptPasswordEncoder;
 import es.uclm.esibuy.backend.security.SesionAbsolutaFilter;
 import es.uclm.esibuy.backend.security.Seudonimizador;
@@ -96,6 +99,9 @@ public class SecurityConfiguration {
                         SessionRegistry sessionRegistry,
                         Seudonimizador seudonimizador,
                         LimiteApiService limiteApiService,
+                        ObjectProvider<LoginAttemptStore> almacenIntentos,
+                        @Value("${app.security.rate-limit.registro.max-requests:5}") int maximoAltasPorIp,
+                        @Value("${app.security.rate-limit.registro.window-seconds:900}") int ventanaAltasSegundos,
                         @Value("${app.security.session.absolute-timeout:8h}") Duration timeoutAbsolutoSesion)
                         throws Exception {
 
@@ -122,11 +128,14 @@ public class SecurityConfiguration {
                                 .addFilterBefore(new LimiteApiFilter(limiteApiService),
                                                 AuthorizationFilter.class)
 
+                                // Después de CsrfFilter y antes de AuthorizationFilter: solo cuentan las altas
+                                // con token CSRF válido.
+                                .addFilterBefore(new LimiteRegistroFilter(almacenIntentos::getIfAvailable,
+                                                maximoAltasPorIp, ventanaAltasSegundos),
+                                                AuthorizationFilter.class)
+
                                 .csrf(csrf -> csrf
-                                                .csrfTokenRepository(csrfTokenRepository)
-                                                .ignoringRequestMatchers(
-                                                                "/cliente/register",
-                                                                "/vendedor/register"))
+                                                .csrfTokenRepository(csrfTokenRepository))
 
                                 .logout(logout -> logout
                                                 .logoutUrl("/usuarios/logout")

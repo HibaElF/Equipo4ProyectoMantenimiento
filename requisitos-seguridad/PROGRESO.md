@@ -30,7 +30,7 @@
 | 3 | T-09 | Alertas de intentos fallidos y bloqueos de cuenta | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1357 pruebas, 0 fallos, 90,21 %. Frontend sin cambios: 543 pruebas, 78,84 %. `registrarFalloDetallado` (bloqueo nuevo) + `AvisoBloqueoService` + correo de aviso (máx. 1/hora y cuenta) + evento `bloqueo_cuenta`. Sin aviso a administradores. |
 | 4 | T-22 | Rate limiting general de la API y del envío de códigos OTP | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1375 pruebas, 0 fallos, 90,3 %. Sin frontend. `LimiteApiFilter`/`LimiteApiService` (60/min, en memoria, por instancia); OTP 3/h y 10/día en MongoDB; `LoginAttemptStore.reservar(...)` genérico para T-10; límites por propiedades `app.security.rate-limit.*`. Pendiente comprobar la IP real en Render. |
 | 4 | T-11 | Completar la validación de entrada del registro y del login | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1410 pruebas, 0 fallos, 90,28 %. Frontend: 550 pruebas, 78,88 %, build correcto. Máximos y formatos en los DTO de alta y login; `@ImagenPerfilHttps`/`PatronesEntrada`; alta de administrador con errores por campo; teléfono solo con espacio normal; frontend de registro solo HTTPS y `maxlength`. |
-| 4 | T-10 | Proteger el registro público frente al abuso (límite por IP y CSRF) | Media | Pendiente | | | |
+| 4 | T-10 | Proteger el registro público frente al abuso (límite por IP y CSRF) | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1420 pruebas, 0 fallos, 90,33 %. Frontend: 554 pruebas, 78,89 %, build correcto. `LimiteRegistroFilter` (5 altas/IP cada 15 min, persistente, 429 + Retry-After); registro ya no excluido de CSRF; `registration.service.ts` pide el token. Pendiente prueba manual del formulario. |
 | 4 | T-12 | Verificación de la propiedad del correo en el alta | Baja | Pendiente | | | |
 | 5 | T-21 | Añadir Content-Security-Policy y cabeceras de seguridad | Baja | Pendiente | | | |
 | 5 | T-23 | Permisos finos (authorities) además de los roles | Baja | Pendiente | | | |
@@ -51,6 +51,7 @@
 | 2026-11-20 | T-20 | Se migran 67 `IllegalArgumentException` a `DatosNoValidosException` (10 se quedan como error interno); el 500 genérico va en un `HandlerExceptionResolver` de último recurso. |
 | 2026-11-20 | T-05 | El cambio de contraseña no pide código del segundo factor; se implementa en `CambioContrasenaController`/`Service` nuevos en lugar de `PerfilController`. |
 | 2026-11-20 | T-06 | Cuentas existentes: la fecha se fija en su primer login correcto tras el despliegue. Se renueva por recuperación por correo (sin sesión «pendiente de cambio»). |
+| 2026-11-23 | T-10 | Altas públicas: 5 por IP cada 15 minutos (configurable), después de la comprobación CSRF; `/cliente/register` y `/vendedor/register` dejan de estar excluidos de CSRF. |
 | 2026-11-23 | T-11 | Máximos: nombre 100, apellidos 150, nombre comercial 100, sede 150, correo 254, contraseña 128 (también en el alta), imagen 1000 y solo HTTPS; teléfono solo con espacio normal. El alta de administrador devuelve errores por campo. |
 | 2026-11-23 | T-22 | Límite general de 60 peticiones por minuto (usuario o IP si es anónimo), excluyendo `/usuarios/csrf`, `/usuarios/sesion-actual` y `/product-images/**`. |
 | 2026-11-20 | T-09 | No se avisa a los administradores; solo al titular de la cuenta, como máximo un correo por hora. |
@@ -64,6 +65,7 @@ El token de sonar se tiene que quedar en el propierties por orden del profesor
 |---|---|---|
 | T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
 | T-18 | Opcional: definir `LOG_FORMAT` en Render (por defecto `ecs`, JSON) y comprobar `X-Correlation-Id` y la línea JSON con la app arrancada | No |
+| T-10 | Con la app arrancada, registrar un cliente (y un vendedor) desde el formulario de Angular y comprobar que se acepta con CSRF; repetir 6 altas desde la misma IP en 15 minutos y comprobar el aviso de límite | No |
 | T-22 | En el despliegue de Render, comprobar con `curl -i` que el campo `ip` del log JSON es la IP real del cliente (no una interna de Render) | No |
 | T-09 | Comprobar con Brevo configurado que el titular recibe un único correo al bloquearse su cuenta (5 fallos seguidos) y que un correo inexistente no genera nada | No |
 | T-19 | Comprobar con MongoDB real que se crea el índice TTL `ttl_auditoria_fecha` y que `GET /administrador/auditoria` lista eventos | No |

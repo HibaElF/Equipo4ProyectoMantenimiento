@@ -34,6 +34,15 @@ describe('Register', () => {
 
   afterEach(() => httpMock.verify());
 
+  // T-10: el alta pide primero el token CSRF y lo envía en la cabecera X-XSRF-TOKEN.
+  const peticionDeRegistro = (url: string) => {
+    httpMock.expectOne('https://localhost:8443/usuarios/csrf').flush({ token: 'csrf-prueba' });
+    const peticion = httpMock.expectOne(url);
+    expect(peticion.request.headers.get('X-XSRF-TOKEN')).toBe('csrf-prueba');
+    expect(peticion.request.withCredentials).toBe(true);
+    return peticion;
+  };
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
@@ -338,9 +347,7 @@ describe('Register', () => {
 
     component.register();
 
-    const request = httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    );
+    const request = peticionDeRegistro('https://localhost:8443/cliente/register');
 
     expect(request.request.method).toBe('POST');
 
@@ -381,9 +388,7 @@ describe('Register', () => {
 
     component.register();
 
-    httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    ).flush(
+    peticionDeRegistro('https://localhost:8443/cliente/register').flush(
       {
         mensaje: 'Si la solicitud puede tramitarse, el equipo administrador revisará los datos antes de activar la cuenta.'
       },
@@ -417,9 +422,7 @@ describe('Register', () => {
 
     component.register();
 
-    httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    ).flush(
+    peticionDeRegistro('https://localhost:8443/cliente/register').flush(
       {
         error: 'Revisa los campos del formulario.',
         errores: {
@@ -497,9 +500,7 @@ describe('Register', () => {
 
     registrationService.registerVendedor(requestBody).subscribe();
 
-    const request = httpMock.expectOne(
-      'https://localhost:8443/vendedor/register'
-    );
+    const request = peticionDeRegistro('https://localhost:8443/vendedor/register');
 
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual(requestBody);
