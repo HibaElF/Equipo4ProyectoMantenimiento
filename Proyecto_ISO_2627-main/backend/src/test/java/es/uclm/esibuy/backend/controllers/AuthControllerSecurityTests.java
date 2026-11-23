@@ -441,6 +441,23 @@ class AuthControllerSecurityTests {
     }
 
     @Test
+    void unaCuentaConElCorreoSinVerificarDevuelve403ConUnMensajeClaro() throws Exception {
+        when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
+                org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new es.uclm.esibuy.backend.exceptions.CorreoNoVerificadoException());
+
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"cliente@example.com","password":"ClaveSegura9!"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value(
+                        "Confirma tu correo electrónico con el enlace que te hemos enviado antes de iniciar sesión."));
+    }
+
+    @Test
     void unaContrasenaCaducadaDevuelve403ConUnCodigoReconocible() throws Exception {
         when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
                 org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))

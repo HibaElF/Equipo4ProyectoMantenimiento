@@ -135,6 +135,37 @@ class AuthServiceCaducidadTests {
     }
 
     @Test
+    void unaCuentaConElCorreoSinVerificarNoEntraAunqueTengaLasCredencialesCorrectas() {
+        cambiadaHaceDias(1);
+        cliente.setCorreoVerificado(false);
+
+        assertThrows(es.uclm.esibuy.backend.exceptions.CorreoNoVerificadoException.class,
+                () -> servicio.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        verify(intentos, never()).registrarExito(anyString());
+    }
+
+    @Test
+    void elEstadoDelCorreoNoSeRevelaConUnaContrasenaIncorrectaNiEnCuentasBloqueadas() {
+        cambiadaHaceDias(1);
+        cliente.setCorreoVerificado(false);
+        when(encoder.matches("Incorrecta1!", "hash")).thenReturn(false);
+        assertThrows(BadCredentialsException.class, () -> servicio.autenticar(CORREO, "Incorrecta1!", "127.0.0.1"));
+
+        cliente.setBloqueada(true);
+        assertThrows(BadCredentialsException.class, () -> servicio.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+    }
+
+    @Test
+    void lasCuentasAnterioresSinElCampoSeConsideranVerificadasYUnaVerificadaEntra() {
+        cambiadaHaceDias(1);
+        assertSame(cliente, servicio.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        cliente.setCorreoVerificado(true);
+        assertSame(cliente, servicio.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+    }
+
+    @Test
     void sinCaducarNoSeGuardaLaCuentaPorLaCaducidad() {
         cambiadaHaceDias(1);
 

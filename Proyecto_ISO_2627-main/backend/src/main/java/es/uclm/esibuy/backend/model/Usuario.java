@@ -36,6 +36,10 @@ public abstract class Usuario {
 
 	private List<String> historialContrasenasHash = new ArrayList<>();
 
+	// Correo confirmado por el titular. Las cuentas anteriores a esta medida no tienen el valor (null) y se
+	// consideran verificadas; solo los registros públicos nuevos parten de false.
+	private Boolean correoVerificado;
+
 	// Fecha del último cambio de contraseña (null en las cuentas anteriores a la caducidad).
 	private Instant contrasenaCambiadaEn;
 
@@ -162,6 +166,14 @@ public abstract class Usuario {
 
 	public void setBloqueada(boolean bloqueada) {
 		this.bloqueada = bloqueada;
+	}
+
+	public boolean isCorreoVerificado() {
+		return correoVerificado == null || correoVerificado;
+	}
+
+	public void setCorreoVerificado(boolean correoVerificado) {
+		this.correoVerificado = correoVerificado;
 	}
 
 	public boolean isActivada() {

@@ -17,6 +17,7 @@ import es.uclm.esibuy.backend.dao.ResultadoFalloLogin;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.exceptions.AccountPendingException;
 import es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException;
+import es.uclm.esibuy.backend.exceptions.CorreoNoVerificadoException;
 import es.uclm.esibuy.backend.exceptions.LoginRateLimitException;
 import es.uclm.esibuy.backend.model.Usuario;
 
@@ -122,6 +123,11 @@ public class AuthService {
 
         if (usuario.isBloqueada()) {
             throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);
+        }
+
+        // Solo tras acertar las credenciales: no se revela el estado de la cuenta a un tercero.
+        if (!usuario.isCorreoVerificado()) {
+            throw new CorreoNoVerificadoException();
         }
 
         if (!usuario.isActivada()) {

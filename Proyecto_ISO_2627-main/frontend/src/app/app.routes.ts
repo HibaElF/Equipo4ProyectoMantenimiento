@@ -3,6 +3,7 @@ import { Home } from './pages/home/home';
 import { Login } from './pages/login/login';
 import { Register } from './pages/register/register';
 import { RecuperacionContrasena } from './pages/recuperacion-contrasena/recuperacion-contrasena';
+import { VerificarCorreo } from './pages/verificar-correo/verificar-correo';
 import { PanelAdministrador } from './pages/paneles/administrador';
 import { PanelCliente } from './pages/paneles/cliente';
 import { PanelVendedor } from './pages/paneles/vendedor';
@@ -49,6 +50,12 @@ export const routes: Routes = [
     path: 'recuperar-contrasena',
     title: 'Recuperar contraseña · ESIBuy',
     component: RecuperacionContrasena,
+    data: { cabecera: false }
+  },
+  {
+    path: 'verificar-correo',
+    title: 'Verificar correo · ESIBuy',
+    component: VerificarCorreo,
     data: { cabecera: false }
   },
   {

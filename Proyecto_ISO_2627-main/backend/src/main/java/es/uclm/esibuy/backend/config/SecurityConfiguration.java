@@ -170,6 +170,7 @@ public class SecurityConfiguration {
                                                                 "/usuarios/login/3fa/reenviar",
                                                                 "/usuarios/recuperar-contrasena",
                                                                 "/usuarios/recuperar-contrasena/confirmar",
+                                                                "/usuarios/verificar-correo",
                                                                 "/cliente/register",
                                                                 "/vendedor/register")
                                                 .permitAll()
@@ -202,6 +203,7 @@ public class SecurityConfiguration {
                                                                 "/login",
                                                                 "/registro",
                                                                 "/recuperar-contrasena",
+                                                                "/verificar-correo",
                                                                 "/perfil",
                                                                 "/listas",
                                                                 "/perfil/direcciones",

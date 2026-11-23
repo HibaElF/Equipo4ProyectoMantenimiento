@@ -120,6 +120,46 @@ public class BrevoEmailService {
                 .toBodilessEntity();
     }
 
+    /** Confirmación del correo de una cuenta nueva; en segundo plano para no alterar la respuesta del alta. */
+    @Async
+    public void enviarVerificacionCorreoEnSegundoPlano(String destinatario, String enlace) {
+        try {
+            enviarVerificacionCorreo(destinatario, enlace);
+        } catch (RestClientException | IllegalStateException exception) {
+            LOGGER.error("No se pudo enviar el correo de verificación mediante Brevo.", exception);
+        }
+    }
+
+    public void enviarVerificacionCorreo(String destinatario, String enlace) {
+        if (apiKey.isBlank() || emailRemitente.isBlank()) {
+            throw new IllegalStateException(
+                    "Falta configurar la API de Brevo o el remitente.");
+        }
+
+        Map<String, Object> cuerpo = Map.of(
+                "sender", Map.of(
+                        "name", nombreRemitente,
+                        CAMPO_EMAIL, emailRemitente),
+                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
+                "subject", "Confirma tu correo en ESIBuy",
+                "textContent", """
+                        Hemos recibido una solicitud de registro en ESIBuy con este correo.
+
+                        Para confirmar que la dirección es tuya, abre este enlace (caduca en 24 horas y solo puede usarse una vez):
+                        %s
+
+                        Si no has solicitado el registro, ignora este correo.
+                        """.formatted(enlace));
+
+        restClient.post()
+                .uri("https://api.brevo.com/v3/smtp/email")
+                .header("api-key", apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(cuerpo)
+                .retrieve()
+                .toBodilessEntity();
+    }
+
     public void enviarCodigoAutenticacion(String destinatario, String codigo) {
         if (apiKey.isBlank() || emailRemitente.isBlank()) {
             throw new IllegalStateException(

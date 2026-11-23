@@ -62,12 +62,16 @@ class RegistrationSecurityTests {
     @Mock
     private BajaUsuarioService bajaUsuarioService;
 
+    @Mock
+    private VerificacionCorreoService verificacionCorreoService;
+
     private SoporteRegistro soporteRegistro() {
         return new SoporteRegistro(
                 usuarioDAO,
                 passwordEncoder,
                 new PasswordPolicy(),
-                VALIDATOR);
+                VALIDATOR,
+                verificacionCorreoService);
     }
 
     @Test
@@ -254,6 +258,9 @@ class RegistrationSecurityTests {
 
         assertFalse(savedCustomer.getValue().isBloqueada());
         assertFalse(savedCustomer.getValue().isActivada());
+        // T-12: la cuenta nueva parte sin el correo verificado y se envía el enlace de confirmación.
+        assertFalse(savedCustomer.getValue().isCorreoVerificado());
+        verify(verificacionCorreoService).iniciar(savedCustomer.getValue());
     }
 
     @Test
@@ -279,6 +286,8 @@ class RegistrationSecurityTests {
                 () -> service.registrar(request));
 
         verify(clienteDAO, never()).save(any(Cliente.class));
+        // Si el correo ya existe no se envía nada: la respuesta es la misma y no se revela.
+        org.mockito.Mockito.verifyNoInteractions(verificacionCorreoService);
     }
 
     @Test
@@ -407,6 +416,8 @@ class RegistrationSecurityTests {
 
         assertFalse(savedSeller.getValue().isBloqueada());
         assertFalse(savedSeller.getValue().isActivada());
+        assertFalse(savedSeller.getValue().isCorreoVerificado());
+        verify(verificacionCorreoService).iniciar(savedSeller.getValue());
 
         // Un segundo registro con el mismo nombre comercial debe rechazarse.
         when(vendedorDAO.existsByNombreComercial("Tienda Segura"))

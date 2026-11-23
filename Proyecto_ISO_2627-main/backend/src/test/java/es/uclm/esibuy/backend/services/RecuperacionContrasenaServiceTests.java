@@ -159,6 +159,34 @@ class RecuperacionContrasenaServiceTests {
     }
 
     @Test
+    void restablecerLaContrasenaTambienVerificaElCorreoYLoAudita() {
+        cliente.setCorreoVerificado(false);
+        when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));
+        when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.encode(NUEVA_CONTRASENA)).thenReturn("hash-nuevo");
+        when(tokenDAO.consumirSiValido(eq("token-doc-1"), any(Instant.class))).thenReturn(1L);
+
+        servicio.completar(TOKEN, NUEVA_CONTRASENA);
+
+        assertTrue(cliente.isCorreoVerificado());
+        verify(auditoriaService).registrarCorreoVerificado("usuario-1", "recuperacion");
+    }
+
+    @Test
+    void siElCorreoYaEstabaVerificadoNoSeVuelveAAuditar() {
+        cliente.setCorreoVerificado(true);
+        when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));
+        when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.encode(NUEVA_CONTRASENA)).thenReturn("hash-nuevo");
+        when(tokenDAO.consumirSiValido(eq("token-doc-1"), any(Instant.class))).thenReturn(1L);
+
+        servicio.completar(TOKEN, NUEVA_CONTRASENA);
+
+        assertTrue(cliente.isCorreoVerificado());
+        verify(auditoriaService, never()).registrarCorreoVerificado(anyString(), anyString());
+    }
+
+    @Test
     void restablecerLaContrasenaRenuevaLaFechaDeCaducidad() {
         cliente.setContrasenaCambiadaEn(Instant.EPOCH);
         when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));

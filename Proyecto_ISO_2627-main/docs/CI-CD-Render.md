@@ -255,6 +255,15 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Verificación del correo en el alta
+
+- Tras un registro público (cliente o vendedor) nuevo se envía un correo con un enlace `/verificar-correo?token=…`, de **un solo uso y 24 horas** de validez. El token solo se guarda como SHA-256 (colección `tokens_verificacion_correo`, con índice TTL).
+- Para entrar hace falta **estar activada por un administrador y tener el correo verificado**: la verificación complementa la activación, no la sustituye. Con las credenciales correctas y el correo sin verificar, el login responde 403 con un mensaje claro.
+- Si el correo ya estaba registrado no se envía nada y la respuesta sigue siendo el mismo `202`.
+- **Cuentas existentes:** no tienen el campo `correoVerificado` y se consideran verificadas; no se bloquea a nadie.
+- **Enlace perdido o caducado:** completar una recuperación de contraseña también marca el correo como verificado (abrir ese enlace demuestra que el buzón es del titular). No hay endpoint de reenvío.
+- Requiere Brevo configurado (`BREVO_API_KEY`, `BREVO_FROM_EMAIL`), igual que la recuperación y el tercer factor. La URL del enlace usa `APP_FRONTEND_URL`.
+
 ### Límites de peticiones
 
 - **API general:** 60 peticiones por minuto por usuario autenticado o, si es anónimo, por IP. Si se supera, 429 con `Retry-After`. Quedan fuera `OPTIONS`, `/usuarios/csrf`, `/usuarios/sesion-actual` y `/product-images/**`. Propiedades: `app.security.rate-limit.api.max-requests` y `app.security.rate-limit.api.window-seconds`.

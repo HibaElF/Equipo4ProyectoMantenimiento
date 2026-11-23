@@ -104,6 +104,7 @@ public class VendedorService {
         vendedor.setImagenPerfil(request.imagenPerfil());
         vendedor.setBloqueada(false);
         vendedor.setActivada(false);
+        vendedor.setCorreoVerificado(false);
         vendedor.registrarContrasenaHash(soporteRegistro.codificarContrasena(request.contrasena()));
 
                 Vendedor guardado = soporteRegistro.guardarRegistroPublico(
@@ -115,6 +116,8 @@ public class VendedorService {
                 guardado.getId()
             );
         }
+
+        soporteRegistro.iniciarVerificacionCorreo(guardado);
 
         return new RegistroUsuarioResponse(guardado.getId(), "vendedor");
     }

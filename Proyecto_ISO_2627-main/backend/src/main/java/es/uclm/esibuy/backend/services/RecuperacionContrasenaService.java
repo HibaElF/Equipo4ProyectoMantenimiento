@@ -139,17 +139,24 @@ public class RecuperacionContrasenaService {
                     "No puedes reutilizar una de tus contraseñas recientes.");
         }
 
+        boolean[] correoVerificadoAhora = { false };
         transaccion.executeWithoutResult(status -> {
             if (tokenDAO.consumirSiValido(tokenGuardado.getId(), ahora) != 1) {
                 throw new TokenRecuperacionInvalidoException();
             }
 
+            // Abrir el enlace que llega al correo demuestra que el titular lo controla.
+            correoVerificadoAhora[0] = !usuario.isCorreoVerificado();
+            usuario.setCorreoVerificado(true);
             usuario.registrarContrasenaHash(passwordEncoder.encode(nuevaContrasena));
             usuarioDAO.save(usuario);
         });
 
         sesionService.cerrarSesiones(usuario.getEmail());
         auditoriaService.registrarRestablecimientoContrasena(usuario.getId());
+        if (correoVerificadoAhora[0]) {
+            auditoriaService.registrarCorreoVerificado(usuario.getId(), "recuperacion");
+        }
     }
 
     private String calcularHash(String token) {

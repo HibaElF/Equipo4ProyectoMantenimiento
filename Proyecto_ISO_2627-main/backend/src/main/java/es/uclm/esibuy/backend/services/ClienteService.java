@@ -117,6 +117,7 @@ public class ClienteService {
                 cliente.setEsPremium(request.esPremium());
                 cliente.setBloqueada(false);
                 cliente.setActivada(false);
+                cliente.setCorreoVerificado(false);
                 cliente.registrarContrasenaHash(soporteRegistro.codificarContrasena(request.contrasena()));
 
                 Cliente guardado = soporteRegistro.guardarRegistroPublico(
@@ -128,6 +129,8 @@ public class ClienteService {
                                 guardado.getId()
                         );
                 }
+
+                soporteRegistro.iniciarVerificacionCorreo(guardado);
 
                 return new RegistroUsuarioResponse(guardado.getId(), "cliente");
         }

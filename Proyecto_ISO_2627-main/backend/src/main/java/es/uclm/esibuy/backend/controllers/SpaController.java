@@ -11,6 +11,7 @@ public class SpaController {
             "/login",
             "/registro",
             "/recuperar-contrasena",
+            "/verificar-correo",
             "/perfil",
             "/listas",
             "/perfil/direcciones",

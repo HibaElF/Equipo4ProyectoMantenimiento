@@ -103,6 +103,12 @@ public class AuditoriaService {
         persistir(activado ? "codigo_correo_activado" : "codigo_correo_desactivado", EXITO, null, usuarioId, Map.of());
     }
 
+    // via: «enlace» (confirmación desde el correo de alta) o «recuperacion» (al restablecer la contraseña).
+    public void registrarCorreoVerificado(String usuarioId, String via) {
+        LOGGER.info("evento_seguridad=correo_verificado usuario_id={} via={} resultado=exito", usuarioId, via);
+        persistir("correo_verificado", EXITO, null, usuarioId, Map.of("via", via));
+    }
+
     public void registrarUsuarioActivado(String usuarioId) {
         LOGGER.info("evento_seguridad=usuario_activado usuario_id={} resultado=exito", usuarioId);
         persistir("usuario_activado", EXITO, null, usuarioId, Map.of());

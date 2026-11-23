@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import es.uclm.esibuy.backend.dto.ApiErrorResponse;
 import es.uclm.esibuy.backend.exceptions.AccountPendingException;
 import es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException;
+import es.uclm.esibuy.backend.exceptions.CorreoNoVerificadoException;
 import es.uclm.esibuy.backend.exceptions.LoginRateLimitException;
 
 @RestControllerAdvice(assignableTypes = AuthController.class)
@@ -35,6 +36,12 @@ public class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ApiErrorResponse(excepcion.getMessage(),
                         Map.of("codigo", List.of(ContrasenaCaducadaException.CODIGO))));
+    }
+
+    @ExceptionHandler(CorreoNoVerificadoException.class)
+    public ResponseEntity<ApiErrorResponse> manejarCorreoNoVerificado(CorreoNoVerificadoException excepcion) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ApiErrorResponse(excepcion.getMessage()));
     }
 
     @ExceptionHandler(AccountPendingException.class)
