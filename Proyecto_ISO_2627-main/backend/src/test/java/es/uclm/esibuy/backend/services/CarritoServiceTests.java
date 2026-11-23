@@ -405,6 +405,20 @@ class CarritoServiceTests {
     }
 
     @Test
+    void laRespuestaDelCarritoLlevaLaUrlDeLaImagenFirmada() {
+        FirmaImagenService firmas = new FirmaImagenService(FirmaImagenServiceTests.CLAVE,
+                java.time.Duration.ofHours(2), java.time.Clock.systemUTC());
+        servicio = new CarritoService(carritoDAO, clienteDAO, productoDAO, firmas);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 1));
+        producto.setImagen("/product-images/a.png");
+
+        String imagen = servicio.consultarCarrito().productos().getFirst().imagen();
+
+        assertTrue(imagen.startsWith("/product-images/a.png?exp="));
+        assertTrue(imagen.contains("&sig="));
+    }
+
+    @Test
     void consultaConDescuentoYPropietarioAutenticado() {
         prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 2));
         producto.setNombre("Producto A");

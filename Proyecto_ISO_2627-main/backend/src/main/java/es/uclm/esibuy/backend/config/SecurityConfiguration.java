@@ -32,7 +32,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import es.uclm.esibuy.backend.security.CatalogoPermisos;
 import es.uclm.esibuy.backend.security.ContextoAutenticacion;
 import es.uclm.esibuy.backend.security.ContextoLogFilter;
+import es.uclm.esibuy.backend.security.FiltroImagenFirmada;
 import es.uclm.esibuy.backend.security.LimiteApiFilter;
+import es.uclm.esibuy.backend.services.FirmaImagenService;
 import es.uclm.esibuy.backend.security.LimiteApiService;
 import es.uclm.esibuy.backend.security.LimiteRegistroFilter;
 import es.uclm.esibuy.backend.dao.LoginAttemptStore;
@@ -85,6 +87,14 @@ public class SecurityConfiguration {
                 return new LimiteApiService(maximoPeticiones, Duration.ofSeconds(segundosVentana), Clock.systemUTC());
         }
 
+        // T-34: firma de las URLs de imágenes. La clave es obligatoria: sin ella la aplicación no arranca.
+        @Bean
+        FirmaImagenService firmaImagenService(
+                        @Value("${app.security.imagenes.firma.key:}") String clave,
+                        @Value("${app.security.imagenes.firma.ttl:2h}") Duration vigencia) {
+                return new FirmaImagenService(clave, vigencia, Clock.systemUTC());
+        }
+
         // Jerarquía de roles: cada rol implica los permisos de CatalogoPermisos. La usan la autorización HTTP
         // y la de métodos, y hace que los principales con solo ROLE_x (como los de las pruebas) tengan sus permisos.
         @Bean
@@ -127,6 +137,7 @@ public class SecurityConfiguration {
                         SessionRegistry sessionRegistry,
                         Seudonimizador seudonimizador,
                         LimiteApiService limiteApiService,
+                        FirmaImagenService firmaImagenService,
                         ObjectProvider<LoginAttemptStore> almacenIntentos,
                         @Value("${app.security.rate-limit.registro.max-requests:5}") int maximoAltasPorIp,
                         @Value("${app.security.rate-limit.registro.window-seconds:900}") int ventanaAltasSegundos,
@@ -166,6 +177,9 @@ public class SecurityConfiguration {
                                                                 .setStatus(HttpStatus.UNAUTHORIZED.value())))
 
                                 .addFilterBefore(new SesionAbsolutaFilter(timeoutAbsolutoSesion),
+                                                AuthorizationFilter.class)
+
+                                .addFilterBefore(new FiltroImagenFirmada(firmaImagenService),
                                                 AuthorizationFilter.class)
 
                                 .addFilterBefore(new LimiteApiFilter(limiteApiService),

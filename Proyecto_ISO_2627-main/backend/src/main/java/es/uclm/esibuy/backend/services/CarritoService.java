@@ -22,6 +22,7 @@ import es.uclm.esibuy.backend.model.Carrito;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class CarritoService {
@@ -32,8 +33,17 @@ public class CarritoService {
     private final CarritoDAO carritoDAO;
     private final ClienteDAO clienteDAO;
     private final ProductoDAO productoDAO;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public CarritoService(CarritoDAO carritoDAO, ClienteDAO clienteDAO, ProductoDAO productoDAO) {
+        this(carritoDAO, clienteDAO, productoDAO, FirmaImagenService.sinFirma());
+    }
+
+    @Autowired
+    public CarritoService(CarritoDAO carritoDAO, ClienteDAO clienteDAO, ProductoDAO productoDAO,
+            FirmaImagenService firmaImagenes) {
+        this.firmaImagenes = firmaImagenes;
         this.carritoDAO = carritoDAO;
         this.clienteDAO = clienteDAO;
         this.productoDAO = productoDAO;
@@ -150,14 +160,14 @@ public class CarritoService {
         return new CarritoResponse(List.copyOf(lineas), importe);
     }
 
-    private static LineaCarritoResponse lineaNoDisponible(String idProducto, int cantidad, Producto producto,
+    private LineaCarritoResponse lineaNoDisponible(String idProducto, int cantidad, Producto producto,
             String aviso) {
         if (producto == null) {
             return new LineaCarritoResponse(idProducto, cantidad, null, null, "Producto eliminado", null, null,
                     false, aviso, null);
         }
         return new LineaCarritoResponse(idProducto, cantidad, null, null, producto.getNombre(),
-                producto.getImagen(), producto.getStock(), false, aviso, producto.getVendedor());
+                firmaImagenes.firmar(producto.getImagen()), producto.getStock(), false, aviso, producto.getVendedor());
     }
 
     private String comprobarDisponibilidad(Producto producto, int cantidad, Cliente cliente) {
@@ -189,7 +199,7 @@ public class CarritoService {
         BigDecimal precioUnitario = BigDecimal.valueOf(precio).setScale(2);
         BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
         return new LineaCarritoResponse(producto.getId(), cantidad, precioUnitario, subtotal,
-                producto.getNombre(), producto.getImagen(), producto.getStock(), true, null,
+                producto.getNombre(), firmaImagenes.firmar(producto.getImagen()), producto.getStock(), true, null,
                 producto.getVendedor());
     }
 

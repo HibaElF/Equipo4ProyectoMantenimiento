@@ -27,6 +27,7 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
 import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
+import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.validation.Validator;
 
 @Service
@@ -43,7 +44,9 @@ public class ProductoService {
     private final ProductoImagenService productoImagenService;
     private final ClienteDAO clienteDAO;
     private final PedidoDAO pedidoDAO;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public ProductoService(
             ProductoDAO productoDAO,
             VendedorDAO vendedorDAO,
@@ -52,6 +55,21 @@ public class ProductoService {
             ProductoImagenService productoImagenService,
             ClienteDAO clienteDAO,
             PedidoDAO pedidoDAO) {
+        this(productoDAO, vendedorDAO, categoriaDAO, validar, productoImagenService, clienteDAO, pedidoDAO,
+                FirmaImagenService.sinFirma());
+    }
+
+    @Autowired
+    public ProductoService(
+            ProductoDAO productoDAO,
+            VendedorDAO vendedorDAO,
+            CategoriaDAO categoriaDAO,
+            Validator validar,
+            ProductoImagenService productoImagenService,
+            ClienteDAO clienteDAO,
+            PedidoDAO pedidoDAO,
+            FirmaImagenService firmaImagenes) {
+        this.firmaImagenes = firmaImagenes;
         this.productoDAO = productoDAO;
         this.vendedorDAO = vendedorDAO;
         this.categoriaDAO = categoriaDAO;
@@ -153,7 +171,7 @@ public class ProductoService {
                 producto.getDescuentoPremium(),
                 descuentoAplicado,
                 !producto.isSoloPremium() || clientePremium ? producto.getDescripcion() : null,
-                producto.getImagen(),
+                firmaImagenes.firmar(producto.getImagen()),
                 producto.getVendedor(),
                 producto.isEsVisible(),
                 producto.isSoloPremium(),
@@ -175,7 +193,7 @@ public class ProductoService {
                 producto.getDescuento(),
                 producto.getDescuentoPremium(),
                 producto.isEsVisible(),
-                producto.getImagen(),
+                firmaImagenes.firmar(producto.getImagen()),
                 producto.isSoloPremium());
     }
 
@@ -190,7 +208,7 @@ public class ProductoService {
                 producto.getDescuento(),
                 producto.getDescuentoPremium(),
                 producto.isEsVisible(),
-                producto.getImagen(),
+                firmaImagenes.firmar(producto.getImagen()),
                 producto.isSoloPremium(),
                 producto.getVendedor());
     }
@@ -220,7 +238,7 @@ public class ProductoService {
                 nuevoProducto.getStock(),
                 nuevoProducto.getDescuento(),
                 nuevoProducto.getDescuentoPremium(),
-                nuevoProducto.getImagen());
+                firmaImagenes.firmar(nuevoProducto.getImagen()));
     }
 
     public ConsultarProductosResponse modificarProducto(

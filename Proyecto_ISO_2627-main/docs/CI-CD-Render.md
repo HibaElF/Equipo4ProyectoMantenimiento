@@ -133,6 +133,8 @@ Las variables necesarias se configuran en el panel de Render y no se incluyen en
 | `APP_PRODUCTOS_IMAGENES_ALMACENAMIENTO` | Selecciona MongoDB como almacenamiento de imágenes |
 | `MONGODB_URI` | Cadena privada de conexión a MongoDB Atlas |
 | `TOTP_ENCRYPTION_KEY` | Clave de cifrado de secretos TOTP |
+| `IMAGENES_FIRMA_KEY` | **Obligatoria.** Clave Base64 de 32 bytes para firmar las URLs de las imágenes de producto (T-34). Sin ella el backend no arranca |
+| `IMAGENES_FIRMA_TTL` | Opcional. Vigencia de las URLs firmadas (por defecto `2h`) |
 | `PERSONAL_DATA_ENCRYPTION_KEY` | Clave Base64 de 32 bytes para cifrar DNI/NIF y teléfono de usuarios |
 | `PERSONAL_DATA_PREVIOUS_ENCRYPTION_KEY` | Clave anterior temporal para leer/rotar campos cifrados |
 | `PERSONAL_DATA_MIGRATE` | Activar temporalmente con `true` para cifrar los datos existentes al desplegar |
@@ -254,6 +256,14 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 ### Validación de errores
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
+
+### URLs firmadas con caducidad para las imágenes
+
+- Las respuestas que incluyen la imagen de un producto (catálogo, detalle, panel del vendedor, carrito, favoritos y listas) devuelven `/product-images/<nombre>?exp=<epoch>&sig=<firma>`. La firma es `HMAC-SHA256(nombre ":" expiración)` con `IMAGENES_FIRMA_KEY`. El único punto que la construye es `FirmaImagenService`.
+- `FiltroImagenFirmada` protege `/product-images/**` en los dos modos de almacenamiento: sin firma o con firma inválida o manipulada responde **403**; con firma correcta pero caducada, **410**.
+- La caducidad es `IMAGENES_FIRMA_TTL` (2 h por defecto) redondeada a la siguiente hora en punto, de modo que la URL es estable dentro de esa ventana y el navegador puede cachear la imagen.
+- **Clave:** generar 32 bytes aleatorios en Base64 (por ejemplo, `openssl rand -base64 32`), configurarla en Render y en el `.env` local, y no versionarla. Si falta o no es válida, la aplicación no arranca. Cambiarla invalida las URLs ya emitidas hasta que el frontend las recarga.
+- Una página abierta más tiempo que la vigencia muestra imágenes rotas hasta recargarla; los enlaces a una imagen copiados fuera de la aplicación dejan de funcionar.
 
 ### Antivirus (VirusTotal) y cabeceras de entrega de imágenes
 

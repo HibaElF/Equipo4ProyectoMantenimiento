@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -43,13 +44,26 @@ public class ListaProductosService {
     private final UsuarioDAO usuarioDAO;
     private final ProductoDAO productoDAO;
     private final FavoritosRegistroService favoritosRegistroService;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public ListaProductosService(
             ListaProductosDAO listaProductosDAO,
             UsuarioDAO usuarioDAO,
             ProductoDAO productoDAO,
             FavoritosRegistroService favoritosRegistroService) {
+        this(listaProductosDAO, usuarioDAO, productoDAO, favoritosRegistroService, FirmaImagenService.sinFirma());
+    }
 
+    @Autowired
+    public ListaProductosService(
+            ListaProductosDAO listaProductosDAO,
+            UsuarioDAO usuarioDAO,
+            ProductoDAO productoDAO,
+            FavoritosRegistroService favoritosRegistroService,
+            FirmaImagenService firmaImagenes) {
+
+        this.firmaImagenes = firmaImagenes;
         this.listaProductosDAO = listaProductosDAO;
         this.usuarioDAO = usuarioDAO;
         this.productoDAO = productoDAO;
@@ -257,7 +271,7 @@ public class ListaProductosService {
         boolean premium = usuario instanceof Cliente cliente && cliente.isEsPremium();
 
         List<ProductoFavoritoResponse> detalles = ids.stream()
-                .map(id -> FavoritoService.presentarProducto(id, productos.get(id), premium))
+                .map(id -> FavoritoService.presentarProducto(id, productos.get(id), premium, firmaImagenes))
                 .toList();
 
         return new ListaProductosResponse(
