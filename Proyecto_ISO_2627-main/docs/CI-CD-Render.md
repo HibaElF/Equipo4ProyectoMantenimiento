@@ -255,6 +255,14 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Recodificación de las imágenes de producto
+
+- Tras las validaciones (tamaño, firma, `Content-Type`, extensión y marca de fin) y **antes** de VirusTotal y del almacenamiento, `ProductoImagenService` decodifica la imagen y la vuelve a codificar con `ImageIO`. Lo que se analiza y se guarda (en disco o en MongoDB) son los bytes nuevos: no conservan EXIF, comentarios ni datos ocultos.
+- Límites (constantes del servicio): **4000 px por lado**, 16 millones de píxeles y **10 s** para decodificar y recodificar. Las dimensiones se leen del encabezado antes de reservar memoria, para evitar «bombas de descompresión».
+- PNG y GIF se reescriben con su formato; el JPEG se convierte a RGB (sin transparencia, fondo blanco) con calidad fija 0,85. Un JPEG en CMYK se rechaza.
+- **GIF animado:** se rechaza («El GIF no puede ser animado.»); el GIF estático se acepta.
+- Mejora opcional no implementada: aislar la decodificación en un proceso o contenedor aparte.
+
 ### Permisos finos (authorities) además de los roles
 
 - El catálogo se declara **una sola vez** en `CatalogoPermisos` (rol → permisos). De él salen la jerarquía de roles de Spring Security (`ROLE_ADMIN` implica sus permisos, etc.) y las autoridades que se guardan en la sesión al iniciar sesión (el rol y sus permisos).

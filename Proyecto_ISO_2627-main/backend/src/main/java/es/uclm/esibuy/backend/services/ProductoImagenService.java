@@ -1,11 +1,31 @@
 package es.uclm.esibuy.backend.services;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +39,17 @@ public class ProductoImagenService {
     private static final long TAMANO_MAXIMO = 5L * 1024 * 1024;
     private static final String RUTA_PUBLICA = "/product-images/";
     private static final String MENSAJE_IMAGEN_NO_VALIDA = "La imagen debe ser PNG, JPG o GIF y no superar 5 MB.";
+    private static final String MENSAJE_GIF_ANIMADO = "El GIF no puede ser animado.";
+    // T-33: límites para evitar «bombas de descompresión» y decodificaciones que no terminan.
+    static final int LADO_MAXIMO = 4000;
+    static final long PIXELES_MAXIMOS = 16_000_000L;
+    private static final long TIEMPO_MAXIMO_SEGUNDOS = 10;
+    private static final float CALIDAD_JPEG = 0.85f;
+    private static final ExecutorService RECODIFICADOR = Executors.newCachedThreadPool(tarea -> {
+        Thread hilo = new Thread(tarea, "recodificador-imagenes");
+        hilo.setDaemon(true);
+        return hilo;
+    });
 
     // Lista blanca: tipo real detectado -> Content-Type declarado, extensiones de nombre admitidas y extensión final.
     private enum TipoImagen {
@@ -110,6 +141,9 @@ public class ProductoImagenService {
             throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
         }
 
+        // T-33: se guardan los bytes recodificados, sin metadatos ni datos ocultos.
+        contenido = recodificarConLimite(contenido, tipo);
+
         // El nombre original nunca se usa: se genera uno propio con una extensión de la lista blanca.
         if (virusTotalService != null) {
             virusTotalService.verificar(contenido, tipo.contentType);
@@ -137,6 +171,101 @@ public class ProductoImagenService {
             return RUTA_PUBLICA + nombreArchivo;
         } catch (IOException e) {
             throw new IllegalStateException("No se pudo guardar la imagen del producto.", e);
+        }
+    }
+
+    private static byte[] recodificarConLimite(byte[] contenido, TipoImagen tipo) {
+        Future<byte[]> tarea = RECODIFICADOR.submit(() -> recodificar(contenido, tipo));
+        try {
+            return tarea.get(TIEMPO_MAXIMO_SEGUNDOS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            tarea.cancel(true);
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+        } catch (InterruptedException e) {
+            tarea.cancel(true);
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Se interrumpió el procesado de la imagen.", e);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof DatosNoValidosException noValida) {
+                throw noValida;
+            }
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+        }
+    }
+
+    // Decodifica y vuelve a codificar la imagen: se pierden EXIF, comentarios y cualquier dato oculto.
+    private static byte[] recodificar(byte[] contenido, TipoImagen tipo) throws IOException {
+        BufferedImage imagen;
+        try (ImageInputStream entrada = ImageIO.createImageInputStream(new ByteArrayInputStream(contenido))) {
+            Iterator<ImageReader> lectores = ImageIO.getImageReaders(entrada);
+            if (!lectores.hasNext()) {
+                throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+            }
+            ImageReader lector = lectores.next();
+            try {
+                lector.setInput(entrada, false, true);
+                // Las dimensiones se leen del encabezado, antes de reservar memoria para los píxeles.
+                long ancho = lector.getWidth(0);
+                long alto = lector.getHeight(0);
+                if (ancho <= 0 || alto <= 0 || ancho > LADO_MAXIMO || alto > LADO_MAXIMO
+                        || ancho * alto > PIXELES_MAXIMOS) {
+                    throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+                }
+                if (tipo == TipoImagen.GIF && lector.getNumImages(true) > 1) {
+                    throw new DatosNoValidosException(MENSAJE_GIF_ANIMADO);
+                }
+                imagen = lector.read(0);
+            } finally {
+                lector.dispose();
+            }
+        } catch (RuntimeException e) {
+            if (e instanceof DatosNoValidosException) {
+                throw e;
+            }
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+        }
+        if (imagen == null) {
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+        }
+
+        ByteArrayOutputStream salida = new ByteArrayOutputStream();
+        switch (tipo) {
+            case JPG -> escribirJpeg(imagen, salida);
+            case PNG -> escribir(imagen, "png", salida);
+            case GIF -> escribir(imagen, "gif", salida);
+        }
+        return salida.toByteArray();
+    }
+
+    private static void escribir(BufferedImage imagen, String formato, ByteArrayOutputStream salida)
+            throws IOException {
+        if (!ImageIO.write(imagen, formato, salida)) {
+            throw new DatosNoValidosException(MENSAJE_IMAGEN_NO_VALIDA);
+        }
+    }
+
+    // El JPEG no admite transparencia: se pasa a RGB sobre fondo blanco y se usa una calidad fija.
+    private static void escribirJpeg(BufferedImage imagen, ByteArrayOutputStream salida) throws IOException {
+        BufferedImage rgb = new BufferedImage(imagen.getWidth(), imagen.getHeight(), BufferedImage.TYPE_INT_RGB);
+        Graphics2D grafico = rgb.createGraphics();
+        try {
+            grafico.drawImage(imagen, 0, 0, Color.WHITE, null);
+        } finally {
+            grafico.dispose();
+        }
+        Iterator<ImageWriter> escritores = ImageIO.getImageWritersByFormatName("jpeg");
+        if (!escritores.hasNext()) {
+            throw new IllegalStateException("No hay codificador JPEG disponible.");
+        }
+        ImageWriter escritor = escritores.next();
+        try (MemoryCacheImageOutputStream destino = new MemoryCacheImageOutputStream(salida)) {
+            ImageWriteParam parametros = escritor.getDefaultWriteParam();
+            parametros.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+            parametros.setCompressionQuality(CALIDAD_JPEG);
+            escritor.setOutput(destino);
+            escritor.write(null, new IIOImage(rgb, null, null), parametros);
+        } finally {
+            escritor.dispose();
         }
     }
 
