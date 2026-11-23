@@ -255,6 +255,13 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Límites de peticiones
+
+- **API general:** 60 peticiones por minuto por usuario autenticado o, si es anónimo, por IP. Si se supera, 429 con `Retry-After`. Quedan fuera `OPTIONS`, `/usuarios/csrf`, `/usuarios/sesion-actual` y `/product-images/**`. Propiedades: `app.security.rate-limit.api.max-requests` y `app.security.rate-limit.api.window-seconds`.
+- **Limitación conocida:** este contador está **en memoria y es por instancia**: si Render ejecuta varias réplicas, el límite efectivo se multiplica, y se reinicia al reiniciar. Se hace así para no escribir en MongoDB en cada petición. Varios usuarios anónimos detrás de la misma IP (red de una universidad, por ejemplo) comparten cupo.
+- **Envío de códigos por correo (OTP):** 3 por hora y 10 por día por correo, además de los 3 por reto. Es persistente (MongoDB), válido con varias instancias. Propiedades: `app.security.rate-limit.otp.per-hour` y `app.security.rate-limit.otp.per-day`.
+- **IP real detrás de Render:** `server.forward-headers-strategy=native` hace que la IP del cliente sea la original y no la del proxy. Para comprobarlo en el despliegue, haz una petición con `curl -i` y mira el campo `ip` de la línea de log JSON de esa petición (debe ser la tuya, no una IP interna de Render).
+
 ### Caducidad de contraseñas
 
 - Una contraseña caduca a los **30 días** de su último cambio (`app.security.password.max-age`, por defecto `30d`; admite otros valores como `90d`). No requiere variable de entorno.

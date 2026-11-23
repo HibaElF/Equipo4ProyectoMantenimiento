@@ -1,5 +1,6 @@
 package es.uclm.esibuy.backend.config;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 
@@ -26,6 +27,8 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import es.uclm.esibuy.backend.security.ContextoLogFilter;
+import es.uclm.esibuy.backend.security.LimiteApiFilter;
+import es.uclm.esibuy.backend.security.LimiteApiService;
 import es.uclm.esibuy.backend.security.PepperedBCryptPasswordEncoder;
 import es.uclm.esibuy.backend.security.SesionAbsolutaFilter;
 import es.uclm.esibuy.backend.security.Seudonimizador;
@@ -48,6 +51,14 @@ public class SecurityConfiguration {
         Seudonimizador seudonimizador(
                         @Value("${app.security.password.pepper:}") String pepper) {
                 return new Seudonimizador(pepper);
+        }
+
+        // Límite general de la API (en memoria, por instancia). Configurable por propiedades.
+        @Bean
+        LimiteApiService limiteApiService(
+                        @Value("${app.security.rate-limit.api.max-requests:60}") int maximoPeticiones,
+                        @Value("${app.security.rate-limit.api.window-seconds:60}") int segundosVentana) {
+                return new LimiteApiService(maximoPeticiones, Duration.ofSeconds(segundosVentana), Clock.systemUTC());
         }
 
         @Bean
@@ -84,6 +95,7 @@ public class SecurityConfiguration {
                         CookieCsrfTokenRepository csrfTokenRepository,
                         SessionRegistry sessionRegistry,
                         Seudonimizador seudonimizador,
+                        LimiteApiService limiteApiService,
                         @Value("${app.security.session.absolute-timeout:8h}") Duration timeoutAbsolutoSesion)
                         throws Exception {
 
@@ -105,6 +117,9 @@ public class SecurityConfiguration {
                                                                 .setStatus(HttpStatus.UNAUTHORIZED.value())))
 
                                 .addFilterBefore(new SesionAbsolutaFilter(timeoutAbsolutoSesion),
+                                                AuthorizationFilter.class)
+
+                                .addFilterBefore(new LimiteApiFilter(limiteApiService),
                                                 AuthorizationFilter.class)
 
                                 .csrf(csrf -> csrf

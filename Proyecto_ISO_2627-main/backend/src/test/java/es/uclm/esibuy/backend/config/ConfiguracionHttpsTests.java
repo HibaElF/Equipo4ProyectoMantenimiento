@@ -30,6 +30,23 @@ class ConfiguracionHttpsTests {
     }
 
     @Test
+    void detrasDeUnProxyLaIpDelClienteSeLeeDeLasCabecerasReenviadas() throws IOException {
+        // Con «native», getRemoteAddr() devuelve la IP original detrás de Render: es la clave del
+        // límite de peticiones de los usuarios anónimos y de la auditoría.
+        assertEquals("native", configuracion().getProperty("server.forward-headers-strategy"));
+    }
+
+    @Test
+    void losLimitesDePeticionesSonConfigurablesYTienenLosValoresPorDefectoDelPlan() throws IOException {
+        Properties props = configuracion();
+
+        assertEquals("60", props.getProperty("app.security.rate-limit.api.max-requests"));
+        assertEquals("60", props.getProperty("app.security.rate-limit.api.window-seconds"));
+        assertEquals("3", props.getProperty("app.security.rate-limit.otp.per-hour"));
+        assertEquals("10", props.getProperty("app.security.rate-limit.otp.per-day"));
+    }
+
+    @Test
     void elKeystoreSeLeeDeVariablesDeEntornoConRutaPorDefecto() throws IOException {
         Properties props = configuracion();
         assertEquals("${SSL_KEY_STORE:file:../.certs/localhost.p12}", props.getProperty("server.ssl.key-store"));

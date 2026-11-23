@@ -26,8 +26,10 @@ import org.springframework.stereotype.Repository;
 public class LoginAttemptStore {
     private static final String COLLECTION = "seguridad_login";
     private static final int WINDOW_SECONDS = 300;
-    private static final int EMAIL_OTP_WINDOW_SECONDS = 600;
-    private static final int MAX_EMAIL_OTP_SENDS = 5;
+    private static final int EMAIL_OTP_HOUR_WINDOW_SECONDS = 3600;
+    private static final int EMAIL_OTP_DAY_WINDOW_SECONDS = 86400;
+    static final int DEFAULT_MAX_EMAIL_OTP_PER_HOUR = 3;
+    static final int DEFAULT_MAX_EMAIL_OTP_PER_DAY = 10;
     private static final int AVISO_BLOQUEO_WINDOW_SECONDS = 3600;
     private static final int ACCOUNT_FAILURE_WINDOW_SECONDS = 600;
     private static final int MAX_PAIR_ATTEMPTS = 5;
@@ -47,12 +49,23 @@ public class LoginAttemptStore {
 
     private final MongoTemplate mongoTemplate;
     private final String pepper;
+    private final int maxEmailOtpPerHour;
+    private final int maxEmailOtpPerDay;
     private final AtomicBoolean ttlIndexReady = new AtomicBoolean();
 
+    public LoginAttemptStore(MongoTemplate mongoTemplate, String pepper) {
+        this(mongoTemplate, pepper, DEFAULT_MAX_EMAIL_OTP_PER_HOUR, DEFAULT_MAX_EMAIL_OTP_PER_DAY);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
     public LoginAttemptStore(MongoTemplate mongoTemplate,
-            @org.springframework.beans.factory.annotation.Value("${app.security.password.pepper:}") String pepper) {
+            @org.springframework.beans.factory.annotation.Value("${app.security.password.pepper:}") String pepper,
+            @org.springframework.beans.factory.annotation.Value("${app.security.rate-limit.otp.per-hour:3}") int maxEmailOtpPerHour,
+            @org.springframework.beans.factory.annotation.Value("${app.security.rate-limit.otp.per-day:10}") int maxEmailOtpPerDay) {
         this.mongoTemplate = mongoTemplate;
         this.pepper = pepper;
+        this.maxEmailOtpPerHour = maxEmailOtpPerHour;
+        this.maxEmailOtpPerDay = maxEmailOtpPerDay;
     }
 
     public int reservarIntento(String ip, String email, Instant now) {
@@ -82,13 +95,30 @@ public class LoginAttemptStore {
         return 0;
     }
 
+    // Reserva genérica de un cupo en una ventana persistente (válida con varias instancias). La clave
+    // se seudonimiza. Devuelve 0 si se concede o los segundos que faltan para que se renueve la ventana.
+    public int reservar(String tipo, String valor, Instant now, int windowSeconds, int limit) {
+        ensureTtlIndex();
+        return reservarVentana(id(tipo, valor), now, windowSeconds, limit);
+    }
+
+    // Envío de códigos por correo: 3 por hora y 10 por día. Se reserva primero el cupo diario y, si la
+    // ventana horaria deniega, se devuelve para no gastar de más un envío que no llega a producirse.
     public int reservarEnvioOtp(String email, Instant now) {
         ensureTtlIndex();
-        return reservarVentana(
-                id("otp-email", email.trim().toLowerCase(java.util.Locale.ROOT)),
-                now,
-                EMAIL_OTP_WINDOW_SECONDS,
-                MAX_EMAIL_OTP_SENDS);
+        String correo = email.trim().toLowerCase(java.util.Locale.ROOT);
+        String diario = id("otp-email-dia", correo);
+        int esperaDiaria = reservarVentana(diario, now, EMAIL_OTP_DAY_WINDOW_SECONDS, maxEmailOtpPerDay);
+        if (esperaDiaria > 0) {
+            return esperaDiaria;
+        }
+        int esperaHoraria = reservarVentana(
+                id("otp-email", correo), now, EMAIL_OTP_HOUR_WINDOW_SECONDS, maxEmailOtpPerHour);
+        if (esperaHoraria > 0) {
+            mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(diario)),
+                    new Update().inc(CAMPO_ATTEMPTS, -1), COLLECTION);
+        }
+        return esperaHoraria;
     }
 
     // Ventana de avisos al titular: como máximo uno por hora y cuenta.

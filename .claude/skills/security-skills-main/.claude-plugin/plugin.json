@@ -1,0 +1,11 @@
+{
+  "name": "security-skills",
+  "description": "A suite of security skills for Claude Code: SAST + secrets + SCA scanning, STRIDE-based threat modelling, OWASP Proactive Controls architecture review, and a full-audit orchestrator. Produces structured reports in a security-audit/ folder.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Michael"
+  },
+  "repository": "https://github.com/secureIO-GmbH/security-skills",
+  "license": "MIT",
+  "keywords": ["security", "sast", "threat-model", "owasp", "semgrep", "trivy", "trufflehog", "stride", "appsec"]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "security-skills",
+  "owner": {
+    "name": "Michael"
+  },
+  "metadata": {
+    "description": "A suite of security skills for Claude Code covering SAST, secrets detection, SCA, container scanning, STRIDE threat modelling, and OWASP Proactive Controls review.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "security-skills",
+      "source": "./",
+      "description": "Security skill suite: /security-scan, /threat-model, /security-arch-review, /security-audit orchestrator. Requires semgrep/opengrep, trufflehog, and trivy or grype.",
+      "keywords": ["security", "sast", "threat-model", "owasp", "semgrep", "trivy", "trufflehog", "stride", "appsec"],
+      "category": "security"
+    }
+  ]
+}
