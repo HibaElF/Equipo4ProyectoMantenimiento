@@ -57,8 +57,11 @@ export class LoginPage {
 
   constructor() {
     // Aviso cuando se llega aquí porque la sesión ha caducado (igual que la web).
-    if (this.route.snapshot.queryParamMap.get('motivo') === 'sesion-expirada') {
+    const motivo = this.route.snapshot.queryParamMap.get('motivo');
+    if (motivo === 'sesion-expirada') {
       this.error.set('Tu sesión ya no es válida. Vuelve a iniciar sesión.');
+    } else if (motivo === 'cuenta-eliminada') {
+      this.info.set('La cuenta se ha eliminado correctamente.');
     }
   }
 

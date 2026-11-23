@@ -1,0 +1,166 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/perfil" text="Perfil"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Seguridad</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    @if (cargando() && !perfil()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+    } @else if (error() && !perfil()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (perfil(); as p) {
+      <!-- Segundo factor -->
+      <section class="tarjeta" aria-labelledby="segundo-factor-titulo">
+        <p class="antetitulo">Seguridad</p>
+        <h1 id="segundo-factor-titulo">
+          Segundo factor de autenticación
+          <span class="estado-chip" [class.activo]="p.totpActivado">{{ p.totpActivado ? 'Activado' : 'Desactivado' }}</span>
+        </h1>
+
+        @if (p.totpActivado) {
+          <p>El acceso con contraseña está protegido con un código adicional.</p>
+          @if (!p.emailOtpActivado) {
+            <ion-input
+              label="Código actual o de respaldo"
+              labelPlacement="stacked"
+              fill="outline"
+              [maxlength]="32"
+              autocomplete="one-time-code"
+              autocapitalize="characters"
+              [disabled]="cargandoTotp()"
+              [(ngModel)]="codigo"
+              helperText="Usa un código distinto del que utilizaste para iniciar sesión."
+            ></ion-input>
+            <ion-button expand="block" fill="outline" color="danger" [disabled]="cargandoTotp()" (click)="desactivar()">
+              @if (cargandoTotp()) {
+                <ion-spinner name="crescent" aria-label="Desactivando"></ion-spinner>
+              } @else {
+                Desactivar TOTP
+              }
+            </ion-button>
+          } @else {
+            <p class="nota">Desactiva primero la verificación por correo para poder desactivar TOTP.</p>
+          }
+        } @else if (!configuracion()) {
+          <p>Protege tu cuenta con Google Authenticator, Authy u otra aplicación compatible.</p>
+          <ion-button expand="block" [disabled]="cargandoTotp()" (click)="configurar()">
+            @if (cargandoTotp()) {
+              <ion-spinner name="crescent" aria-label="Preparando"></ion-spinner>
+            } @else {
+              Configurar segundo factor
+            }
+          </ion-button>
+        } @else {
+          <ol class="pasos-totp">
+            <li>
+              <strong>Añade ESIBuy a tu aplicación de autenticación.</strong>
+              Si la tienes en este móvil, ábrela directamente:
+              @if (configuracion()!.otpauthUri) {
+                <ion-button expand="block" fill="outline" [href]="configuracion()!.otpauthUri">
+                  <ion-icon name="open-outline" slot="start" aria-hidden="true"></ion-icon>
+                  Abrir en la aplicación
+                </ion-button>
+              }
+              @if (secreto()) {
+                <span class="sub">O escribe esta clave en la aplicación:</span>
+                <div class="clave">
+                  <code>{{ secreto() }}</code>
+                  <ion-button fill="clear" size="small" (click)="copiarClave()" aria-label="Copiar la clave">
+                    <ion-icon name="copy-outline" slot="icon-only" aria-hidden="true"></ion-icon>
+                  </ion-button>
+                </div>
+              }
+              @if (configuracion()!.qrDataUrl) {
+                <span class="sub">O escanea el QR desde otro dispositivo:</span>
+                <img class="qr" [src]="configuracion()!.qrDataUrl" alt="Código QR para configurar TOTP" width="180" height="180" />
+              }
+            </li>
+            <li>
+              <strong>Escribe el código de 6 cifras que muestra la aplicación.</strong>
+              <ion-input
+                label="Código de la aplicación"
+                labelPlacement="stacked"
+                fill="outline"
+                [maxlength]="6"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                [(ngModel)]="codigo"
+              ></ion-input>
+            </li>
+          </ol>
+          <div class="acciones">
+            <ion-button fill="outline" [disabled]="cargandoTotp()" (click)="cancelarConfiguracion()">Cancelar</ion-button>
+            <ion-button [disabled]="cargandoTotp()" (click)="confirmar()">
+              @if (cargandoTotp()) {
+                <ion-spinner name="crescent" aria-label="Confirmando"></ion-spinner>
+              } @else {
+                Confirmar activación
+              }
+            </ion-button>
+          </div>
+        }
+
+        @if (mensajeTotp()) {
+          <p class="exito" role="status">{{ mensajeTotp() }}</p>
+        }
+        @if (errorTotp()) {
+          <ion-text color="danger"><p class="mensaje" role="alert">{{ errorTotp() }}</p></ion-text>
+        }
+
+        @if (codigosRespaldo().length > 0) {
+          <div class="respaldo">
+            <strong><ion-icon name="key-outline" aria-hidden="true"></ion-icon> Códigos de respaldo</strong>
+            <p>Guárdalos ahora. Solo se muestran después de activar TOTP.</p>
+            <ul>
+              @for (c of codigosRespaldo(); track c) {
+                <li><code>{{ c }}</code></li>
+              }
+            </ul>
+            <ion-button expand="block" fill="outline" size="small" (click)="copiar(codigosRespaldo().join('\n'), 'Códigos')">
+              <ion-icon name="copy-outline" slot="start" aria-hidden="true"></ion-icon>
+              Copiar códigos
+            </ion-button>
+          </div>
+        }
+      </section>
+
+      <!-- Tercer factor -->
+      <section class="tarjeta" aria-labelledby="tercer-factor-titulo">
+        <p class="antetitulo">Seguridad</p>
+        <h2 id="tercer-factor-titulo">Tercer factor de autenticación</h2>
+        <p>
+          Al activarla, tendrás que confirmar un código enviado a tu correo después de introducir la contraseña y el código
+          de tu aplicación.
+        </p>
+        @if (!p.totpActivado) {
+          <p class="nota">Para activar esta opción, primero configura el segundo factor de autenticación.</p>
+        }
+        <ion-toggle
+          [checked]="p.emailOtpActivado"
+          [disabled]="guardandoCorreo() || cargandoTotp() || !p.totpActivado"
+          (ionChange)="cambiarCorreo($event)"
+          justify="space-between"
+          class="interruptor"
+        >
+          <ion-icon name="mail-outline" aria-hidden="true"></ion-icon>
+          Exigir código por correo al iniciar sesión
+        </ion-toggle>
+        @if (guardandoCorreo()) {
+          <ion-note>Guardando…</ion-note>
+        }
+        @if (errorCorreo()) {
+          <ion-text color="danger"><p class="mensaje" role="alert">{{ errorCorreo() }}</p></ion-text>
+        }
+      </section>
+    }
+  </div>
+</ion-content>

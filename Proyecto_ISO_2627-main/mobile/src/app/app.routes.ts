@@ -66,6 +66,18 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/perfil/perfil.page').then((m) => m.PerfilPage)
       },
       {
+        path: 'perfil/datos',
+        loadComponent: () => import('./pages/mis-datos/mis-datos.page').then((m) => m.MisDatosPage)
+      },
+      {
+        path: 'perfil/premium',
+        loadComponent: () => import('./pages/premium/premium.page').then((m) => m.PremiumPage)
+      },
+      {
+        path: 'perfil/seguridad',
+        loadComponent: () => import('./pages/seguridad/seguridad.page').then((m) => m.SeguridadPage)
+      },
+      {
         path: 'perfil/direcciones',
         loadComponent: () => import('./pages/direcciones/direcciones.page').then((m) => m.DireccionesPage)
       },

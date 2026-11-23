@@ -5,38 +5,68 @@
 </ion-header>
 
 <ion-content>
-  <div class="cabecera-perfil">
-    <img src="avatars/cliente.svg" alt="" class="avatar" />
-    <p class="correo">{{ email() }}</p>
-  </div>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <section class="cabecera-perfil" aria-label="Tu cuenta">
+    @if (perfil(); as p) {
+      <app-avatar-perfil [imagen]="p.imagenPerfil" [nombre]="p.nombre"></app-avatar-perfil>
+      <h1 class="nombre">{{ p.nombre }} {{ p.apellidos }}</h1>
+      <p class="correo">{{ p.email }}</p>
+      <span class="chip-tipo" [class.premium]="p.esPremium">
+        @if (p.esPremium) {
+          <ion-icon name="star" aria-hidden="true"></ion-icon>
+        }
+        Cliente {{ p.esPremium ? 'Premium' : 'Normal' }}
+      </span>
+    } @else if (cargando()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto-avatar"></ion-skeleton-text>
+      <ion-skeleton-text [animated]="true" class="esqueleto-linea"></ion-skeleton-text>
+    } @else if (error()) {
+      <div role="alert" class="error-carga">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" size="small" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    }
+  </section>
 
   <ion-list lines="full" inset="true">
     <ion-list-header><ion-label>Mi cuenta</ion-label></ion-list-header>
-    @for (opcion of cuenta; track opcion.texto) {
-      <ion-item [disabled]="true">
-        <ion-icon [name]="opcion.icono" slot="start" aria-hidden="true"></ion-icon>
-        <ion-label>{{ opcion.texto }}</ion-label>
-        <ion-note slot="end">Próximamente</ion-note>
-      </ion-item>
-    }
+    <ion-item routerLink="/perfil/datos" [button]="true" detail="true">
+      <ion-icon name="person-circle-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Mis datos y foto</ion-label>
+    </ion-item>
+    <ion-item routerLink="/perfil/premium" [button]="true" detail="true">
+      <ion-icon name="star-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Cliente Premium</ion-label>
+      @if (perfil(); as p) {
+        <ion-note slot="end">{{ p.esPremium ? 'Activo' : 'No' }}</ion-note>
+      }
+    </ion-item>
+    <ion-item routerLink="/perfil/seguridad" [button]="true" detail="true">
+      <ion-icon name="shield-checkmark-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Seguridad y segundo factor</ion-label>
+      @if (perfil(); as p) {
+        <ion-note slot="end">{{ p.totpActivado ? 'Activado' : 'Desactivado' }}</ion-note>
+      }
+    </ion-item>
   </ion-list>
 
   <ion-list lines="full" inset="true">
     <ion-list-header><ion-label>Compras</ion-label></ion-list-header>
-    @for (opcion of compras; track opcion.texto) {
-      @if (opcion.ruta) {
-        <ion-item [routerLink]="opcion.ruta" [button]="true" detail="true">
-          <ion-icon [name]="opcion.icono" slot="start" aria-hidden="true"></ion-icon>
-          <ion-label>{{ opcion.texto }}</ion-label>
-        </ion-item>
-      } @else {
-        <ion-item [disabled]="true">
-          <ion-icon [name]="opcion.icono" slot="start" aria-hidden="true"></ion-icon>
-          <ion-label>{{ opcion.texto }}</ion-label>
-          <ion-note slot="end">Próximamente</ion-note>
-        </ion-item>
-      }
-    }
+    <ion-item routerLink="/perfil/direcciones" [button]="true" detail="true">
+      <ion-icon name="home-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Mis direcciones</ion-label>
+    </ion-item>
+    <ion-item routerLink="/perfil/metodos-pago" [button]="true" detail="true">
+      <ion-icon name="card-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Métodos de pago</ion-label>
+    </ion-item>
+    <ion-item routerLink="/listas" [button]="true" detail="true">
+      <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Mis listas</ion-label>
+    </ion-item>
   </ion-list>
 
   <ion-list lines="full" inset="true">
@@ -44,10 +74,12 @@
       <ion-icon name="log-out-outline" slot="start" color="danger" aria-hidden="true"></ion-icon>
       <ion-label color="danger">Cerrar sesión</ion-label>
     </ion-item>
-    <ion-item [disabled]="true">
-      <ion-icon [name]="baja.icono" slot="start" color="danger" aria-hidden="true"></ion-icon>
-      <ion-label color="danger">{{ baja.texto }}</ion-label>
-      <ion-note slot="end">Próximamente</ion-note>
+    <ion-item button (click)="iniciarBaja()" [disabled]="bajaEnCurso()" detail="false">
+      <ion-icon name="trash-outline" slot="start" color="danger" aria-hidden="true"></ion-icon>
+      <ion-label color="danger">
+        <span class="texto-baja">{{ bajaEnCurso() ? 'Eliminando…' : 'Darme de baja' }}</span>
+        <p>Elimina tu cuenta y tus datos personales</p>
+      </ion-label>
     </ion-item>
   </ion-list>
 </ion-content>
