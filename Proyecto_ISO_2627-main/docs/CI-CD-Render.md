@@ -255,6 +255,28 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Permisos finos (authorities) además de los roles
+
+- El catálogo se declara **una sola vez** en `CatalogoPermisos` (rol → permisos). De él salen la jerarquía de roles de Spring Security (`ROLE_ADMIN` implica sus permisos, etc.) y las autoridades que se guardan en la sesión al iniciar sesión (el rol y sus permisos).
+- Las operaciones de administración y de escritura exigen **el rol y el permiso concreto** (reglas en `SecurityConfiguration`); una ruta de administración sin permiso asignado exige al menos `ROLE_ADMIN`.
+
+| Permiso | Rol | Operaciones que protege |
+|---|---|---|
+| `USUARIOS_CONSULTAR` | ADMIN | `GET /administrador/usuarios` y `/{id}` |
+| `USUARIOS_MODIFICAR` | ADMIN | `PUT /administrador/usuarios/{id}` |
+| `USUARIOS_BLOQUEAR` | ADMIN | `PATCH /administrador/usuarios/{id}/activar`, `/bloquear` y `/desbloquear` |
+| `ADMINISTRADORES_GESTIONAR` | ADMIN | `POST /administrador/register` y `DELETE /administrador/{id}` |
+| `PRODUCTOS_CONSULTAR` | ADMIN | `GET /administrador/productos` |
+| `AUDITORIA_CONSULTAR` | ADMIN | `GET /administrador/auditoria` |
+| `CATEGORIAS_GESTIONAR` | ADMIN | `POST`, `PUT` y `DELETE` de `/categorias` |
+| `CATEGORIAS_CONSULTAR` | ADMIN, VENDEDOR | `GET /categorias` |
+| `PRODUCTOS_GESTIONAR` | VENDEDOR | `POST`, `PUT`, `PATCH` y `DELETE` de `/vendedor/productos` |
+| `PEDIDOS_VENDEDOR_GESTIONAR` | VENDEDOR | `/vendedor/pedidos/**` |
+
+- El rol `CLIENTE` no tiene permisos finos: sus operaciones dependen de que el dato sea suyo, y el propietario sale siempre de la sesión.
+- **Cambios del catálogo y sesiones abiertas:** como la sesión guarda los permisos, un cambio del catálogo no alcanza a las sesiones ya abiertas hasta que caducan (como máximo, el límite absoluto de 8 horas).
+- Para añadir un permiso: declararlo en `CatalogoPermisos`, asignarlo a su rol y exigirlo en la regla de la ruta en `SecurityConfiguration`.
+
 ### Content-Security-Policy y cabeceras de seguridad
 
 - Todas las respuestas (HTML de Angular y API) llevan `Content-Security-Policy`: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`. Además `Referrer-Policy: strict-origin-when-cross-origin` y `Permissions-Policy` sin cámara, micrófono, geolocalización ni pagos.

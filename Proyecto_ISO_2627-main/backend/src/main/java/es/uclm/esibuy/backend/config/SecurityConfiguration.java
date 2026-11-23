@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
@@ -28,6 +29,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import es.uclm.esibuy.backend.security.CatalogoPermisos;
+import es.uclm.esibuy.backend.security.ContextoAutenticacion;
 import es.uclm.esibuy.backend.security.ContextoLogFilter;
 import es.uclm.esibuy.backend.security.LimiteApiFilter;
 import es.uclm.esibuy.backend.security.LimiteApiService;
@@ -57,6 +60,8 @@ public class SecurityConfiguration {
         static final String POLITICA_PERMISOS = "camera=(), microphone=(), geolocation=(), payment=()";
 
         private static final String ROL_ADMIN = "ADMIN";
+        private static final String AUT_ADMIN = ContextoAutenticacion.PREFIJO_ROL + ROL_ADMIN;
+        private static final String AUT_VENDEDOR = ContextoAutenticacion.PREFIJO_ROL + "VENDEDOR";
         private static final String RUTA_CATEGORIAS = "/categorias/**";
 
         @Bean
@@ -78,6 +83,13 @@ public class SecurityConfiguration {
                         @Value("${app.security.rate-limit.api.max-requests:60}") int maximoPeticiones,
                         @Value("${app.security.rate-limit.api.window-seconds:60}") int segundosVentana) {
                 return new LimiteApiService(maximoPeticiones, Duration.ofSeconds(segundosVentana), Clock.systemUTC());
+        }
+
+        // Jerarquía de roles: cada rol implica los permisos de CatalogoPermisos. La usan la autorización HTTP
+        // y la de métodos, y hace que los principales con solo ROLE_x (como los de las pruebas) tengan sus permisos.
+        @Bean
+        RoleHierarchy roleHierarchy() {
+                return CatalogoPermisos.jerarquia();
         }
 
         @Bean
@@ -267,35 +279,101 @@ public class SecurityConfiguration {
                 authorize
                                                 // HU11 + HU17: los vendedores necesitan consultar categorías para
                                                 // asociar productos
+                                                // Consultar categorías: el permiso lo tienen solo ADMIN y VENDEDOR.
                                                 .requestMatchers(
                                                                 HttpMethod.GET,
                                                                 "/categorias",
                                                                 RUTA_CATEGORIAS)
-                                                .hasAnyRole(ROL_ADMIN, "VENDEDOR")
+                                                .hasAuthority(CatalogoPermisos.CATEGORIAS_CONSULTAR)
 
                                                 .requestMatchers(
                                                                 HttpMethod.POST,
                                                                 "/categorias")
-                                                .hasRole(ROL_ADMIN)
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.CATEGORIAS_GESTIONAR)
 
                                                 .requestMatchers(
                                                                 HttpMethod.PUT,
                                                                 RUTA_CATEGORIAS)
-                                                .hasRole(ROL_ADMIN)
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.CATEGORIAS_GESTIONAR)
 
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
                                                                 RUTA_CATEGORIAS)
-                                                .hasRole(ROL_ADMIN)
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.CATEGORIAS_GESTIONAR)
 
                                                 .requestMatchers(
                                                                 "/cliente/**")
                                                 .hasRole("CLIENTE")
 
+                                                // Escritura de productos y gestión de pedidos del vendedor: rol y permiso.
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/vendedor/productos")
+                                                .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/vendedor/productos/**")
+                                                .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/vendedor/productos/**")
+                                                .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/vendedor/productos/**")
+                                                .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
+
+                                                .requestMatchers(
+                                                                "/vendedor/pedidos/**")
+                                                .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PEDIDOS_VENDEDOR_GESTIONAR)
+
                                                 .requestMatchers(
                                                                 "/vendedor/**")
                                                 .hasRole("VENDEDOR")
 
+                                                // Administración: rol ADMIN y el permiso concreto de cada operación.
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/administrador/productos")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.PRODUCTOS_CONSULTAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/administrador/auditoria")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.AUDITORIA_CONSULTAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.GET,
+                                                                "/administrador/usuarios",
+                                                                "/administrador/usuarios/*")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.USUARIOS_CONSULTAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.PUT,
+                                                                "/administrador/usuarios/*")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.USUARIOS_MODIFICAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.PATCH,
+                                                                "/administrador/usuarios/*/activar",
+                                                                "/administrador/usuarios/*/bloquear",
+                                                                "/administrador/usuarios/*/desbloquear")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.USUARIOS_BLOQUEAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.POST,
+                                                                "/administrador/register")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.ADMINISTRADORES_GESTIONAR)
+
+                                                .requestMatchers(
+                                                                HttpMethod.DELETE,
+                                                                "/administrador/*")
+                                                .hasAllAuthorities(AUT_ADMIN, CatalogoPermisos.ADMINISTRADORES_GESTIONAR)
+
+                                                // Cualquier otra ruta de administración (y futuras) exige al menos el rol.
                                                 .requestMatchers(
                                                                 "/administrador/**")
                                                 .hasRole(ROL_ADMIN)
