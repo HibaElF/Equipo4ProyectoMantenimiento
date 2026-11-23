@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Configuration;
+import es.uclm.esibuy.backend.security.CabecerasEntregaImagen;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -37,7 +38,9 @@ public class ProductoImagenConfiguration implements WebMvcConfigurer {
         registry.addInterceptor(new HandlerInterceptor() {
             @Override
             public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-                response.setHeader("X-Content-Type-Options", "nosniff");
+                response.setHeader("X-Content-Type-Options", CabecerasEntregaImagen.NOSNIFF);
+                response.setHeader("Content-Security-Policy", CabecerasEntregaImagen.POLITICA_CONTENIDO);
+                response.setHeader("Content-Disposition", CabecerasEntregaImagen.DISPOSICION);
                 return true;
             }
         }).addPathPatterns("/product-images/**");

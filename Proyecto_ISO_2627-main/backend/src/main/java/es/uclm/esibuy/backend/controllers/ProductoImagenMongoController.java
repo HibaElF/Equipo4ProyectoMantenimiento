@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import es.uclm.esibuy.backend.security.CabecerasEntregaImagen;
 import es.uclm.esibuy.backend.services.ProductoImagenMongoService;
 
 @RestController
@@ -31,7 +32,9 @@ public class ProductoImagenMongoController {
                 .map(imagen -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(
                                 imagen.getContentType()))
-                        .header("X-Content-Type-Options", "nosniff")
+                        .header("X-Content-Type-Options", CabecerasEntregaImagen.NOSNIFF)
+                        .header("Content-Security-Policy", CabecerasEntregaImagen.POLITICA_CONTENIDO)
+                        .header("Content-Disposition", CabecerasEntregaImagen.DISPOSICION)
                         .cacheControl(CacheControl.noCache())
                         .body(imagen.getContenido()))
                 .orElseGet(() ->

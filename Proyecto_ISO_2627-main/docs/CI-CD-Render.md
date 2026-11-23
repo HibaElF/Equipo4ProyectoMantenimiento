@@ -255,6 +255,18 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Antivirus (VirusTotal) y cabeceras de entrega de imágenes
+
+- **Cabeceras de `/product-images/**`** (modo local y modo `mongo`): `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox` y `Content-Disposition: inline; filename="imagen"`. Están en `CabecerasEntregaImagen`. La CSP de la imagen sustituye a la global de la aplicación. No se añade `Cross-Origin-Resource-Policy: same-origin`, porque rompería la visualización en desarrollo (frontend en `:4200`, API en `:8443`).
+- **VirusTotal** está desactivado por defecto. Para activarlo en Render:
+  - `VIRUSTOTAL_ENABLED=true`
+  - `VIRUSTOTAL_API_KEY=<clave>`: solo por variable de entorno, nunca en el repositorio.
+  - `VIRUSTOTAL_FAIL_CLOSED=true` (valor por defecto).
+- **Orden en la subida:** validaciones, recodificación (T-33) y análisis de VirusTotal con los bytes recodificados; si lo rechaza, no se guarda nada.
+- **Tiempos:** cada subida sube el fichero y consulta el resultado hasta 30 veces cada 2 s, es decir, hasta **unos 60 s** de espera.
+- **Cuota:** la API gratuita permite unas 4 consultas por minuto y 500 al día. Si se agota o VirusTotal no responde, con `fail-closed` **no se pueden subir imágenes** (compromiso asumido: se prefiere no aceptar una imagen sin analizar). Con `VIRUSTOTAL_FAIL_CLOSED=false` se aceptarían sin analizar.
+- La decisión de activarlo en producción queda como pendiente manual del responsable del despliegue.
+
 ### Recodificación de las imágenes de producto
 
 - Tras las validaciones (tamaño, firma, `Content-Type`, extensión y marca de fin) y **antes** de VirusTotal y del almacenamiento, `ProductoImagenService` decodifica la imagen y la vuelve a codificar con `ImageIO`. Lo que se analiza y se guarda (en disco o en MongoDB) son los bytes nuevos: no conservan EXIF, comentarios ni datos ocultos.

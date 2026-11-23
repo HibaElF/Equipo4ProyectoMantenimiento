@@ -50,6 +50,20 @@ class ProductoImagenMongoControllerTests {
                 respuesta.getHeaders().getFirst(
                         "X-Content-Type-Options"));
 
+        // T-35: cabeceras de entrega seguras también en el modo MongoDB.
+        assertEquals(
+                "default-src 'none'; sandbox",
+                respuesta.getHeaders().getFirst(
+                        "Content-Security-Policy"));
+
+        assertEquals(
+                "inline; filename=\"imagen\"",
+                respuesta.getHeaders().getFirst(
+                        "Content-Disposition"));
+
+        assertNull(respuesta.getHeaders().getFirst(
+                "Cross-Origin-Resource-Policy"));
+
         assertArrayEquals(
                 bytes,
                 respuesta.getBody());
