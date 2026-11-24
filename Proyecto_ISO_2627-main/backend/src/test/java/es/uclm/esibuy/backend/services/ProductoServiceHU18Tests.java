@@ -86,6 +86,16 @@ class ProductoServiceHU18Tests {
     }
 
     @Test
+    void alModificarAvisaDeUnaPosibleBajadaConElPrecioAnterior() {
+        prepararModificacionValida(crearProducto(NOMBRE_COMERCIAL));
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, REQUEST_VALIDO, null);
+
+        Producto guardado = productoGuardado();
+        verify(alertaService).avisarSiBajaPrecio(guardado, 49.99);
+    }
+
+    @Test
     void modificaLosCamposPermitidosDeUnProductoPropio() {
         prepararModificacionValida(crearProducto(NOMBRE_COMERCIAL));
 
