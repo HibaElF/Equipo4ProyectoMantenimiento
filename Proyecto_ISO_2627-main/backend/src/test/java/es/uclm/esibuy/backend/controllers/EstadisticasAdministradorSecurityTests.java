@@ -18,9 +18,11 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import es.uclm.esibuy.backend.config.SecurityConfiguration;
 import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
+import es.uclm.esibuy.backend.dto.EstadisticasVendedoresResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.VendedorValoracionResponse;
 import es.uclm.esibuy.backend.services.EstadisticasAdministradorService;
 
 // Estadísticas globales: solo las consulta un administrador (cualquiera de ellos).
@@ -30,6 +32,7 @@ class EstadisticasAdministradorSecurityTests {
 
     private static final String RUTA_VENTAS = "/administrador/estadisticas/ventas";
     private static final String RUTA_VALORACIONES = "/administrador/estadisticas/valoraciones";
+    private static final String RUTA_VENDEDORES = "/administrador/estadisticas/vendedores";
 
     @Autowired
     private MockMvc mvc;
@@ -67,8 +70,24 @@ class EstadisticasAdministradorSecurityTests {
         verify(estadisticasAdministradorService).consultarValoraciones();
     }
 
+    @Test
+    void elAdministradorConsultaElRankingDeVendedores() throws Exception {
+        VendedorValoracionResponse tiendaB = new VendedorValoracionResponse("Tienda B", 4.0, 2, 1);
+        when(estadisticasAdministradorService.consultarVendedores())
+                .thenReturn(new EstadisticasVendedoresResponse(List.of(tiendaB), List.of("Tienda Nueva"), null));
+
+        mvc.perform(get(RUTA_VENDEDORES).with(user("admin@test.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ranking[0].vendedor").value("Tienda B"))
+                .andExpect(jsonPath("$.ranking[0].valoracionMedia").value(4.0))
+                .andExpect(jsonPath("$.ranking[0].numeroValoraciones").value(2))
+                .andExpect(jsonPath("$.vendedoresSinValoraciones[0]").value("Tienda Nueva"));
+
+        verify(estadisticasAdministradorService).consultarVendedores();
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_VENDEDORES})
     void unVendedorRecibe403(String ruta) throws Exception {
         mvc.perform(get(ruta).with(user("vendedor@test.com").roles("VENDEDOR")))
                 .andExpect(status().isForbidden());
@@ -77,7 +96,7 @@ class EstadisticasAdministradorSecurityTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_VENDEDORES})
     void unClienteRecibe403(String ruta) throws Exception {
         mvc.perform(get(ruta).with(user("cliente@test.com").roles("CLIENTE")))
                 .andExpect(status().isForbidden());
@@ -86,7 +105,7 @@ class EstadisticasAdministradorSecurityTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_VENDEDORES})
     void sinSesionSeRechaza(String ruta) throws Exception {
         mvc.perform(get(ruta))
                 .andExpect(status().isForbidden());

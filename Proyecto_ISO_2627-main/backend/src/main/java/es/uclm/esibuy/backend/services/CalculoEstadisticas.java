@@ -11,6 +11,7 @@ import java.util.Map;
 
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.VendedorValoracionResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
@@ -33,6 +34,12 @@ final class CalculoEstadisticas {
     private static final Comparator<ProductoValoracionResponse> DESEMPATE_VALORACION = Comparator
             .comparingInt(ProductoValoracionResponse::numeroValoraciones).reversed()
             .thenComparing(POR_NOMBRE_VALORACION);
+
+    // Ranking de vendedores: de mayor a menor media; a igualdad, más valoraciones primero y luego por nombre
+    private static final Comparator<VendedorValoracionResponse> ORDEN_VENDEDORES = Comparator
+            .comparing(VendedorValoracionResponse::valoracionMedia).reversed()
+            .thenComparing(Comparator.comparingInt(VendedorValoracionResponse::numeroValoraciones).reversed())
+            .thenComparing(VendedorValoracionResponse::vendedor, String.CASE_INSENSITIVE_ORDER);
 
     private CalculoEstadisticas() {
     }
@@ -131,6 +138,39 @@ final class CalculoEstadisticas {
                 .filter(CalculoEstadisticas::tieneValoraciones)
                 .sorted(Comparator.comparing(ProductoValoracionResponse::valoracionMedia)
                         .thenComparing(DESEMPATE_VALORACION))
+                .limit(TAMANO_RANKING)
+                .toList();
+    }
+
+    // Valoración de cada vendedor con alguna valoración: media de todas las valoraciones de sus productos
+    // (no la media de las medias de cada producto), número de valoraciones y productos valorados
+    static List<VendedorValoracionResponse> valoracionesPorVendedor(
+            Collection<Producto> productos,
+            Map<String, List<Integer>> puntuacionesPorProducto) {
+
+        Map<String, List<Integer>> porVendedor = new HashMap<>();
+        Map<String, Integer> productosValorados = new HashMap<>();
+        for (Producto producto : productos) {
+            List<Integer> delProducto = puntuacionesPorProducto.getOrDefault(producto.getId(), List.of());
+            if (producto.getVendedor() == null || delProducto.isEmpty()) {
+                continue;
+            }
+            porVendedor.computeIfAbsent(producto.getVendedor(), vendedor -> new ArrayList<>()).addAll(delProducto);
+            productosValorados.merge(producto.getVendedor(), 1, Integer::sum);
+        }
+        return porVendedor.entrySet().stream()
+                .map(entrada -> new VendedorValoracionResponse(
+                        entrada.getKey(),
+                        media(entrada.getValue()),
+                        entrada.getValue().size(),
+                        productosValorados.get(entrada.getKey())))
+                .toList();
+    }
+
+    // Top 10 de vendedores por valoración media
+    static List<VendedorValoracionResponse> mejoresVendedores(List<VendedorValoracionResponse> vendedores) {
+        return vendedores.stream()
+                .sorted(ORDEN_VENDEDORES)
                 .limit(TAMANO_RANKING)
                 .toList();
     }

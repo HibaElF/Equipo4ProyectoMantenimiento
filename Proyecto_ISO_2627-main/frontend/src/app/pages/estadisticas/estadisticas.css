@@ -131,7 +131,18 @@
   background: var(--color-brand);
 }
 
+/* Ancho fijo para el número: así todas las barras de una tabla tienen la misma longitud total */
 .valor {
-  min-width: 2.5rem;
+  flex: 0 0 4.5rem;
   text-align: right;
+}
+
+.explicacion-apartado {
+  margin: -.5rem 0 1rem;
+}
+
+.sin-valoraciones-vendedores {
+  margin: 1rem 0 0;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }

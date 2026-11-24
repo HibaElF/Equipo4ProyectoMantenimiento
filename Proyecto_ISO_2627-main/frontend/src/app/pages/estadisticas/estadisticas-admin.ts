@@ -4,7 +4,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApartadoEstadisticas } from './apartado-estadisticas';
-import { EstadisticasAdminService } from './estadisticas-admin.service';
+import { EstadisticasAdminService, EstadisticasVendedores } from './estadisticas-admin.service';
 import type { EstadisticasValoraciones, EstadisticasVentas, ProductoVentas } from './estadisticas-vendedor.service';
 
 // Las valoraciones van de 1 a 5: la barra de una media se dibuja sobre 5
@@ -38,6 +38,8 @@ export class EstadisticasAdmin implements OnInit {
   readonly ventas = new ApartadoEstadisticas<EstadisticasVentas>((fallo) => this.mensajeError(fallo));
   // PBI 280
   readonly valoraciones = new ApartadoEstadisticas<EstadisticasValoraciones>((fallo) => this.mensajeError(fallo));
+  // PBI 281
+  readonly vendedores = new ApartadoEstadisticas<EstadisticasVendedores>((fallo) => this.mensajeError(fallo));
 
   ngOnInit(): void {
     this.cargar();
@@ -46,10 +48,11 @@ export class EstadisticasAdmin implements OnInit {
   cargar(): void {
     this.ventas.cargar(this.servicio.consultarVentas());
     this.valoraciones.cargar(this.servicio.consultarValoraciones());
+    this.vendedores.cargar(this.servicio.consultarVendedores());
   }
 
   cargando(): boolean {
-    return this.ventas.cargando() || this.valoraciones.cargando();
+    return this.ventas.cargando() || this.valoraciones.cargando() || this.vendedores.cargando();
   }
 
   // Las barras de las dos listas de ventas usan la misma escala: el producto más vendido

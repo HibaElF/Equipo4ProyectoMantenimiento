@@ -7,7 +7,7 @@ import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { environment } from '../../../environments/environment';
-import { EstadisticasAdminService } from './estadisticas-admin.service';
+import { EstadisticasAdminService, EstadisticasVendedores } from './estadisticas-admin.service';
 import type { EstadisticasValoraciones, EstadisticasVentas } from './estadisticas-vendedor.service';
 
 describe('EstadisticasAdminService', () => {
@@ -67,5 +67,23 @@ describe('EstadisticasAdminService', () => {
     peticion.flush(valoraciones);
 
     expect(resultado).toEqual(valoraciones);
+  });
+
+  it('PBI 281: consulta el ranking de vendedores con la sesión del administrador', () => {
+    const vendedores: EstadisticasVendedores = {
+      ranking: [{ vendedor: 'Tienda B', valoracionMedia: 4, numeroValoraciones: 2, productosValorados: 1 }],
+      vendedoresSinValoraciones: ['Tienda Nueva'],
+      aviso: null
+    };
+    let resultado: EstadisticasVendedores | undefined;
+
+    servicio.consultarVendedores().subscribe((datos) => resultado = datos);
+
+    const peticion = http.expectOne(`${baseUrl}/vendedores`);
+    expect(peticion.request.method).toBe('GET');
+    expect(peticion.request.withCredentials).toBe(true);
+    peticion.flush(vendedores);
+
+    expect(resultado).toEqual(vendedores);
   });
 });

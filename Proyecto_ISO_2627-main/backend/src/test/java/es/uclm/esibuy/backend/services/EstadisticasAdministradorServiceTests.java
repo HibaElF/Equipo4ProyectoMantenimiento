@@ -18,18 +18,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.ValoracionDAO;
+import es.uclm.esibuy.backend.dao.VendedorDAO;
 import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
+import es.uclm.esibuy.backend.dto.EstadisticasVendedoresResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.VendedorValoracionResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Valoracion;
+import es.uclm.esibuy.backend.model.Vendedor;
 
 // Estadísticas globales del administrador. PBI 279: Top 10 más y menos vendidos de todas las tiendas.
-// PBI 280: Top 10 mejor y peor valorados de todas las tiendas.
+// PBI 280: Top 10 mejor y peor valorados de todas las tiendas. PBI 281: ranking de vendedores por valoración.
 @ExtendWith(MockitoExtension.class)
 class EstadisticasAdministradorServiceTests {
 
@@ -44,6 +48,9 @@ class EstadisticasAdministradorServiceTests {
 
     @Mock
     private ValoracionDAO valoracionDAO;
+
+    @Mock
+    private VendedorDAO vendedorDAO;
 
     @InjectMocks
     private EstadisticasAdministradorService servicio;
@@ -105,6 +112,23 @@ class EstadisticasAdministradorServiceTests {
             todas.addAll(grupo);
         }
         when(valoracionDAO.findAll()).thenReturn(todas);
+    }
+
+    private static Vendedor vendedor(String nombreComercial, boolean activada, boolean bloqueada) {
+        Vendedor vendedor = new Vendedor();
+        vendedor.setId("id-" + nombreComercial);
+        vendedor.setNombreComercial(nombreComercial);
+        vendedor.setActivada(activada);
+        vendedor.setBloqueada(bloqueada);
+        return vendedor;
+    }
+
+    private void vendedores(Vendedor... vendedores) {
+        when(vendedorDAO.findAll()).thenReturn(List.of(vendedores));
+    }
+
+    private static List<String> nombresVendedores(List<VendedorValoracionResponse> ranking) {
+        return ranking.stream().map(VendedorValoracionResponse::vendedor).toList();
     }
 
     private static List<String> nombresValorados(List<ProductoValoracionResponse> valoraciones) {
@@ -268,5 +292,96 @@ class EstadisticasAdministradorServiceTests {
         assertTrue(respuesta.mejorValorados().isEmpty());
         assertTrue(respuesta.peorValorados().isEmpty());
         assertEquals(EstadisticasAdministradorService.AVISO_SIN_VALORACIONES, respuesta.aviso());
+    }
+
+    // --- PBI 281: ranking de vendedores por la valoración media de sus productos ---
+
+    @Test
+    void laMediaDeUnVendedorEsLaDeTodasLasValoracionesDeSusProductos() {
+        productos(producto("p1", "Auriculares", TIENDA_A), producto("p2", "Alfombrilla", TIENDA_A),
+                producto("p3", "Mochila", TIENDA_B));
+        valoracionesGuardadas(valoraciones("p1", 5, 5, 4), valoraciones("p2", 1), valoraciones("p3", 4, 4));
+        vendedores(vendedor(TIENDA_A, true, false), vendedor(TIENDA_B, true, false));
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        // Tienda A: (5 + 5 + 4 + 1) / 4 = 3.75 (la media de las medias seria 2.83); Tienda B: 4
+        assertEquals(List.of(TIENDA_B, TIENDA_A), nombresVendedores(respuesta.ranking()));
+        VendedorValoracionResponse tiendaA = respuesta.ranking().get(1);
+        assertEquals(3.75, tiendaA.valoracionMedia());
+        assertEquals(4, tiendaA.numeroValoraciones());
+        assertEquals(2, tiendaA.productosValorados());
+        assertTrue(respuesta.vendedoresSinValoraciones().isEmpty());
+    }
+
+    @Test
+    void aIgualdadDeMediaVaPrimeroElVendedorConMasValoraciones() {
+        productos(producto("p1", "Auriculares", TIENDA_A), producto("p2", "Mochila", TIENDA_B),
+                producto("p3", "Gorra", "Tienda C"));
+        valoracionesGuardadas(valoraciones("p1", 4), valoraciones("p2", 4, 4, 4), valoraciones("p3", 4));
+        vendedores();
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        assertEquals(List.of(TIENDA_B, TIENDA_A, "Tienda C"), nombresVendedores(respuesta.ranking()));
+    }
+
+    @Test
+    void losVendedoresActivosSinValoracionesNoEntranEnElRankingYSeIndicanAparte() {
+        productos(producto("p1", "Auriculares", TIENDA_A), producto("p2", "Llavero", TIENDA_B));
+        valoracionesGuardadas(valoraciones("p1", 5));
+        vendedores(vendedor(TIENDA_A, true, false), vendedor(TIENDA_B, true, false),
+                vendedor("Tienda Nueva", true, false), vendedor("Tienda Bloqueada", true, true),
+                vendedor("Tienda Pendiente", false, false));
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        assertEquals(List.of(TIENDA_A), nombresVendedores(respuesta.ranking()));
+        assertEquals(List.of(TIENDA_B, "Tienda Nueva"), respuesta.vendedoresSinValoraciones());
+        assertEquals(EstadisticasAdministradorService.AVISO_POCOS_VENDEDORES, respuesta.aviso());
+    }
+
+    @Test
+    void elRankingDeVendedoresMuestraComoMaximoDiezVendedores() {
+        List<Producto> catalogo = new ArrayList<>();
+        List<Valoracion> todas = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            catalogo.add(producto("p" + i, "Producto " + i, "Tienda " + String.format("%02d", i)));
+            todas.addAll(valoraciones("p" + i, 1 + i % 5));
+        }
+        productos(catalogo.toArray(Producto[]::new));
+        valoracionesGuardadas(todas);
+        vendedores();
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        assertEquals(10, respuesta.ranking().size());
+        assertEquals(5.0, respuesta.ranking().get(0).valoracionMedia());
+        assertNull(respuesta.aviso());
+    }
+
+    @Test
+    void lasValoracionesDeProductosBorradosNoCuentanParaNingunVendedor() {
+        productos(producto("p1", "Auriculares", TIENDA_A));
+        valoracionesGuardadas(valoraciones("p1", 4), valoraciones("borrado", 1, 1, 1));
+        vendedores(vendedor(TIENDA_A, true, false));
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        assertEquals(4.0, respuesta.ranking().get(0).valoracionMedia());
+        assertEquals(1, respuesta.ranking().get(0).numeroValoraciones());
+    }
+
+    @Test
+    void sinValoracionesElRankingEstaVacioYTodosLosVendedoresActivosSeIndican() {
+        productos(producto("p1", "Auriculares", TIENDA_A));
+        valoracionesGuardadas();
+        vendedores(vendedor(TIENDA_B, true, false), vendedor(TIENDA_A, true, false));
+
+        EstadisticasVendedoresResponse respuesta = servicio.consultarVendedores();
+
+        assertTrue(respuesta.ranking().isEmpty());
+        assertEquals(List.of(TIENDA_A, TIENDA_B), respuesta.vendedoresSinValoraciones());
+        assertEquals(EstadisticasAdministradorService.AVISO_SIN_VALORACIONES_VENDEDORES, respuesta.aviso());
     }
 }

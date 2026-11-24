@@ -76,6 +76,70 @@
         </div>
         }
     </section>
+
+    <!-- PBI 281: ranking de vendedores por la valoración media de sus productos -->
+    <section class="tarjeta apartado" aria-labelledby="titulo-vendedores">
+        <h2 id="titulo-vendedores" class="apartado-titulo">Top 10 vendedores por valoración</h2>
+        <p class="pagina-descripcion explicacion-apartado">
+            La media de cada vendedor se calcula con todas las valoraciones de todos sus productos.
+        </p>
+
+        @if (vendedores.cargando()) {
+        <p class="estado"><output>Cargando vendedores...</output></p>
+        } @else if (vendedores.error()) {
+        <section class="estado" role="alert">
+            <p class="estado-titulo">{{ vendedores.error() }}</p>
+            <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </section>
+        } @else if (vendedores.datos(); as datos) {
+        @if (datos.aviso) {
+        <p class="aviso aviso-advertencia">{{ datos.aviso }}</p>
+        }
+
+        @if (datos.ranking.length === 0) {
+        <p class="sin-datos">Ningún vendedor tiene valoraciones todavía.</p>
+        } @else {
+        <div class="tabla-contenedor">
+            <table class="tabla-ranking" aria-labelledby="titulo-vendedores">
+                <thead>
+                    <tr>
+                        <th scope="col" class="posicion">#</th>
+                        <th scope="col">Vendedor</th>
+                        <th scope="col" class="numero">Valoración media</th>
+                        <th scope="col" class="numero">Valoraciones</th>
+                        <th scope="col" class="numero">Productos valorados</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (vendedor of datos.ranking; track vendedor.vendedor; let i = $index) {
+                    <tr>
+                        <td class="posicion">{{ i + 1 }}</td>
+                        <td>{{ vendedor.vendedor }}</td>
+                        <td class="numero">
+                            <div class="valor-con-barra">
+                                <span class="barra" aria-hidden="true">
+                                    <span class="barra-relleno" [style.width.%]="porcentajeBarra(vendedor.valoracionMedia, puntuacionMaxima)"></span>
+                                </span>
+                                <span class="valor">{{ vendedor.valoracionMedia | number: '1.2-2' }} / 5</span>
+                            </div>
+                        </td>
+                        <td class="numero">{{ vendedor.numeroValoraciones }}</td>
+                        <td class="numero">{{ vendedor.productosValorados }}</td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+
+        @if (datos.vendedoresSinValoraciones.length > 0) {
+        <p class="sin-valoraciones-vendedores">
+            <strong>Sin valoraciones (no entran en el ranking):</strong>
+            {{ datos.vendedoresSinValoraciones.join(', ') }}.
+        </p>
+        }
+        }
+    </section>
 </main>
 
 <ng-template #tablaVentas let-productos let-titulo="titulo" let-maximo="maximo">

@@ -12,7 +12,7 @@ import {
 } from 'vitest';
 
 import { EstadisticasAdmin, porcentajeBarra } from './estadisticas-admin';
-import { EstadisticasAdminService } from './estadisticas-admin.service';
+import { EstadisticasAdminService, EstadisticasVendedores } from './estadisticas-admin.service';
 import type { EstadisticasValoraciones, EstadisticasVentas } from './estadisticas-vendedor.service';
 
 describe('EstadisticasAdmin', () => {
@@ -40,16 +40,27 @@ describe('EstadisticasAdmin', () => {
     aviso: null
   };
 
-  const servicioMock = {
-    consultarVentas: vi.fn(),
-    consultarValoraciones: vi.fn()
+  const vendedores: EstadisticasVendedores = {
+    ranking: [
+      { vendedor: 'Tienda B', valoracionMedia: 4, numeroValoraciones: 2, productosValorados: 1 },
+      { vendedor: 'Tienda A', valoracionMedia: 3.75, numeroValoraciones: 4, productosValorados: 2 }
+    ],
+    vendedoresSinValoraciones: ['Tienda Nueva', 'Tienda Sur'],
+    aviso: null
   };
 
-  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados
+  const servicioMock = {
+    consultarVentas: vi.fn(),
+    consultarValoraciones: vi.fn(),
+    consultarVendedores: vi.fn()
+  };
+
+  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados, 4 vendedores
   const MAS_VENDIDOS = 0;
   const MENOS_VENDIDOS = 1;
   const MEJOR_VALORADOS = 2;
   const PEOR_VALORADOS = 3;
+  const VENDEDORES = 4;
 
   function texto(): string {
     fixture.detectChanges();
@@ -102,6 +113,7 @@ describe('EstadisticasAdmin', () => {
     vi.clearAllMocks();
     servicioMock.consultarVentas.mockReturnValue(of(ventas));
     servicioMock.consultarValoraciones.mockReturnValue(of(valoraciones));
+    servicioMock.consultarVendedores.mockReturnValue(of(vendedores));
   });
 
   afterEach(() => {
@@ -153,6 +165,11 @@ describe('EstadisticasAdmin', () => {
       aviso: 'Todavía no hay productos en la plataforma.'
     }));
     servicioMock.consultarValoraciones.mockReturnValue(of({ mejorValorados: [], peorValorados: [], aviso: null }));
+    servicioMock.consultarVendedores.mockReturnValue(of({
+      ranking: [],
+      vendedoresSinValoraciones: [],
+      aviso: 'Ningún vendedor tiene valoraciones todavía.'
+    }));
 
     await crear();
 
@@ -187,6 +204,36 @@ describe('EstadisticasAdmin', () => {
     await crear();
 
     expect(texto()).toContain('Menos de 10 productos tienen valoraciones');
+  });
+
+  it('PBI 281: muestra el ranking de vendedores con su media, valoraciones y productos valorados', async () => {
+    await crear();
+
+    expect(servicioMock.consultarVendedores).toHaveBeenCalledTimes(1);
+    expect(texto()).toContain('Top 10 vendedores por valoración');
+    expect(filas(VENDEDORES)).toEqual(['1 Tienda B 4.00 / 5 2 1', '2 Tienda A 3.75 / 5 4 2']);
+    expect(anchosBarras(VENDEDORES)).toEqual(['80%', '75%']);
+  });
+
+  it('PBI 281: indica aparte los vendedores sin valoraciones, que no entran en el ranking', async () => {
+    await crear();
+
+    expect(texto().replace(/\s+/g, ' '))
+      .toContain('Sin valoraciones (no entran en el ranking): Tienda Nueva, Tienda Sur.');
+  });
+
+  it('PBI 281: sin vendedores valorados lo indica y no muestra la tabla', async () => {
+    servicioMock.consultarVendedores.mockReturnValue(of({
+      ranking: [],
+      vendedoresSinValoraciones: ['Tienda A'],
+      aviso: 'Ningún vendedor tiene valoraciones todavía.'
+    }));
+
+    await crear();
+
+    expect(texto()).toContain('Ningún vendedor tiene valoraciones todavía.');
+    // Quedan las cuatro tablas de ventas y valoraciones
+    expect(tablas().length).toBe(4);
   });
 
   it('si falla un apartado, los demás se siguen viendo', async () => {
@@ -224,5 +271,6 @@ describe('EstadisticasAdmin', () => {
 
     expect(servicioMock.consultarVentas).toHaveBeenCalledTimes(2);
     expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(2);
+    expect(servicioMock.consultarVendedores).toHaveBeenCalledTimes(2);
   });
 });

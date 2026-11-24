@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
+import es.uclm.esibuy.backend.dto.EstadisticasVendedoresResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.services.EstadisticasAdministradorService;
 
@@ -31,5 +32,11 @@ public class EstadisticasAdministradorController {
     @GetMapping("/valoraciones")
     public EstadisticasValoracionesResponse consultarValoraciones() {
         return estadisticasAdministradorService.consultarValoraciones();
+    }
+
+    // PBI 281: ranking de vendedores por la valoración media de sus productos
+    @GetMapping("/vendedores")
+    public EstadisticasVendedoresResponse consultarVendedores() {
+        return estadisticasAdministradorService.consultarVendedores();
     }
 }
