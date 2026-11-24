@@ -101,6 +101,7 @@ class ProductoServiceHU16Tests {
 
         verify(productoDAO).actualizarVisibilidad(ID_PRODUCTO, true);
         assertTrue(producto.isEsVisible());
+        verify(alertaService).avisarSiVuelveADisponible(producto, false);
     }
 
     @Test

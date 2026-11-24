@@ -147,6 +147,37 @@ class AlertaServiceTests {
     }
 
     @Test
+    void unFavoritoQueVuelveAEstarDisponibleAvisaALosClientes() {
+        favoritoDe(cliente("cliente-1", false));
+
+        alertaService.avisarSiVuelveADisponible(producto(20.0, 0), false);
+
+        Alerta alerta = alertasGuardadas().get(0);
+        assertEquals(TipoAlerta.DISPONIBILIDAD, alerta.getTipo());
+        assertEquals("«Teclado», de tus favoritos, vuelve a estar disponible.", alerta.getMensaje());
+    }
+
+    @Test
+    void siYaEstabaDisponibleNoSeAvisa() {
+        alertaService.avisarSiVuelveADisponible(producto(20.0, 0), true);
+
+        verifyNoInteractions(listaProductosDAO, usuarioDAO, alertaDAO);
+    }
+
+    @Test
+    void sinStockODesactivadoNoEstaDisponibleYNoSeAvisa() {
+        Producto sinStock = producto(20.0, 0);
+        sinStock.setStock(0);
+        Producto desactivado = producto(20.0, 0);
+        desactivado.setEsVisible(false);
+
+        alertaService.avisarSiVuelveADisponible(sinStock, false);
+        alertaService.avisarSiVuelveADisponible(desactivado, false);
+
+        verifyNoInteractions(listaProductosDAO, usuarioDAO, alertaDAO);
+    }
+
+    @Test
     void sinNadieConElProductoEnFavoritosNoSeCreanAlertas() {
         when(listaProductosDAO.findFavoritosConProducto(PRODUCTO_ID)).thenReturn(List.of());
         when(usuarioDAO.findAllById(any())).thenReturn(List.of());

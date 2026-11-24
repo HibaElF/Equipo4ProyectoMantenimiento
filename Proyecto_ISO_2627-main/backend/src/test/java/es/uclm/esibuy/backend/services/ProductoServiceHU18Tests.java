@@ -96,6 +96,18 @@ class ProductoServiceHU18Tests {
     }
 
     @Test
+    void alReponerStockDeUnProductoAgotadoAvisaDeQueVuelveAEstarDisponible() {
+        Producto agotado = crearProducto(NOMBRE_COMERCIAL);
+        agotado.setStock(0);
+        prepararModificacionValida(agotado);
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, REQUEST_VALIDO, null);
+
+        Producto guardado = productoGuardado();
+        verify(alertaService).avisarSiVuelveADisponible(guardado, false);
+    }
+
+    @Test
     void modificaLosCamposPermitidosDeUnProductoPropio() {
         prepararModificacionValida(crearProducto(NOMBRE_COMERCIAL));
 

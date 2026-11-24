@@ -334,6 +334,27 @@ class PedidoServiceTests {
     }
 
     @Test
+    void cancelarUnPedidoPagadoAvisaSiElProductoAgotadoVuelveAEstarDisponible() {
+        cuenta();
+        Pedido pagado = pedidoConEstado("pedido-agotado", EstadoPedido.PAGADO_COMPLETADO);
+        when(pedidos.findByIdAndClienteId("pedido-agotado", "cliente-a")).thenReturn(Optional.of(pagado));
+        when(pedidos.cancelarPedido(
+                eq("pedido-agotado"),
+                eq("cliente-a"),
+                eq(EstadoPedido.PAGADO_COMPLETADO.name()),
+                eq(EstadoPedido.CANCELADO.name()),
+                anyList()))
+                .thenReturn(1L);
+        // Tras reponer la unidad del pedido el stock es 1: antes estaba agotado.
+        producto.setStock(1);
+        when(productos.findById("producto-1")).thenReturn(Optional.of(producto));
+
+        servicio.cancelarPedido("pedido-agotado");
+
+        verify(alertaService).avisarSiVuelveADisponible(producto, false);
+    }
+
+    @Test
     void conflictoConcurrenteNoReponeStock() {
         cuenta();
         Pedido pedido = pedidoConEstado("pedido-concurrente", EstadoPedido.PAGADO_COMPLETADO);
