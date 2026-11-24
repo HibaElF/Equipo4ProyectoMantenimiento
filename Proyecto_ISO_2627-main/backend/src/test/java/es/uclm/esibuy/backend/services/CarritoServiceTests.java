@@ -825,4 +825,60 @@ class CarritoServiceTests {
         assertThrows(AccessDeniedException.class, () -> servicio.descartarCarrito());
         verifyNoInteractions(carritoDAO, productoDAO);
     }
+
+    // PBI 291: el stock de cada línea es el que el cliente puede tener en su carrito (libre + reservado por él).
+    @Test
+    void alAnadirLaLineaMuestraElStockLibreMasLoReservado() {
+        prepararCarrito(null);
+        simularStockReal(producto);
+        when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var respuesta = servicio.anadirProductoConImporte("producto-1", 3);
+        assertEquals(7, producto.getStock());
+        assertEquals(10, respuesta.productos().get(0).stock());
+    }
+
+    @Test
+    void alAnadirAUnaLineaExistenteCuentaLoQueYaEstabaReservado() {
+        producto.setStock(7);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 3));
+        simularStockReal(producto);
+        when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var respuesta = servicio.anadirProductoConImporte("producto-1", 2);
+        assertEquals(5, producto.getStock());
+        assertEquals(5, respuesta.productos().get(0).cantidad());
+        assertEquals(10, respuesta.productos().get(0).stock());
+    }
+
+    @Test
+    void alConsultarElCarritoSumaElStockLibreYLoReservado() {
+        producto.setStock(7);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 3));
+        var respuesta = servicio.consultarCarrito();
+        assertEquals(10, respuesta.productos().get(0).stock());
+        assertTrue(respuesta.productos().get(0).disponible());
+    }
+
+    @Test
+    void sinStockLibreSePuedeBajarLaCantidadYElMaximoNoCambia() {
+        producto.setStock(0);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 3));
+        simularStockReal(producto);
+        when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var respuesta = servicio.modificarCantidad("producto-1", 1);
+        assertEquals(2, producto.getStock());
+        assertEquals(1, respuesta.productos().get(0).cantidad());
+        assertEquals(3, respuesta.productos().get(0).stock());
+    }
+
+    @Test
+    void subirLaCantidadReservaSoloLaDiferenciaHastaElMaximo() {
+        producto.setStock(2);
+        prepararCarrito(new Carrito("cliente-a").conCantidad("producto-1", 3));
+        simularStockReal(producto);
+        when(carritoDAO.save(any(Carrito.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        var respuesta = servicio.modificarCantidad("producto-1", 5);
+        assertEquals(0, producto.getStock());
+        assertEquals(5, respuesta.productos().get(0).stock());
+        verify(productoDAO).descontarStock(producto, 2);
+    }
 }
