@@ -1,0 +1,57 @@
+/* Alertas. La página, tarjetas, botones, avisos y chips vienen de ../tienda/tienda.css. */
+
+.alertas-resumen {
+  margin: 0 0 1rem;
+  color: var(--color-text-secondary);
+}
+
+.alertas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alerta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.alerta-leida {
+  opacity: .75;
+}
+
+.alerta-contenido {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: .4rem;
+  min-width: min(100%, 16rem);
+}
+
+.alerta-etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+}
+
+.alerta-mensaje {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.alerta-fecha {
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+}
+
+.alerta-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
