@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.services.EstadisticasVendedorService;
 
@@ -25,5 +26,11 @@ public class EstadisticasVendedorController {
     @GetMapping("/ventas")
     public EstadisticasVentasResponse consultarVentas(Authentication authentication) {
         return estadisticasVendedorService.consultarVentas(authentication.getName());
+    }
+
+    // PBI 277: productos mejor y peor valorados
+    @GetMapping("/valoraciones")
+    public EstadisticasValoracionesResponse consultarValoraciones(Authentication authentication) {
+        return estadisticasVendedorService.consultarValoraciones(authentication.getName());
     }
 }

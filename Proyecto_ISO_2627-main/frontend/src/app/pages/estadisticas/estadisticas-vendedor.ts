@@ -1,16 +1,20 @@
-import { NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApartadoEstadisticas } from './apartado-estadisticas';
-import { EstadisticasVendedorService, EstadisticasVentas } from './estadisticas-vendedor.service';
+import {
+  EstadisticasValoraciones,
+  EstadisticasVendedorService,
+  EstadisticasVentas
+} from './estadisticas-vendedor.service';
 
 // Estadísticas de la tienda del vendedor de la sesión: el backend solo devuelve sus productos.
 @Component({
   selector: 'app-estadisticas-vendedor',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [DecimalPipe, NgTemplateOutlet],
   templateUrl: './estadisticas-vendedor.html',
   styleUrls: ['../tienda/tienda.css', './estadisticas.css']
 })
@@ -20,6 +24,8 @@ export class EstadisticasVendedor implements OnInit {
 
   // PBI 276
   readonly ventas = new ApartadoEstadisticas<EstadisticasVentas>((fallo) => this.mensajeError(fallo));
+  // PBI 277
+  readonly valoraciones = new ApartadoEstadisticas<EstadisticasValoraciones>((fallo) => this.mensajeError(fallo));
 
   ngOnInit(): void {
     this.cargar();
@@ -27,10 +33,11 @@ export class EstadisticasVendedor implements OnInit {
 
   cargar(): void {
     this.ventas.cargar(this.servicio.consultarVentas());
+    this.valoraciones.cargar(this.servicio.consultarValoraciones());
   }
 
   cargando(): boolean {
-    return this.ventas.cargando();
+    return this.ventas.cargando() || this.valoraciones.cargando();
   }
 
   private mensajeError(error: HttpErrorResponse): string {

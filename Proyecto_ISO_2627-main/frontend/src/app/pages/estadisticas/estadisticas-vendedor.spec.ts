@@ -13,6 +13,7 @@ import {
 
 import { EstadisticasVendedor } from './estadisticas-vendedor';
 import {
+  EstadisticasValoraciones,
   EstadisticasVendedorService,
   EstadisticasVentas
 } from './estadisticas-vendedor.service';
@@ -31,19 +32,40 @@ describe('EstadisticasVendedor', () => {
     aviso: null
   };
 
-  const servicioMock = {
-    consultarVentas: vi.fn()
+  const valoraciones: EstadisticasValoraciones = {
+    mejorValorados: [
+      { productoId: 'p4', nombre: 'Monitor', vendedor: 'Mi Tienda', valoracionMedia: 5, numeroValoraciones: 1 },
+      { productoId: 'p1', nombre: 'Auriculares', vendedor: 'Mi Tienda', valoracionMedia: 4.67, numeroValoraciones: 3 }
+    ],
+    peorValorados: [
+      { productoId: 'p5', nombre: 'Webcam', vendedor: 'Mi Tienda', valoracionMedia: 1.33, numeroValoraciones: 3 }
+    ],
+    aviso: null
   };
+
+  const servicioMock = {
+    consultarVentas: vi.fn(),
+    consultarValoraciones: vi.fn()
+  };
+
+  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados
+  const MAS_VENDIDOS = 0;
+  const MENOS_VENDIDOS = 1;
+  const MEJOR_VALORADOS = 2;
+  const PEOR_VALORADOS = 3;
 
   function texto(): string {
     fixture.detectChanges();
     return fixture.nativeElement.textContent as string;
   }
 
-  function filas(tabla: number): string[] {
+  function tablas(): HTMLTableElement[] {
     fixture.detectChanges();
-    const tablas = fixture.nativeElement.querySelectorAll('table') as NodeListOf<HTMLTableElement>;
-    return Array.from(tablas[tabla].querySelectorAll('tbody tr'))
+    return Array.from(fixture.nativeElement.querySelectorAll('table') as NodeListOf<HTMLTableElement>);
+  }
+
+  function filas(tabla: number): string[] {
+    return Array.from(tablas()[tabla].querySelectorAll('tbody tr'))
       .map((fila) => (fila.textContent ?? '').replace(/\s+/g, ' ').trim());
   }
 
@@ -63,6 +85,7 @@ describe('EstadisticasVendedor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     servicioMock.consultarVentas.mockReturnValue(of(ventas));
+    servicioMock.consultarValoraciones.mockReturnValue(of(valoraciones));
   });
 
   afterEach(() => {
@@ -77,8 +100,8 @@ describe('EstadisticasVendedor', () => {
     expect(servicioMock.consultarVentas).toHaveBeenCalledTimes(1);
     expect(texto()).toContain('Top 10 más vendidos');
     expect(texto()).toContain('Top 10 menos vendidos');
-    expect(filas(0)).toEqual(['1 Auriculares 15', '2 Teclado 12']);
-    expect(filas(1)).toEqual(['1 Funda tablet 0']);
+    expect(filas(MAS_VENDIDOS)).toEqual(['1 Auriculares 15', '2 Teclado 12']);
+    expect(filas(MENOS_VENDIDOS)).toEqual(['1 Funda tablet 0']);
   });
 
   it('PBI 276: si no hay datos suficientes muestra el aviso del backend', async () => {
@@ -92,18 +115,52 @@ describe('EstadisticasVendedor', () => {
     expect(texto()).toContain('Todavía no tienes ventas en pedidos finalizados');
   });
 
-  it('PBI 276: sin productos lo indica en las dos listas', async () => {
+  it('PBI 277: muestra el Top 10 de mejor y peor valorados con la media a dos decimales', async () => {
+    await crear();
+
+    expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(1);
+    expect(texto()).toContain('Top 10 mejor valorados');
+    expect(texto()).toContain('Top 10 peor valorados');
+    expect(filas(MEJOR_VALORADOS)).toEqual(['1 Monitor 5.00 / 5 1', '2 Auriculares 4.67 / 5 3']);
+    expect(filas(PEOR_VALORADOS)).toEqual(['1 Webcam 1.33 / 5 3']);
+  });
+
+  it('PBI 277: sin valoraciones lo indica y muestra el aviso', async () => {
+    servicioMock.consultarValoraciones.mockReturnValue(of({
+      mejorValorados: [],
+      peorValorados: [],
+      aviso: 'Todavía no hay valoraciones de tus productos.'
+    }));
+
+    await crear();
+
+    expect(texto()).toContain('Todavía no hay valoraciones de tus productos.');
+    expect(texto()).toContain('Ningún producto tiene valoraciones todavía.');
+    expect(tablas().length).toBe(2);
+  });
+
+  it('sin productos lo indica en todas las listas', async () => {
     servicioMock.consultarVentas.mockReturnValue(of({
       masVendidos: [],
       menosVendidos: [],
       aviso: 'Todavía no tienes productos en tu catálogo.'
     }));
+    servicioMock.consultarValoraciones.mockReturnValue(of({ mejorValorados: [], peorValorados: [], aviso: null }));
 
     await crear();
 
     expect(texto()).toContain('Todavía no tienes productos en tu catálogo.');
     expect(texto()).toContain('No hay productos que mostrar.');
-    expect(fixture.nativeElement.querySelectorAll('table').length).toBe(0);
+    expect(tablas().length).toBe(0);
+  });
+
+  it('si falla un apartado, los demás se siguen viendo', async () => {
+    servicioMock.consultarValoraciones.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+    await crear();
+
+    expect(texto()).toContain('No se han podido cargar las estadísticas. Inténtalo de nuevo.');
+    expect(filas(MAS_VENDIDOS)).toEqual(['1 Auriculares 15', '2 Teclado 12']);
   });
 
   it('si el backend responde 403 explica que solo es para vendedores', async () => {
@@ -124,7 +181,7 @@ describe('EstadisticasVendedor', () => {
     expect(texto()).toContain('Tu sesión ha caducado.');
   });
 
-  it('«Actualizar» vuelve a pedir las estadísticas', async () => {
+  it('«Actualizar» vuelve a pedir todas las estadísticas', async () => {
     await crear();
 
     const boton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
@@ -132,5 +189,6 @@ describe('EstadisticasVendedor', () => {
     boton.click();
 
     expect(servicioMock.consultarVentas).toHaveBeenCalledTimes(2);
+    expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(2);
   });
 });

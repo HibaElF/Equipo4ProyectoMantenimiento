@@ -21,16 +21,20 @@ import org.springframework.security.access.AccessDeniedException;
 
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
+import es.uclm.esibuy.backend.dao.ValoracionDAO;
 import es.uclm.esibuy.backend.dao.VendedorDAO;
+import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
+import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
+import es.uclm.esibuy.backend.model.Valoracion;
 import es.uclm.esibuy.backend.model.Vendedor;
 
-// PBI 276: estadísticas de ventas del vendedor (Top 10 más y menos vendidos).
+// Estadísticas del vendedor. PBI 276: Top 10 más y menos vendidos. PBI 277: Top 10 mejor y peor valorados.
 @ExtendWith(MockitoExtension.class)
 class EstadisticasVendedorServiceTests {
 
@@ -46,6 +50,9 @@ class EstadisticasVendedorServiceTests {
 
     @Mock
     private PedidoDAO pedidoDAO;
+
+    @Mock
+    private ValoracionDAO valoracionDAO;
 
     @InjectMocks
     private EstadisticasVendedorService servicio;
@@ -104,6 +111,28 @@ class EstadisticasVendedorServiceTests {
 
     private static List<String> nombres(List<ProductoVentasResponse> ventas) {
         return ventas.stream().map(ProductoVentasResponse::nombre).toList();
+    }
+
+    // Cada puntuación la da un cliente distinto (un cliente solo puede valorar un producto una vez)
+    private static List<Valoracion> valoraciones(String productoId, int... puntuaciones) {
+        List<Valoracion> lista = new ArrayList<>();
+        for (int i = 0; i < puntuaciones.length; i++) {
+            lista.add(new Valoracion("cliente-" + i, "pedido-" + i, productoId, puntuaciones[i], null));
+        }
+        return lista;
+    }
+
+    @SafeVarargs
+    private void valoracionesGuardadas(List<Valoracion>... grupos) {
+        List<Valoracion> todas = new ArrayList<>();
+        for (List<Valoracion> grupo : grupos) {
+            todas.addAll(grupo);
+        }
+        when(valoracionDAO.findByProductoIdIn(anyCollection())).thenReturn(todas);
+    }
+
+    private static List<String> nombresValorados(List<ProductoValoracionResponse> valoraciones) {
+        return valoraciones.stream().map(ProductoValoracionResponse::nombre).toList();
     }
 
     @Test
@@ -238,5 +267,105 @@ class EstadisticasVendedorServiceTests {
         assertThrows(AccessDeniedException.class, () -> servicio.consultarVentas("otro@test.com"));
         assertThrows(AccessDeniedException.class, () -> servicio.consultarVentas(" "));
         verifyNoInteractions(productoDAO, pedidoDAO);
+    }
+    // --- PBI 277: productos mejor y peor valorados ---
+
+    @Test
+    void calculaLaMediaYElNumeroDeValoracionesDeCadaProducto() {
+        catalogo(producto("p1", "Auriculares"), producto("p2", "Webcam"), producto("p3", "Soporte"));
+        valoracionesGuardadas(valoraciones("p1", 5, 5, 4), valoraciones("p2", 1, 2, 1), valoraciones("p3", 5, 4));
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        // Medias redondeadas a dos decimales: 14/3 = 4.67, 9/2 = 4.5 y 4/3 = 1.33
+        ProductoValoracionResponse auriculares = respuesta.mejorValorados().get(0);
+        assertEquals("Auriculares", auriculares.nombre());
+        assertEquals(4.67, auriculares.valoracionMedia());
+        assertEquals(3, auriculares.numeroValoraciones());
+        assertEquals(TIENDA, auriculares.vendedor());
+        assertEquals(4.5, respuesta.mejorValorados().get(1).valoracionMedia());
+        assertEquals(1.33, respuesta.peorValorados().get(0).valoracionMedia());
+    }
+
+    @Test
+    void ordenaDeMejorAPeorYAlReves() {
+        catalogo(producto("p1", "Auriculares"), producto("p2", "Teclado"), producto("p3", "Cargador"),
+                producto("p4", "Webcam"));
+        valoracionesGuardadas(valoraciones("p1", 5, 5, 4), valoraciones("p2", 4, 4, 5, 3), valoraciones("p3", 4),
+                valoraciones("p4", 1, 2, 1));
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        // Teclado y Cargador empatan a 4: va antes el que tiene más valoraciones
+        assertEquals(List.of("Auriculares", "Teclado", "Cargador", "Webcam"),
+                nombresValorados(respuesta.mejorValorados()));
+        assertEquals(List.of("Webcam", "Teclado", "Cargador", "Auriculares"),
+                nombresValorados(respuesta.peorValorados()));
+    }
+
+    @Test
+    void losProductosSinValoracionesNoEntranEnLosRankings() {
+        catalogo(producto("p1", "Auriculares"), producto("p2", "Hub USB"));
+        valoracionesGuardadas(valoraciones("p1", 3));
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        assertEquals(List.of("Auriculares"), nombresValorados(respuesta.mejorValorados()));
+        assertEquals(List.of("Auriculares"), nombresValorados(respuesta.peorValorados()));
+        assertEquals(EstadisticasVendedorService.AVISO_POCAS_VALORACIONES, respuesta.aviso());
+    }
+
+    @Test
+    void cadaRankingDeValoracionesMuestraComoMaximoDiezProductos() {
+        List<Producto> productos = new ArrayList<>();
+        List<Valoracion> todas = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            productos.add(producto("p" + i, "Producto " + String.format("%02d", i)));
+            todas.addAll(valoraciones("p" + i, 1 + i % 5));
+        }
+        catalogo(productos.toArray(Producto[]::new));
+        valoracionesGuardadas(todas);
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        assertEquals(10, respuesta.mejorValorados().size());
+        assertEquals(10, respuesta.peorValorados().size());
+        assertEquals(5.0, respuesta.mejorValorados().get(0).valoracionMedia());
+        assertEquals(1.0, respuesta.peorValorados().get(0).valoracionMedia());
+        assertNull(respuesta.aviso());
+    }
+
+    @Test
+    void sinValoracionesDevuelveListasVaciasYUnAviso() {
+        catalogo(producto("p1", "Auriculares"));
+        valoracionesGuardadas();
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        assertTrue(respuesta.mejorValorados().isEmpty());
+        assertTrue(respuesta.peorValorados().isEmpty());
+        assertEquals(EstadisticasVendedorService.AVISO_SIN_VALORACIONES, respuesta.aviso());
+    }
+
+    @Test
+    void soloSeConsultanLasValoracionesDeSusProductos() {
+        catalogo(producto("p1", "Auriculares"), producto("p2", "Teclado"));
+        valoracionesGuardadas(valoraciones("p1", 4));
+
+        servicio.consultarValoraciones(EMAIL);
+
+        verify(productoDAO).findByVendedor(TIENDA);
+        verify(valoracionDAO).findByProductoIdIn(List.of("p1", "p2"));
+    }
+
+    @Test
+    void sinProductosNoConsultaLasValoraciones() {
+        catalogo();
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones(EMAIL);
+
+        assertTrue(respuesta.mejorValorados().isEmpty());
+        assertEquals(EstadisticasVendedorService.AVISO_SIN_VALORACIONES, respuesta.aviso());
+        verifyNoInteractions(valoracionDAO);
     }
 }

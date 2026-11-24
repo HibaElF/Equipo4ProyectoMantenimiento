@@ -18,6 +18,22 @@ export interface EstadisticasVentas {
   aviso: string | null;
 }
 
+// Valoración media (dos decimales) y número de valoraciones de un producto; media null si no tiene ninguna.
+export interface ProductoValoracion {
+  productoId: string;
+  nombre: string;
+  vendedor: string | null;
+  valoracionMedia: number | null;
+  numeroValoraciones: number;
+}
+
+// PBI 277: Top 10 de productos mejor y peor valorados (solo los que tienen alguna valoración).
+export interface EstadisticasValoraciones {
+  mejorValorados: ProductoValoracion[];
+  peorValorados: ProductoValoracion[];
+  aviso: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -27,6 +43,12 @@ export class EstadisticasVendedorService {
 
   consultarVentas(): Observable<EstadisticasVentas> {
     return this.http.get<EstadisticasVentas>(`${this.baseUrl}/ventas`, {
+      withCredentials: true
+    });
+  }
+
+  consultarValoraciones(): Observable<EstadisticasValoraciones> {
+    return this.http.get<EstadisticasValoraciones>(`${this.baseUrl}/valoraciones`, {
       withCredentials: true
     });
   }
