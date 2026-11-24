@@ -43,6 +43,7 @@ class PedidoServiceTests {
     @Mock private VendedorDAO vendedores;
     @Mock private PedidoDAO pedidos;
     @Mock private MongoTransactionManager transacciones;
+    @Mock private AlertaService alertaService;
     private PedidoService servicio;
     private Cliente cliente;
     private Producto producto;
@@ -52,7 +53,7 @@ class PedidoServiceTests {
     @BeforeEach
     void configurar() {
         servicio = new PedidoService(new CarritoService(carritos, clientes, productos), carritos, productos,
-                metodos, vendedores, pedidos, transacciones);
+                metodos, vendedores, pedidos, transacciones, alertaService);
         lenient().when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         cliente = new Cliente();
         cliente.setId("cliente-a");

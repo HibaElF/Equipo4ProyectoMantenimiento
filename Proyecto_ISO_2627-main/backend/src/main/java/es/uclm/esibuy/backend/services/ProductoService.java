@@ -238,6 +238,7 @@ public class ProductoService {
         int stockActual = producto.getStock();
         int stockNuevo = stockAGuardar(request, stockActual);
         Double precioAnterior = PrecioProducto.paraCliente(producto, false);
+        boolean estabaDisponible = AlertaService.estaDisponible(producto);
 
         // Solo se actualizan los campos permitidos; el vendedor y la visibilidad se conservan.
         ValidacionProducto.asignarDatos(producto, request, nombreCategoria);
@@ -271,6 +272,7 @@ public class ProductoService {
             productoImagenService.eliminar(imagenAnterior);
         }
         alertaService.avisarSiBajaPrecio(productoModificado, precioAnterior);
+        alertaService.avisarSiVuelveADisponible(productoModificado, estabaDisponible);
         return aConsultarProductosResponse(productoModificado);
     }
 
@@ -336,8 +338,10 @@ public class ProductoService {
         }
 
         // La desactivación es lógica: solo cambia el estado, el producto nunca se elimina.
+        boolean estabaDisponible = AlertaService.estaDisponible(producto);
         producto.setEsVisible(activo);
         productoDAO.actualizarVisibilidad(producto.getId(), activo);
+        alertaService.avisarSiVuelveADisponible(producto, estabaDisponible);
     }
 
     public void eliminarProducto(String emailVendedor, String idProducto) {

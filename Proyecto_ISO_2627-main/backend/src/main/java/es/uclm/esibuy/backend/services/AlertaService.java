@@ -45,6 +45,18 @@ public class AlertaService {
         avisarClientesConFavorito(producto, TipoAlerta.BAJADA_PRECIO, mensaje);
     }
 
+    public void avisarSiVuelveADisponible(Producto producto, boolean estabaDisponible) {
+        if (estabaDisponible || !estaDisponible(producto)) {
+            return;
+        }
+        String mensaje = "«" + producto.getNombre() + "», de tus favoritos, vuelve a estar disponible.";
+        avisarClientesConFavorito(producto, TipoAlerta.DISPONIBILIDAD, mensaje);
+    }
+
+    static boolean estaDisponible(Producto producto) {
+        return producto.isEsVisible() && producto.getStock() > 0;
+    }
+
     private void avisarClientesConFavorito(Producto producto, TipoAlerta tipo, String mensaje) {
         List<String> usuarios = listaProductosDAO.findFavoritosConProducto(producto.getId()).stream()
                 .map(ListaProductos::getUsuarioId)
