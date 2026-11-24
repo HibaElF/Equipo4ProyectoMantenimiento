@@ -16,10 +16,34 @@
   font-size: 1rem;
 }
 
+/* Las dos listas de cada apartado (más / menos vendidos, mejor / peor valorados) van separadas por una línea:
+   horizontal cuando están una debajo de otra y vertical cuando están una al lado de otra. */
 .rejilla-rankings {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
+}
+
+.rejilla-rankings > * + * {
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--color-border);
+}
+
+@media (min-width: 860px) {
+  .rejilla-rankings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .rejilla-rankings > * {
+    padding-right: 1.5rem;
+  }
+
+  .rejilla-rankings > * + * {
+    padding: 0 0 0 1.5rem;
+    border-top: 0;
+    border-left: 2px solid var(--color-border);
+  }
 }
 
 .tabla-contenedor {
