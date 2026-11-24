@@ -57,4 +57,3 @@ public interface PedidoDAO extends MongoRepository<Pedido, String> {
     @Query(value = "{ 'lineas.productoId': ?0, 'estado': { '$in': ?1 } }", exists = true)
     boolean existsByProductoIdAndEstadoIn(String productoId, List<String> estados);
 }
-
