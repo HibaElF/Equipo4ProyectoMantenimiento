@@ -32,15 +32,17 @@ public class PedidoService {
     private final PedidoDAO pedidoDAO;
     private final TransactionTemplate transaccion;
     private final CompraPedido compra;
+    private final AlertaService alertaService;
 
     public PedidoService(CarritoService carritoService, CarritoDAO carritoDAO, ProductoDAO productoDAO,
             MetodoPagoDAO metodoPagoDAO, VendedorDAO vendedorDAO, PedidoDAO pedidoDAO,
-            MongoTransactionManager pedidoTransactionManager) {
+            MongoTransactionManager pedidoTransactionManager, AlertaService alertaService) {
         this.carritoService = carritoService;
         this.productoDAO = productoDAO;
         this.pedidoDAO = pedidoDAO;
         this.transaccion = new TransactionTemplate(pedidoTransactionManager);
         this.compra = new CompraPedido(carritoService, carritoDAO, productoDAO, metodoPagoDAO, vendedorDAO, pedidoDAO);
+        this.alertaService = alertaService;
     }
 
     // HU-50: devuelve un pedido por cada vendedor del carrito.
@@ -165,10 +167,17 @@ public class PedidoService {
         if (estadoActual == EstadoPedido.PAGADO_COMPLETADO) {
             for (LineaPedido linea : pedido.getLineas()) {
                 productoDAO.reponerStock(linea.productoId(), linea.cantidad());
+                avisarSiVuelveADisponible(linea);
             }
         }
 
         return PedidoConsultaResponse.de(cancelado);
+    }
+
+    // Si el producto estaba agotado, las unidades devueltas lo vuelven a poner a la venta.
+    private void avisarSiVuelveADisponible(LineaPedido linea) {
+        productoDAO.findById(linea.productoId()).ifPresent(producto ->
+                alertaService.avisarSiVuelveADisponible(producto, producto.getStock() > linea.cantidad()));
     }
 
     private void validarIdentificador(String id, String mensaje) {

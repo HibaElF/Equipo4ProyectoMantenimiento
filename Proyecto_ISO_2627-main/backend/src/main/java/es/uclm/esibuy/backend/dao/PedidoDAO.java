@@ -1,5 +1,6 @@
 package es.uclm.esibuy.backend.dao;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,9 @@ public interface PedidoDAO extends MongoRepository<Pedido, String> {
 
     // HU-50: los pedidos (uno por vendedor) que se crearon en la misma compra.
     List<Pedido> findByCompraIdAndClienteId(String compraId, String clienteId);
+
+    @Query("{ 'lineas.productoId': { '$in': ?0 } }")
+    List<Pedido> findConAlgunProducto(Collection<String> productoIds);
 
     // Cambio atómico: solo se aplica si el pedido sigue en el estado esperado y contiene productos del vendedor.
     @Query("{ '_id': ?0, 'estado': ?1, 'lineas.vendedorId': ?2 }")
