@@ -34,6 +34,14 @@ export interface EstadisticasValoraciones {
   aviso: string | null;
 }
 
+// PBI 278: valoración media de cada producto del catálogo (también de los que no tienen valoraciones)
+// y de la tienda, calculada con todas sus valoraciones. La media de la tienda es null si no hay ninguna.
+export interface ValoracionesCatalogo {
+  valoracionMediaGlobal: number | null;
+  numeroValoraciones: number;
+  productos: ProductoValoracion[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -49,6 +57,12 @@ export class EstadisticasVendedorService {
 
   consultarValoraciones(): Observable<EstadisticasValoraciones> {
     return this.http.get<EstadisticasValoraciones>(`${this.baseUrl}/valoraciones`, {
+      withCredentials: true
+    });
+  }
+
+  consultarValoracionesCatalogo(): Observable<ValoracionesCatalogo> {
+    return this.http.get<ValoracionesCatalogo>(`${this.baseUrl}/productos`, {
       withCredentials: true
     });
   }

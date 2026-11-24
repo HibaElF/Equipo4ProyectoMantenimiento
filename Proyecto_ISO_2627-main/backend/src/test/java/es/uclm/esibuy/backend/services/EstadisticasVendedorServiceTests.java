@@ -27,6 +27,7 @@ import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.ValoracionesCatalogoResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
@@ -35,6 +36,7 @@ import es.uclm.esibuy.backend.model.Valoracion;
 import es.uclm.esibuy.backend.model.Vendedor;
 
 // Estadísticas del vendedor. PBI 276: Top 10 más y menos vendidos. PBI 277: Top 10 mejor y peor valorados.
+// PBI 278: valoración media de cada producto del catálogo y de la tienda.
 @ExtendWith(MockitoExtension.class)
 class EstadisticasVendedorServiceTests {
 
@@ -366,6 +368,69 @@ class EstadisticasVendedorServiceTests {
 
         assertTrue(respuesta.mejorValorados().isEmpty());
         assertEquals(EstadisticasVendedorService.AVISO_SIN_VALORACIONES, respuesta.aviso());
+        verifyNoInteractions(valoracionDAO);
+    }
+    // --- PBI 278: valoración media de cada producto del catálogo ---
+
+    @Test
+    void muestraTodoElCatalogoOrdenadoPorNombreConSuMediaYSuNumeroDeValoraciones() {
+        catalogo(producto("p1", "Teclado"), producto("p2", "auriculares"), producto("p3", "Hub USB"));
+        valoracionesGuardadas(valoraciones("p1", 4, 4, 5, 3), valoraciones("p2", 5, 5, 4));
+
+        ValoracionesCatalogoResponse respuesta = servicio.consultarValoracionesCatalogo(EMAIL);
+
+        assertEquals(List.of("auriculares", "Hub USB", "Teclado"), nombresValorados(respuesta.productos()));
+        ProductoValoracionResponse teclado = respuesta.productos().get(2);
+        assertEquals(4.0, teclado.valoracionMedia());
+        assertEquals(4, teclado.numeroValoraciones());
+    }
+
+    @Test
+    void unProductoSinValoracionesSeIndicaConMediaNulaYCeroValoraciones() {
+        catalogo(producto("p1", "Hub USB"));
+        valoracionesGuardadas();
+
+        ValoracionesCatalogoResponse respuesta = servicio.consultarValoracionesCatalogo(EMAIL);
+
+        ProductoValoracionResponse hub = respuesta.productos().get(0);
+        assertNull(hub.valoracionMedia());
+        assertEquals(0, hub.numeroValoraciones());
+        assertNull(respuesta.valoracionMediaGlobal());
+        assertEquals(0, respuesta.numeroValoraciones());
+    }
+
+    @Test
+    void laMediaDeLaTiendaEsLaDeTodasSusValoraciones() {
+        catalogo(producto("p1", "Auriculares"), producto("p2", "Alfombrilla"), producto("p3", "Hub USB"));
+        valoracionesGuardadas(valoraciones("p1", 5, 5, 4), valoraciones("p2", 1));
+
+        ValoracionesCatalogoResponse respuesta = servicio.consultarValoracionesCatalogo(EMAIL);
+
+        // (5 + 5 + 4 + 1) / 4 = 3.75; la media de las medias seria (4.67 + 1) / 2 = 2.83
+        assertEquals(3.75, respuesta.valoracionMediaGlobal());
+        assertEquals(4, respuesta.numeroValoraciones());
+    }
+
+    @Test
+    void elCatalogoSoloIncluyeLosProductosDelVendedorDeLaSesion() {
+        catalogo(producto("p1", "Auriculares"));
+        valoracionesGuardadas(valoraciones("p1", 4));
+
+        ValoracionesCatalogoResponse respuesta = servicio.consultarValoracionesCatalogo(EMAIL);
+
+        assertEquals(List.of("Auriculares"), nombresValorados(respuesta.productos()));
+        verify(productoDAO).findByVendedor(TIENDA);
+        verify(valoracionDAO).findByProductoIdIn(List.of("p1"));
+    }
+
+    @Test
+    void sinProductosElCatalogoEstaVacioYNoConsultaLasValoraciones() {
+        catalogo();
+
+        ValoracionesCatalogoResponse respuesta = servicio.consultarValoracionesCatalogo(EMAIL);
+
+        assertTrue(respuesta.productos().isEmpty());
+        assertNull(respuesta.valoracionMediaGlobal());
         verifyNoInteractions(valoracionDAO);
     }
 }

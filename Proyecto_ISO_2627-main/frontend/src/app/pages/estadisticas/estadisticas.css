@@ -60,3 +60,14 @@
   margin: 0;
   color: var(--color-text-secondary);
 }
+
+.resumen-tienda {
+  margin: 0 0 1rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.sin-valoraciones {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

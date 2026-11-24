@@ -21,6 +21,7 @@ import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.ValoracionesCatalogoResponse;
 import es.uclm.esibuy.backend.services.EstadisticasVendedorService;
 
 // Estadísticas del vendedor: solo las consulta un vendedor, y siempre las suyas (las del correo de la sesión).
@@ -30,6 +31,7 @@ class EstadisticasVendedorSecurityTests {
 
     private static final String RUTA_VENTAS = "/vendedor/estadisticas/ventas";
     private static final String RUTA_VALORACIONES = "/vendedor/estadisticas/valoraciones";
+    private static final String RUTA_PRODUCTOS = "/vendedor/estadisticas/productos";
     private static final String CORREO = "vendedor@test.com";
 
     @Autowired
@@ -69,8 +71,24 @@ class EstadisticasVendedorSecurityTests {
         verify(estadisticasVendedorService).consultarValoraciones(CORREO);
     }
 
+    @Test
+    void elVendedorConsultaLaValoracionMediaDeSuCatalogo() throws Exception {
+        ProductoValoracionResponse hub = new ProductoValoracionResponse("p2", "Hub USB", "Mi Tienda", null, 0);
+        when(estadisticasVendedorService.consultarValoracionesCatalogo(CORREO))
+                .thenReturn(new ValoracionesCatalogoResponse(3.27, 22, List.of(hub)));
+
+        mvc.perform(get(RUTA_PRODUCTOS).with(user(CORREO).roles("VENDEDOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.valoracionMediaGlobal").value(3.27))
+                .andExpect(jsonPath("$.numeroValoraciones").value(22))
+                .andExpect(jsonPath("$.productos[0].nombre").value("Hub USB"))
+                .andExpect(jsonPath("$.productos[0].numeroValoraciones").value(0));
+
+        verify(estadisticasVendedorService).consultarValoracionesCatalogo(CORREO);
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_PRODUCTOS})
     void unClienteRecibe403(String ruta) throws Exception {
         mvc.perform(get(ruta).with(user("cliente@test.com").roles("CLIENTE")))
                 .andExpect(status().isForbidden());
@@ -79,7 +97,7 @@ class EstadisticasVendedorSecurityTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_PRODUCTOS})
     void unAdministradorRecibe403(String ruta) throws Exception {
         mvc.perform(get(ruta).with(user("admin@test.com").roles("ADMIN")))
                 .andExpect(status().isForbidden());
@@ -88,7 +106,7 @@ class EstadisticasVendedorSecurityTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES})
+    @ValueSource(strings = {RUTA_VENTAS, RUTA_VALORACIONES, RUTA_PRODUCTOS})
     void sinSesionSeRechaza(String ruta) throws Exception {
         mvc.perform(get(ruta))
                 .andExpect(status().isForbidden());

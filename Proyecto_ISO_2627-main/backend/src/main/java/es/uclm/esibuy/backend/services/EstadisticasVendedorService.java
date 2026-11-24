@@ -14,6 +14,7 @@ import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.ValoracionesCatalogoResponse;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
 
@@ -72,14 +73,29 @@ public class EstadisticasVendedorService {
                 avisoValoraciones(valoraciones));
     }
 
+    // PBI 278: valoración media y número de valoraciones de cada producto del catálogo (también de los que
+    // no tienen ninguna) y valoración media de toda la tienda
+    public ValoracionesCatalogoResponse consultarValoracionesCatalogo(String emailAutenticado) {
+        List<Producto> productos = productosDelVendedor(emailAutenticado);
+        Map<String, List<Integer>> puntuaciones = puntuacionesDe(productos);
+        List<Integer> todas = CalculoEstadisticas.todasLasPuntuaciones(puntuaciones);
+
+        return new ValoracionesCatalogoResponse(
+                CalculoEstadisticas.media(todas),
+                todas.size(),
+                CalculoEstadisticas.porNombre(CalculoEstadisticas.valoracionesPorProducto(productos, puntuaciones)));
+    }
+
     private List<ProductoValoracionResponse> valoracionesDe(List<Producto> productos) {
+        return CalculoEstadisticas.valoracionesPorProducto(productos, puntuacionesDe(productos));
+    }
+
+    private Map<String, List<Integer>> puntuacionesDe(List<Producto> productos) {
         if (productos.isEmpty()) {
-            return List.of();
+            return Map.of();
         }
-        return CalculoEstadisticas.valoracionesPorProducto(
-                productos,
-                CalculoEstadisticas.puntuacionesPorProducto(
-                        valoracionDAO.findByProductoIdIn(CalculoEstadisticas.identificadores(productos))));
+        return CalculoEstadisticas.puntuacionesPorProducto(
+                valoracionDAO.findByProductoIdIn(CalculoEstadisticas.identificadores(productos)));
     }
 
     private static String avisoValoraciones(List<ProductoValoracionResponse> valoraciones) {

@@ -10,7 +10,8 @@ import { environment } from '../../../environments/environment';
 import {
   EstadisticasValoraciones,
   EstadisticasVendedorService,
-  EstadisticasVentas
+  EstadisticasVentas,
+  ValoracionesCatalogo
 } from './estadisticas-vendedor.service';
 
 describe('EstadisticasVendedorService', () => {
@@ -70,5 +71,23 @@ describe('EstadisticasVendedorService', () => {
     peticion.flush(valoraciones);
 
     expect(resultado).toEqual(valoraciones);
+  });
+
+  it('PBI 278: consulta la valoración media del catálogo con la sesión del vendedor', () => {
+    const catalogo: ValoracionesCatalogo = {
+      valoracionMediaGlobal: null,
+      numeroValoraciones: 0,
+      productos: [{ productoId: 'p1', nombre: 'Hub USB', vendedor: 'Mi Tienda', valoracionMedia: null, numeroValoraciones: 0 }]
+    };
+    let resultado: ValoracionesCatalogo | undefined;
+
+    servicio.consultarValoracionesCatalogo().subscribe((datos) => resultado = datos);
+
+    const peticion = http.expectOne(`${baseUrl}/productos`);
+    expect(peticion.request.method).toBe('GET');
+    expect(peticion.request.withCredentials).toBe(true);
+    peticion.flush(catalogo);
+
+    expect(resultado).toEqual(catalogo);
   });
 });

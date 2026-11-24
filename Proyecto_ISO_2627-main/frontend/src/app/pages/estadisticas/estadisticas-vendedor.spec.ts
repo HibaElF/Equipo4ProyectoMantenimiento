@@ -15,7 +15,8 @@ import { EstadisticasVendedor } from './estadisticas-vendedor';
 import {
   EstadisticasValoraciones,
   EstadisticasVendedorService,
-  EstadisticasVentas
+  EstadisticasVentas,
+  ValoracionesCatalogo
 } from './estadisticas-vendedor.service';
 
 describe('EstadisticasVendedor', () => {
@@ -43,16 +44,27 @@ describe('EstadisticasVendedor', () => {
     aviso: null
   };
 
-  const servicioMock = {
-    consultarVentas: vi.fn(),
-    consultarValoraciones: vi.fn()
+  const catalogo: ValoracionesCatalogo = {
+    valoracionMediaGlobal: 3.27,
+    numeroValoraciones: 22,
+    productos: [
+      { productoId: 'p1', nombre: 'Auriculares', vendedor: 'Mi Tienda', valoracionMedia: 4.67, numeroValoraciones: 3 },
+      { productoId: 'p6', nombre: 'Hub USB', vendedor: 'Mi Tienda', valoracionMedia: null, numeroValoraciones: 0 }
+    ]
   };
 
-  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados
+  const servicioMock = {
+    consultarVentas: vi.fn(),
+    consultarValoraciones: vi.fn(),
+    consultarValoracionesCatalogo: vi.fn()
+  };
+
+  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados, 4 catálogo
   const MAS_VENDIDOS = 0;
   const MENOS_VENDIDOS = 1;
   const MEJOR_VALORADOS = 2;
   const PEOR_VALORADOS = 3;
+  const CATALOGO = 4;
 
   function texto(): string {
     fixture.detectChanges();
@@ -86,6 +98,7 @@ describe('EstadisticasVendedor', () => {
     vi.clearAllMocks();
     servicioMock.consultarVentas.mockReturnValue(of(ventas));
     servicioMock.consultarValoraciones.mockReturnValue(of(valoraciones));
+    servicioMock.consultarValoracionesCatalogo.mockReturnValue(of(catalogo));
   });
 
   afterEach(() => {
@@ -136,7 +149,8 @@ describe('EstadisticasVendedor', () => {
 
     expect(texto()).toContain('Todavía no hay valoraciones de tus productos.');
     expect(texto()).toContain('Ningún producto tiene valoraciones todavía.');
-    expect(tablas().length).toBe(2);
+    // Quedan las dos de ventas y la del catálogo
+    expect(tablas().length).toBe(3);
   });
 
   it('sin productos lo indica en todas las listas', async () => {
@@ -146,12 +160,34 @@ describe('EstadisticasVendedor', () => {
       aviso: 'Todavía no tienes productos en tu catálogo.'
     }));
     servicioMock.consultarValoraciones.mockReturnValue(of({ mejorValorados: [], peorValorados: [], aviso: null }));
+    servicioMock.consultarValoracionesCatalogo.mockReturnValue(of({
+      valoracionMediaGlobal: null,
+      numeroValoraciones: 0,
+      productos: []
+    }));
 
     await crear();
 
     expect(texto()).toContain('Todavía no tienes productos en tu catálogo.');
     expect(texto()).toContain('No hay productos que mostrar.');
+    expect(texto()).toContain('Tu tienda todavía no tiene valoraciones.');
     expect(tablas().length).toBe(0);
+  });
+
+  it('PBI 278: muestra la media de la tienda y la de cada producto del catálogo', async () => {
+    await crear();
+
+    expect(servicioMock.consultarValoracionesCatalogo).toHaveBeenCalledTimes(1);
+    expect(texto().replace(/\s+/g, ' ')).toContain('Valoración media de tu tienda: 3.27 / 5 (22 valoraciones)');
+    expect(filas(CATALOGO)).toEqual(['Auriculares 4.67 / 5 3', 'Hub USB Sin valoraciones 0']);
+  });
+
+  it('PBI 278: con una sola valoración lo escribe en singular', async () => {
+    servicioMock.consultarValoracionesCatalogo.mockReturnValue(of({ ...catalogo, valoracionMediaGlobal: 4, numeroValoraciones: 1 }));
+
+    await crear();
+
+    expect(texto().replace(/\s+/g, ' ')).toContain('4.00 / 5 (1 valoración)');
   });
 
   it('si falla un apartado, los demás se siguen viendo', async () => {
@@ -190,5 +226,6 @@ describe('EstadisticasVendedor', () => {
 
     expect(servicioMock.consultarVentas).toHaveBeenCalledTimes(2);
     expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(2);
+    expect(servicioMock.consultarValoracionesCatalogo).toHaveBeenCalledTimes(2);
   });
 });

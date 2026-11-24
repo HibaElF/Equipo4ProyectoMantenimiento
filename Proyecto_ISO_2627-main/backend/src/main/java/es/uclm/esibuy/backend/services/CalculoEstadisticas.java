@@ -135,6 +135,17 @@ final class CalculoEstadisticas {
                 .toList();
     }
 
+    // Catálogo completo ordenado por nombre, para encontrar fácilmente cada producto
+    static List<ProductoValoracionResponse> porNombre(List<ProductoValoracionResponse> valoraciones) {
+        return valoraciones.stream().sorted(POR_NOMBRE_VALORACION).toList();
+    }
+
+    // Todas las puntuaciones juntas: la media de una tienda es la de todas sus valoraciones,
+    // no la media de las medias de sus productos
+    static List<Integer> todasLasPuntuaciones(Map<String, List<Integer>> puntuacionesPorProducto) {
+        return puntuacionesPorProducto.values().stream().flatMap(List::stream).toList();
+    }
+
     static boolean tieneValoraciones(ProductoValoracionResponse valoracion) {
         return valoracion.numeroValoraciones() > 0;
     }

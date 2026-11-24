@@ -7,7 +7,8 @@ import { ApartadoEstadisticas } from './apartado-estadisticas';
 import {
   EstadisticasValoraciones,
   EstadisticasVendedorService,
-  EstadisticasVentas
+  EstadisticasVentas,
+  ValoracionesCatalogo
 } from './estadisticas-vendedor.service';
 
 // Estadísticas de la tienda del vendedor de la sesión: el backend solo devuelve sus productos.
@@ -26,6 +27,8 @@ export class EstadisticasVendedor implements OnInit {
   readonly ventas = new ApartadoEstadisticas<EstadisticasVentas>((fallo) => this.mensajeError(fallo));
   // PBI 277
   readonly valoraciones = new ApartadoEstadisticas<EstadisticasValoraciones>((fallo) => this.mensajeError(fallo));
+  // PBI 278
+  readonly catalogo = new ApartadoEstadisticas<ValoracionesCatalogo>((fallo) => this.mensajeError(fallo));
 
   ngOnInit(): void {
     this.cargar();
@@ -34,10 +37,11 @@ export class EstadisticasVendedor implements OnInit {
   cargar(): void {
     this.ventas.cargar(this.servicio.consultarVentas());
     this.valoraciones.cargar(this.servicio.consultarValoraciones());
+    this.catalogo.cargar(this.servicio.consultarValoracionesCatalogo());
   }
 
   cargando(): boolean {
-    return this.ventas.cargando() || this.valoraciones.cargando();
+    return this.ventas.cargando() || this.valoraciones.cargando() || this.catalogo.cargando();
   }
 
   private mensajeError(error: HttpErrorResponse): string {

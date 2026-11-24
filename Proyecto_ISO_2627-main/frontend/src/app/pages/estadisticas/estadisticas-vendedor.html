@@ -76,6 +76,59 @@
         </div>
         }
     </section>
+
+    <!-- PBI 278: valoración media de cada producto del catálogo -->
+    <section class="tarjeta apartado" aria-labelledby="titulo-catalogo">
+        <h2 id="titulo-catalogo" class="apartado-titulo">Valoración media de mis productos</h2>
+
+        @if (catalogo.cargando()) {
+        <p class="estado"><output>Cargando valoraciones del catálogo...</output></p>
+        } @else if (catalogo.error()) {
+        <section class="estado" role="alert">
+            <p class="estado-titulo">{{ catalogo.error() }}</p>
+            <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </section>
+        } @else if (catalogo.datos(); as datos) {
+        <p class="resumen-tienda">
+            @if (datos.valoracionMediaGlobal !== null) {
+            Valoración media de tu tienda:
+            <strong>{{ datos.valoracionMediaGlobal | number: '1.2-2' }} / 5</strong>
+            ({{ datos.numeroValoraciones }} {{ datos.numeroValoraciones === 1 ? 'valoración' : 'valoraciones' }})
+            } @else {
+            Tu tienda todavía no tiene valoraciones.
+            }
+        </p>
+
+        @if (datos.productos.length === 0) {
+        <p class="sin-datos">Todavía no tienes productos en tu catálogo.</p>
+        } @else {
+        <div class="tabla-contenedor">
+            <table class="tabla-ranking" aria-labelledby="titulo-catalogo">
+                <thead>
+                    <tr>
+                        <th scope="col">Producto</th>
+                        <th scope="col" class="numero">Valoración media</th>
+                        <th scope="col" class="numero">Valoraciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (producto of datos.productos; track producto.productoId) {
+                    <tr>
+                        <td>{{ producto.nombre }}</td>
+                        @if (producto.valoracionMedia !== null) {
+                        <td class="numero">{{ producto.valoracionMedia | number: '1.2-2' }} / 5</td>
+                        } @else {
+                        <td class="numero sin-valoraciones">Sin valoraciones</td>
+                        }
+                        <td class="numero">{{ producto.numeroValoraciones }}</td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+        }
+    </section>
 </main>
 
 <ng-template #tablaVentas let-productos let-titulo="titulo">

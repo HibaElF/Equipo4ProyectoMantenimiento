@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
+import es.uclm.esibuy.backend.dto.ValoracionesCatalogoResponse;
 import es.uclm.esibuy.backend.services.EstadisticasVendedorService;
 
 // Estadísticas del vendedor: siempre de los productos del vendedor de la sesión.
@@ -32,5 +33,11 @@ public class EstadisticasVendedorController {
     @GetMapping("/valoraciones")
     public EstadisticasValoracionesResponse consultarValoraciones(Authentication authentication) {
         return estadisticasVendedorService.consultarValoraciones(authentication.getName());
+    }
+
+    // PBI 278: valoración media de cada producto del catálogo y de la tienda
+    @GetMapping("/productos")
+    public ValoracionesCatalogoResponse consultarValoracionesCatalogo(Authentication authentication) {
+        return estadisticasVendedorService.consultarValoracionesCatalogo(authentication.getName());
     }
 }
