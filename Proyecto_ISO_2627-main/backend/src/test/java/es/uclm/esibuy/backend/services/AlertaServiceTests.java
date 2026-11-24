@@ -16,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
@@ -307,6 +308,37 @@ class AlertaServiceTests {
         assertTrue(alertas.stream().allMatch(Alerta::isLeida));
         verify(alertaDAO).saveAll(alertas);
         assertEquals(0, respuesta.noLeidas());
+    }
+
+    @Test
+    void soloLaPropiaAlertaSePuedeMarcarComoLeida() {
+        clienteAutenticado();
+        when(alertaDAO.findByIdAndClienteId("alerta-de-otro", "cliente-1")).thenReturn(Optional.empty());
+
+        assertThrows(AlertaNoEncontradaException.class, () -> alertaService.marcarLeida(CORREO, "alerta-de-otro"));
+        verify(alertaDAO).findByIdAndClienteId("alerta-de-otro", "cliente-1");
+    }
+
+    @Test
+    void unUsuarioQueNoEsClienteNoAccedeALasAlertas() {
+        Vendedor vendedor = new Vendedor();
+        vendedor.setActivada(true);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(vendedor));
+
+        assertThrows(AccessDeniedException.class, () -> alertaService.consultar(CORREO));
+        verifyNoInteractions(alertaDAO);
+    }
+
+    @Test
+    void unClienteBloqueadoOSinCorreoNoAccedeALasAlertas() {
+        Cliente bloqueado = cliente("cliente-1", false);
+        bloqueado.setActivada(true);
+        bloqueado.setBloqueada(true);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(bloqueado));
+
+        assertThrows(AccessDeniedException.class, () -> alertaService.consultar(CORREO));
+        assertThrows(AccessDeniedException.class, () -> alertaService.consultar(" "));
+        verifyNoInteractions(alertaDAO);
     }
 
     @Test
