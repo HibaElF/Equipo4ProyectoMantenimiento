@@ -17,14 +17,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
+import es.uclm.esibuy.backend.dao.ValoracionDAO;
+import es.uclm.esibuy.backend.dto.EstadisticasValoracionesResponse;
 import es.uclm.esibuy.backend.dto.EstadisticasVentasResponse;
+import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
+import es.uclm.esibuy.backend.model.Valoracion;
 
 // Estadísticas globales del administrador. PBI 279: Top 10 más y menos vendidos de todas las tiendas.
+// PBI 280: Top 10 mejor y peor valorados de todas las tiendas.
 @ExtendWith(MockitoExtension.class)
 class EstadisticasAdministradorServiceTests {
 
@@ -36,6 +41,9 @@ class EstadisticasAdministradorServiceTests {
 
     @Mock
     private PedidoDAO pedidoDAO;
+
+    @Mock
+    private ValoracionDAO valoracionDAO;
 
     @InjectMocks
     private EstadisticasAdministradorService servicio;
@@ -79,6 +87,28 @@ class EstadisticasAdministradorServiceTests {
 
     private static List<String> nombres(List<ProductoVentasResponse> ventas) {
         return ventas.stream().map(ProductoVentasResponse::nombre).toList();
+    }
+
+    // Cada puntuación la da un cliente distinto (un cliente solo puede valorar un producto una vez)
+    private static List<Valoracion> valoraciones(String productoId, int... puntuaciones) {
+        List<Valoracion> lista = new ArrayList<>();
+        for (int i = 0; i < puntuaciones.length; i++) {
+            lista.add(new Valoracion("cliente-" + i, "pedido-" + i, productoId, puntuaciones[i], null));
+        }
+        return lista;
+    }
+
+    @SafeVarargs
+    private void valoracionesGuardadas(List<Valoracion>... grupos) {
+        List<Valoracion> todas = new ArrayList<>();
+        for (List<Valoracion> grupo : grupos) {
+            todas.addAll(grupo);
+        }
+        when(valoracionDAO.findAll()).thenReturn(todas);
+    }
+
+    private static List<String> nombresValorados(List<ProductoValoracionResponse> valoraciones) {
+        return valoraciones.stream().map(ProductoValoracionResponse::nombre).toList();
     }
 
     // --- PBI 279: productos más y menos vendidos de todas las tiendas ---
@@ -177,5 +207,66 @@ class EstadisticasAdministradorServiceTests {
         EstadisticasVentasResponse respuesta = servicio.consultarVentas();
 
         assertEquals(EstadisticasAdministradorService.AVISO_POCOS_PRODUCTOS, respuesta.aviso());
+    }
+
+    // --- PBI 280: productos mejor y peor valorados de todas las tiendas ---
+
+    @Test
+    void ordenaLosProductosDeTodasLasTiendasPorSuValoracionMedia() {
+        productos(producto("p1", "Auriculares", TIENDA_A), producto("p2", "Mochila", TIENDA_B),
+                producto("p3", "Gorra", TIENDA_B));
+        valoracionesGuardadas(valoraciones("p1", 5, 5, 4), valoraciones("p2", 5, 4, 5, 5), valoraciones("p3", 2, 1));
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones();
+
+        // Mochila 4.75, Auriculares 4.67 y Gorra 1.5
+        assertEquals(List.of("Mochila", "Auriculares", "Gorra"), nombresValorados(respuesta.mejorValorados()));
+        assertEquals(List.of("Gorra", "Auriculares", "Mochila"), nombresValorados(respuesta.peorValorados()));
+        ProductoValoracionResponse mochila = respuesta.mejorValorados().get(0);
+        assertEquals(4.75, mochila.valoracionMedia());
+        assertEquals(4, mochila.numeroValoraciones());
+        assertEquals(TIENDA_B, mochila.vendedor());
+    }
+
+    @Test
+    void losProductosSinValoracionesNoEntranYLasDeProductosBorradosSeIgnoran() {
+        productos(producto("p1", "Auriculares", TIENDA_A), producto("p2", "Llavero", TIENDA_B));
+        valoracionesGuardadas(valoraciones("p1", 4), valoraciones("borrado", 1, 1));
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones();
+
+        assertEquals(List.of("Auriculares"), nombresValorados(respuesta.mejorValorados()));
+        assertEquals(List.of("Auriculares"), nombresValorados(respuesta.peorValorados()));
+        assertEquals(EstadisticasAdministradorService.AVISO_POCAS_VALORACIONES, respuesta.aviso());
+    }
+
+    @Test
+    void cadaRankingDeValoracionesGlobalMuestraComoMaximoDiezProductos() {
+        List<Producto> catalogo = new ArrayList<>();
+        List<Valoracion> todas = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            catalogo.add(producto("p" + i, "Producto " + String.format("%02d", i), i % 2 == 0 ? TIENDA_A : TIENDA_B));
+            todas.addAll(valoraciones("p" + i, 1 + i % 5));
+        }
+        productos(catalogo.toArray(Producto[]::new));
+        valoracionesGuardadas(todas);
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones();
+
+        assertEquals(10, respuesta.mejorValorados().size());
+        assertEquals(10, respuesta.peorValorados().size());
+        assertNull(respuesta.aviso());
+    }
+
+    @Test
+    void sinValoracionesEnLaPlataformaAvisa() {
+        productos(producto("p1", "Auriculares", TIENDA_A));
+        valoracionesGuardadas();
+
+        EstadisticasValoracionesResponse respuesta = servicio.consultarValoraciones();
+
+        assertTrue(respuesta.mejorValorados().isEmpty());
+        assertTrue(respuesta.peorValorados().isEmpty());
+        assertEquals(EstadisticasAdministradorService.AVISO_SIN_VALORACIONES, respuesta.aviso());
     }
 }

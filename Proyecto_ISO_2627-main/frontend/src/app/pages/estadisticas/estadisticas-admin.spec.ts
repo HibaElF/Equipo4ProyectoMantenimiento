@@ -13,7 +13,7 @@ import {
 
 import { EstadisticasAdmin, porcentajeBarra } from './estadisticas-admin';
 import { EstadisticasAdminService } from './estadisticas-admin.service';
-import type { EstadisticasVentas } from './estadisticas-vendedor.service';
+import type { EstadisticasValoraciones, EstadisticasVentas } from './estadisticas-vendedor.service';
 
 describe('EstadisticasAdmin', () => {
   let fixture: ComponentFixture<EstadisticasAdmin>;
@@ -29,13 +29,27 @@ describe('EstadisticasAdmin', () => {
     aviso: null
   };
 
-  const servicioMock = {
-    consultarVentas: vi.fn()
+  const valoraciones: EstadisticasValoraciones = {
+    mejorValorados: [
+      { productoId: 'p2', nombre: 'Mochila', vendedor: 'Tienda B', valoracionMedia: 4.5, numeroValoraciones: 4 },
+      { productoId: 'p1', nombre: 'Auriculares', vendedor: 'Tienda A', valoracionMedia: 2.5, numeroValoraciones: 2 }
+    ],
+    peorValorados: [
+      { productoId: 'p1', nombre: 'Auriculares', vendedor: 'Tienda A', valoracionMedia: 2.5, numeroValoraciones: 2 }
+    ],
+    aviso: null
   };
 
-  // Tablas en orden: 0 más vendidos, 1 menos vendidos
+  const servicioMock = {
+    consultarVentas: vi.fn(),
+    consultarValoraciones: vi.fn()
+  };
+
+  // Tablas en orden: 0 más vendidos, 1 menos vendidos, 2 mejor valorados, 3 peor valorados
   const MAS_VENDIDOS = 0;
   const MENOS_VENDIDOS = 1;
+  const MEJOR_VALORADOS = 2;
+  const PEOR_VALORADOS = 3;
 
   function texto(): string {
     fixture.detectChanges();
@@ -87,6 +101,7 @@ describe('EstadisticasAdmin', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     servicioMock.consultarVentas.mockReturnValue(of(ventas));
+    servicioMock.consultarValoraciones.mockReturnValue(of(valoraciones));
   });
 
   afterEach(() => {
@@ -137,12 +152,50 @@ describe('EstadisticasAdmin', () => {
       menosVendidos: [],
       aviso: 'Todavía no hay productos en la plataforma.'
     }));
+    servicioMock.consultarValoraciones.mockReturnValue(of({ mejorValorados: [], peorValorados: [], aviso: null }));
 
     await crear();
 
     expect(texto()).toContain('Todavía no hay productos en la plataforma.');
     expect(texto()).toContain('No hay productos que mostrar.');
+    expect(texto()).toContain('Ningún producto tiene valoraciones todavía.');
     expect(tablas().length).toBe(0);
+  });
+
+  it('PBI 280: muestra los mejor y peor valorados de todas las tiendas con su vendedor y su media', async () => {
+    await crear();
+
+    expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(1);
+    expect(texto()).toContain('Top 10 mejor valorados');
+    expect(texto()).toContain('Top 10 peor valorados');
+    expect(filas(MEJOR_VALORADOS)).toEqual(['1 Mochila Tienda B 4.50 / 5 4', '2 Auriculares Tienda A 2.50 / 5 2']);
+    expect(filas(PEOR_VALORADOS)).toEqual(['1 Auriculares Tienda A 2.50 / 5 2']);
+  });
+
+  it('PBI 280: la barra de cada media se dibuja sobre la puntuación máxima (5)', async () => {
+    await crear();
+
+    expect(anchosBarras(MEJOR_VALORADOS)).toEqual(['90%', '50%']);
+  });
+
+  it('PBI 280: si hay pocas valoraciones muestra el aviso del backend', async () => {
+    servicioMock.consultarValoraciones.mockReturnValue(of({
+      ...valoraciones,
+      aviso: 'Menos de 10 productos tienen valoraciones: las dos listas muestran todos los valorados.'
+    }));
+
+    await crear();
+
+    expect(texto()).toContain('Menos de 10 productos tienen valoraciones');
+  });
+
+  it('si falla un apartado, los demás se siguen viendo', async () => {
+    servicioMock.consultarValoraciones.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+
+    await crear();
+
+    expect(texto()).toContain('No se han podido cargar las estadísticas. Inténtalo de nuevo.');
+    expect(filas(MAS_VENDIDOS)).toEqual(['1 Auriculares Tienda A 20', '2 Mochila Tienda B 5']);
   });
 
   it('si el backend responde 403 explica que solo es para administradores', async () => {
@@ -162,7 +215,7 @@ describe('EstadisticasAdmin', () => {
     expect(navegar).toHaveBeenCalledWith('/login');
   });
 
-  it('«Actualizar» vuelve a pedir las estadísticas', async () => {
+  it('«Actualizar» vuelve a pedir todas las estadísticas', async () => {
     await crear();
 
     const boton = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
@@ -170,5 +223,6 @@ describe('EstadisticasAdmin', () => {
     boton.click();
 
     expect(servicioMock.consultarVentas).toHaveBeenCalledTimes(2);
+    expect(servicioMock.consultarValoraciones).toHaveBeenCalledTimes(2);
   });
 });

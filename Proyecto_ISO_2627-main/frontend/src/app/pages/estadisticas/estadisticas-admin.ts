@@ -1,11 +1,14 @@
-import { NgTemplateOutlet } from '@angular/common';
+import { DecimalPipe, NgTemplateOutlet } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { ApartadoEstadisticas } from './apartado-estadisticas';
 import { EstadisticasAdminService } from './estadisticas-admin.service';
-import type { EstadisticasVentas, ProductoVentas } from './estadisticas-vendedor.service';
+import type { EstadisticasValoraciones, EstadisticasVentas, ProductoVentas } from './estadisticas-vendedor.service';
+
+// Las valoraciones van de 1 a 5: la barra de una media se dibuja sobre 5
+export const PUNTUACION_MAXIMA = 5;
 
 // Ancho de una barra del gráfico, en porcentaje del valor máximo (0 si no hay máximo)
 export function porcentajeBarra(valor: number, maximo: number): number {
@@ -20,7 +23,7 @@ export function porcentajeBarra(valor: number, maximo: number): number {
 @Component({
   selector: 'app-estadisticas-admin',
   standalone: true,
-  imports: [NgTemplateOutlet],
+  imports: [DecimalPipe, NgTemplateOutlet],
   templateUrl: './estadisticas-admin.html',
   styleUrls: ['../tienda/tienda.css', './estadisticas.css']
 })
@@ -29,9 +32,12 @@ export class EstadisticasAdmin implements OnInit {
   private readonly router = inject(Router);
 
   readonly porcentajeBarra = porcentajeBarra;
+  readonly puntuacionMaxima = PUNTUACION_MAXIMA;
 
   // PBI 279
   readonly ventas = new ApartadoEstadisticas<EstadisticasVentas>((fallo) => this.mensajeError(fallo));
+  // PBI 280
+  readonly valoraciones = new ApartadoEstadisticas<EstadisticasValoraciones>((fallo) => this.mensajeError(fallo));
 
   ngOnInit(): void {
     this.cargar();
@@ -39,10 +45,11 @@ export class EstadisticasAdmin implements OnInit {
 
   cargar(): void {
     this.ventas.cargar(this.servicio.consultarVentas());
+    this.valoraciones.cargar(this.servicio.consultarValoraciones());
   }
 
   cargando(): boolean {
-    return this.ventas.cargando();
+    return this.ventas.cargando() || this.valoraciones.cargando();
   }
 
   // Las barras de las dos listas de ventas usan la misma escala: el producto más vendido
