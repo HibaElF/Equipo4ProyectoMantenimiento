@@ -19,6 +19,7 @@ import { Carrito } from './pages/carrito/carrito';
 import { Checkout } from './pages/checkout/checkout';
 import { Favoritos } from './pages/favoritos/favoritos';
 import { Listas } from './pages/listas/listas';
+import { Alertas } from './pages/alertas/alertas';
 
 import { Direcciones } from './pages/direcciones/direcciones';
 import { Pagos } from './pages/pagos/pagos';
@@ -133,6 +134,13 @@ export const routes: Routes = [
     path: 'cliente/favoritos',
     title: 'Mis favoritos · ESIBuy',
     component: Favoritos,
+    canActivate: [rolGuard],
+    data: { rol: 'CLIENTE' }
+  },
+  {
+    path: 'alertas',
+    title: 'Mis alertas · ESIBuy',
+    component: Alertas,
     canActivate: [rolGuard],
     data: { rol: 'CLIENTE' }
   },

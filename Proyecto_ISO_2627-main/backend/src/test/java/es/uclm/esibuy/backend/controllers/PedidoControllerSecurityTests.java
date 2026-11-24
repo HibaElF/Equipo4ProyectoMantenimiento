@@ -29,6 +29,7 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 import es.uclm.esibuy.backend.config.SecurityConfiguration;
 import es.uclm.esibuy.backend.dao.*;
 import es.uclm.esibuy.backend.model.*;
+import es.uclm.esibuy.backend.services.AlertaService;
 import es.uclm.esibuy.backend.services.CarritoService;
 import es.uclm.esibuy.backend.services.PedidoService;
 import es.uclm.esibuy.backend.services.ValoracionService;
@@ -47,6 +48,7 @@ class PedidoControllerSecurityTests {
     @MockitoBean private PedidoDAO pedidos;
     @MockitoBean private MongoTransactionManager transacciones;
     @MockitoBean private ValoracionService valoracionService;
+    @MockitoBean private AlertaService alertaService;
     private Cliente cliente;
     private Map<String, Carrito> datosCarritos;
     private Carrito carritoAjeno;

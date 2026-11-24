@@ -2,11 +2,14 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 
+import { AlertasService } from '../../pages/alertas/alertas.service';
 import { AuthService, RespuestaInicioSesion } from '../../pages/login/auth.service';
 import { olvidarSesion } from '../../pages/login/marca-sesion';
 import { rutaParaRol } from '../../pages/login/rutas-por-rol';
 
 type Rol = RespuestaInicioSesion['role'];
+
+export const RUTA_ALERTAS = '/alertas';
 
 interface EnlaceCabecera {
   texto: string;
@@ -22,6 +25,7 @@ export const ENLACES_POR_ROL: Record<Rol, readonly EnlaceCabecera[]> = {
     { texto: 'Mis listas', ruta: '/listas', exacto: false },
     { texto: 'Mis pedidos', ruta: '/cliente/pedidos', exacto: false },
     { texto: 'Carrito', ruta: '/carrito', exacto: false },
+    { texto: 'Alertas', ruta: RUTA_ALERTAS, exacto: false },
     { texto: 'Mi perfil', ruta: '/perfil', exacto: false }
   ],
   VENDEDOR: [
@@ -48,7 +52,10 @@ export const ENLACES_POR_ROL: Record<Rol, readonly EnlaceCabecera[]> = {
 export class Cabecera {
   private readonly servicioAutenticacion = inject(AuthService);
   private readonly enrutador = inject(Router);
+  private readonly servicioAlertas = inject(AlertasService);
 
+  readonly rutaAlertas = RUTA_ALERTAS;
+  readonly noLeidas = this.servicioAlertas.noLeidas;
   readonly rol = signal<Rol | null>(null);
   readonly menuAbierto = signal(false);
   readonly cerrandoSesion = signal(false);
@@ -67,7 +74,13 @@ export class Cabecera {
 
   constructor() {
     this.servicioAutenticacion.obtenerSesionActual().subscribe({
-      next: (sesion) => this.rol.set(sesion.role),
+      next: (sesion) => {
+        this.rol.set(sesion.role);
+        if (sesion.role === 'CLIENTE') {
+          // Solo para el contador: si falla, la cabecera se muestra sin él.
+          this.servicioAlertas.consultar().subscribe({ error: () => this.noLeidas.set(0) });
+        }
+      },
       error: () => this.rol.set(null)
     });
   }

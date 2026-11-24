@@ -43,6 +43,7 @@ class PedidoServiceTests {
     @Mock private VendedorDAO vendedores;
     @Mock private PedidoDAO pedidos;
     @Mock private MongoTransactionManager transacciones;
+    @Mock private AlertaService alertaService;
     private PedidoService servicio;
     private Cliente cliente;
     private Producto producto;
@@ -52,7 +53,7 @@ class PedidoServiceTests {
     @BeforeEach
     void configurar() {
         servicio = new PedidoService(new CarritoService(carritos, clientes, productos), carritos, productos,
-                metodos, vendedores, pedidos, transacciones);
+                metodos, vendedores, pedidos, transacciones, alertaService);
         lenient().when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         cliente = new Cliente();
         cliente.setId("cliente-a");
@@ -330,6 +331,27 @@ class PedidoServiceTests {
                 eq(EstadoPedido.CANCELADO.name()),
                 anyList());
         verify(productos, times(1)).reponerStock("producto-1", 1);
+    }
+
+    @Test
+    void cancelarUnPedidoPagadoAvisaSiElProductoAgotadoVuelveAEstarDisponible() {
+        cuenta();
+        Pedido pagado = pedidoConEstado("pedido-agotado", EstadoPedido.PAGADO_COMPLETADO);
+        when(pedidos.findByIdAndClienteId("pedido-agotado", "cliente-a")).thenReturn(Optional.of(pagado));
+        when(pedidos.cancelarPedido(
+                eq("pedido-agotado"),
+                eq("cliente-a"),
+                eq(EstadoPedido.PAGADO_COMPLETADO.name()),
+                eq(EstadoPedido.CANCELADO.name()),
+                anyList()))
+                .thenReturn(1L);
+        // Tras reponer la unidad del pedido el stock es 1: antes estaba agotado.
+        producto.setStock(1);
+        when(productos.findById("producto-1")).thenReturn(Optional.of(producto));
+
+        servicio.cancelarPedido("pedido-agotado");
+
+        verify(alertaService).avisarSiVuelveADisponible(producto, false);
     }
 
     @Test

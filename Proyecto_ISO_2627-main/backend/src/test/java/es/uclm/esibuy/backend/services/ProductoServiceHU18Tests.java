@@ -74,12 +74,37 @@ class ProductoServiceHU18Tests {
     @Mock
     private PedidoDAO pedidoDAO;
 
+    @Mock
+    private AlertaService alertaService;
+
     private ProductoService productoService;
 
     @BeforeEach
     void setUp() {
         productoService = new ProductoService(
-                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO);
+                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO, alertaService);
+    }
+
+    @Test
+    void alModificarAvisaDeUnaPosibleBajadaConElPrecioAnterior() {
+        prepararModificacionValida(crearProducto(NOMBRE_COMERCIAL));
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, REQUEST_VALIDO, null);
+
+        Producto guardado = productoGuardado();
+        verify(alertaService).avisarSiBajaPrecio(guardado, 49.99);
+    }
+
+    @Test
+    void alReponerStockDeUnProductoAgotadoAvisaDeQueVuelveAEstarDisponible() {
+        Producto agotado = crearProducto(NOMBRE_COMERCIAL);
+        agotado.setStock(0);
+        prepararModificacionValida(agotado);
+
+        productoService.modificarProducto(EMAIL_VENDEDOR, ID_PRODUCTO, REQUEST_VALIDO, null);
+
+        Producto guardado = productoGuardado();
+        verify(alertaService).avisarSiVuelveADisponible(guardado, false);
     }
 
     @Test

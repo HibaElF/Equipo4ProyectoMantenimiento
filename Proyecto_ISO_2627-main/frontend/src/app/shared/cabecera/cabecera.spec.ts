@@ -1,10 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AlertasService } from '../../pages/alertas/alertas.service';
 import { AuthService, RespuestaInicioSesion } from '../../pages/login/auth.service';
 import { Cabecera, ENLACES_POR_ROL } from './cabecera';
 
@@ -18,13 +19,19 @@ describe('Cabecera (A18, A19)', () => {
     cerrarSesion: vi.fn<() => Observable<void>>()
   };
 
+  const alertasMock = {
+    noLeidas: signal(0),
+    consultar: vi.fn(() => of({ alertas: [], noLeidas: alertasMock.noLeidas() }))
+  };
+
   const crear = (sesion: Observable<RespuestaInicioSesion>): HTMLElement => {
     authMock.obtenerSesionActual.mockReturnValue(sesion);
     TestBed.configureTestingModule({
       imports: [Cabecera],
       providers: [
         provideRouter([{ path: '**', component: PaginaVacia }]),
-        { provide: AuthService, useValue: authMock }
+        { provide: AuthService, useValue: authMock },
+        { provide: AlertasService, useValue: alertasMock }
       ]
     });
     fixture = TestBed.createComponent(Cabecera);
@@ -43,7 +50,7 @@ describe('Cabecera (A18, A19)', () => {
   });
 
   it.each([
-    ['CLIENTE', '/cliente', ['Catálogo', 'Favoritos', 'Mis listas', 'Mis pedidos', 'Carrito', 'Mi perfil']],
+    ['CLIENTE', '/cliente', ['Catálogo', 'Favoritos', 'Mis listas', 'Mis pedidos', 'Carrito', 'Alertas', 'Mi perfil']],
     ['VENDEDOR', '/vendedor', ['Mis productos', 'Pedidos', 'Mi perfil']],
     ['ADMIN', '/admin', ['Panel', 'Usuarios', 'Categorías', 'Productos', 'Administradores', 'Mi perfil']]
   ] as const)('con rol %s muestra sus enlaces y la marca lleva a %s', (rol, inicio, textos) => {
@@ -52,6 +59,21 @@ describe('Cabecera (A18, A19)', () => {
     expect(textosEnlaces(raiz)).toEqual(textos);
     expect(raiz.querySelector('.marca')?.getAttribute('href')).toBe(inicio);
     expect(raiz.querySelector('.marca')?.getAttribute('aria-label')).toBe('ESIBuy, inicio');
+  });
+
+  it('el cliente ve en «Alertas» cuántas tiene sin leer', () => {
+    alertasMock.noLeidas.set(2);
+    const raiz = crear(sesionDe('CLIENTE'));
+
+    expect(alertasMock.consultar).toHaveBeenCalled();
+    expect(raiz.querySelector('nav a[href="/alertas"] .contador')?.textContent?.trim()).toBe('2');
+    alertasMock.noLeidas.set(0);
+  });
+
+  it('vendedor y administrador no consultan alertas', () => {
+    crear(sesionDe('VENDEDOR'));
+
+    expect(alertasMock.consultar).not.toHaveBeenCalled();
   });
 
   it('vendedor y administrador no ven «Mis listas» (pendiente del PO)', () => {
