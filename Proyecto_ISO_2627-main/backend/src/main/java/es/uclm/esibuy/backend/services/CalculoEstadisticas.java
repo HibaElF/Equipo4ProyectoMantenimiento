@@ -159,6 +159,41 @@ final class CalculoEstadisticas {
         return BigDecimal.valueOf(promedio).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
+    // Aviso de las estadísticas de ventas cuando no hay datos suficientes; null si los hay
+    static String avisoVentas(
+            List<ProductoVentasResponse> ventas,
+            String sinProductos,
+            String sinVentas,
+            String pocosProductos) {
+
+        if (ventas.isEmpty()) {
+            return sinProductos;
+        }
+        if (ventas.stream().allMatch(venta -> venta.unidadesVendidas() == 0)) {
+            return sinVentas;
+        }
+        if (ventas.size() < TAMANO_RANKING) {
+            return pocosProductos;
+        }
+        return null;
+    }
+
+    // Aviso de las estadísticas de valoraciones cuando no hay datos suficientes; null si los hay
+    static String avisoValoraciones(
+            List<ProductoValoracionResponse> valoraciones,
+            String sinValoraciones,
+            String pocasValoraciones) {
+
+        long valorados = valoraciones.stream().filter(CalculoEstadisticas::tieneValoraciones).count();
+        if (valorados == 0) {
+            return sinValoraciones;
+        }
+        if (valorados < TAMANO_RANKING) {
+            return pocasValoraciones;
+        }
+        return null;
+    }
+
     static List<String> identificadores(Collection<Producto> productos) {
         return productos.stream().map(Producto::getId).toList();
     }

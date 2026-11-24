@@ -95,3 +95,43 @@
   color: var(--color-text-secondary);
   font-style: italic;
 }
+
+/* Administrador: vista mixta. Cada fila lleva una barra proporcional a su valor (el gráfico) y el número
+   (la tabla). La barra es decorativa: el dato ya está escrito en la misma celda. */
+.nombre-producto {
+  display: block;
+}
+
+.nombre-vendedor {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+}
+
+.valor-con-barra {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .6rem;
+  min-width: 9rem;
+}
+
+.barra {
+  flex: 1;
+  height: .55rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-background);
+}
+
+.barra-relleno {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-brand);
+}
+
+.valor {
+  min-width: 2.5rem;
+  text-align: right;
+}

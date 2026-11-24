@@ -1,0 +1,84 @@
+<main class="pagina">
+    <div class="pagina-cabecera">
+        <div>
+            <h1 class="pagina-titulo">Estadísticas de la plataforma</h1>
+            <p class="pagina-descripcion">
+                Ventas y valoraciones de todas las tiendas de ESIBuy.
+                Solo cuentan como venta los pedidos finalizados.
+            </p>
+        </div>
+
+        <button type="button" class="boton-secundario" [disabled]="cargando()" (click)="cargar()">
+            Actualizar
+        </button>
+    </div>
+
+    <!-- PBI 279: productos más y menos vendidos de todas las tiendas -->
+    <section class="tarjeta apartado" aria-labelledby="titulo-ventas">
+        <h2 id="titulo-ventas" class="apartado-titulo">Ventas</h2>
+
+        @if (ventas.cargando()) {
+        <p class="estado"><output>Cargando ventas...</output></p>
+        } @else if (ventas.error()) {
+        <section class="estado" role="alert">
+            <p class="estado-titulo">{{ ventas.error() }}</p>
+            <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </section>
+        } @else if (ventas.datos(); as datos) {
+        @if (datos.aviso) {
+        <p class="aviso aviso-advertencia">{{ datos.aviso }}</p>
+        }
+
+        <div class="rejilla-rankings">
+            <div>
+                <h3 id="titulo-mas-vendidos" class="ranking-titulo">Top 10 más vendidos</h3>
+                <ng-container
+                    *ngTemplateOutlet="tablaVentas; context: { $implicit: datos.masVendidos, titulo: 'titulo-mas-vendidos', maximo: maximoUnidades(datos) }"></ng-container>
+            </div>
+
+            <div>
+                <h3 id="titulo-menos-vendidos" class="ranking-titulo">Top 10 menos vendidos</h3>
+                <ng-container
+                    *ngTemplateOutlet="tablaVentas; context: { $implicit: datos.menosVendidos, titulo: 'titulo-menos-vendidos', maximo: maximoUnidades(datos) }"></ng-container>
+            </div>
+        </div>
+        }
+    </section>
+</main>
+
+<ng-template #tablaVentas let-productos let-titulo="titulo" let-maximo="maximo">
+    @if (productos.length === 0) {
+    <p class="sin-datos">No hay productos que mostrar.</p>
+    } @else {
+    <div class="tabla-contenedor">
+        <table class="tabla-ranking" [attr.aria-labelledby]="titulo">
+            <thead>
+                <tr>
+                    <th scope="col" class="posicion">#</th>
+                    <th scope="col">Producto</th>
+                    <th scope="col" class="numero">Unidades vendidas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (producto of productos; track producto.productoId; let i = $index) {
+                <tr>
+                    <td class="posicion">{{ i + 1 }}</td>
+                    <td>
+                        <span class="nombre-producto">{{ producto.nombre }}</span>
+                        <span class="nombre-vendedor">{{ producto.vendedor }}</span>
+                    </td>
+                    <td class="numero">
+                        <div class="valor-con-barra">
+                            <span class="barra" aria-hidden="true">
+                                <span class="barra-relleno" [style.width.%]="porcentajeBarra(producto.unidadesVendidas, maximo)"></span>
+                            </span>
+                            <span class="valor">{{ producto.unidadesVendidas }}</span>
+                        </div>
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+</ng-template>

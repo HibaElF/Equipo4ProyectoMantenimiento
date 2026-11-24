@@ -25,6 +25,7 @@ import { Direcciones } from './pages/direcciones/direcciones';
 import { Pagos } from './pages/pagos/pagos';
 import { PedidosVendedor } from './pages/paneles/pedidos-vendedor';
 import { EstadisticasVendedor } from './pages/estadisticas/estadisticas-vendedor';
+import { EstadisticasAdmin } from './pages/estadisticas/estadisticas-admin';
 import { MisPedidos } from './pages/pedidos/mis-pedidos';
 import { NoEncontrada } from './pages/no-encontrada/no-encontrada';
 
@@ -85,6 +86,13 @@ export const routes: Routes = [
     path: 'admin',
     title: 'Panel de administración · ESIBuy',
     component: PanelAdministrador,
+    canActivate: [rolGuard],
+    data: { rol: 'ADMIN' }
+  },
+  {
+    path: 'admin/estadisticas',
+    title: 'Estadísticas de la plataforma · ESIBuy',
+    component: EstadisticasAdmin,
     canActivate: [rolGuard],
     data: { rol: 'ADMIN' }
   },
