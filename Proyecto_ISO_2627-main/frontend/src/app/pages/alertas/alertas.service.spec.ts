@@ -36,11 +36,15 @@ describe('AlertasService', () => {
 
   it.each([
     ['marcarLeida', 'PATCH', '/a%2F1/leida'],
-    ['marcarTodasLeidas', 'PATCH', '/leidas']
+    ['marcarTodasLeidas', 'PATCH', '/leidas'],
+    ['borrar', 'DELETE', '/a%2F1'],
+    ['borrarTodas', 'DELETE', '']
   ])('envía %s con token CSRF y sesión', (accion, metodo, ruta) => {
     const operaciones: Record<string, () => Observable<unknown>> = {
       marcarLeida: () => servicio.marcarLeida('a/1'),
-      marcarTodasLeidas: () => servicio.marcarTodasLeidas()
+      marcarTodasLeidas: () => servicio.marcarTodasLeidas(),
+      borrar: () => servicio.borrar('a/1'),
+      borrarTodas: () => servicio.borrarTodas()
     };
 
     operaciones[accion]().subscribe();

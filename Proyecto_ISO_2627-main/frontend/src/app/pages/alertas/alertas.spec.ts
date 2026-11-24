@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { environment } from '../../../environments/environment';
+import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { Alertas } from './alertas';
 
 describe('Alertas', () => {
@@ -66,6 +67,45 @@ describe('Alertas', () => {
 
     expect(texto()).toContain('0 alertas sin leer');
     expect(texto()).not.toContain('Marcar como leída');
+  });
+
+  it('borrar quita la alerta de la lista', () => {
+    http.expectOne(url).flush({ alertas: [alertaNueva], noLeidas: 1 });
+    fixture.detectChanges();
+
+    const borrar: HTMLButtonElement = fixture.nativeElement.querySelector('.alerta-acciones .boton-peligro');
+    borrar.click();
+    http.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 't' });
+    const peticion = http.expectOne(`${url}/a1`);
+    expect(peticion.request.method).toBe('DELETE');
+    peticion.flush({ alertas: [], noLeidas: 0 });
+
+    expect(texto()).toContain('Alerta borrada.');
+    expect(texto()).toContain('No tienes alertas');
+  });
+
+  it('borrar todas pide confirmación y solo borra si se acepta', async () => {
+    http.expectOne(url).flush({ alertas: [alertaNueva], noLeidas: 1 });
+    fixture.detectChanges();
+    const confirmacion = TestBed.inject(ConfirmacionService);
+    const botonBorrarTodas = (): HTMLButtonElement =>
+      fixture.nativeElement.querySelector('.alertas-acciones-generales .boton-peligro');
+
+    botonBorrarTodas().click();
+    confirmacion.responder(false);
+    await fixture.whenStable();
+    http.expectNone(`${environment.apiUrl}/usuarios/csrf`);
+
+    botonBorrarTodas().click();
+    expect(confirmacion.solicitud()?.aceptar).toBe('Borrar todas');
+    confirmacion.responder(true);
+    await fixture.whenStable();
+    http.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 't' });
+    const peticion = http.expectOne(url);
+    expect(peticion.request.method).toBe('DELETE');
+    peticion.flush({ alertas: [], noLeidas: 0 });
+
+    expect(texto()).toContain('Se han borrado todas tus alertas.');
   });
 
   it('si falla la carga muestra el error con «Reintentar»', () => {

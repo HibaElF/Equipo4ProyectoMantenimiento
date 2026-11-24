@@ -88,8 +88,9 @@ class BajaUsuarioServiceTests {
         assertNull(anonimizado.getDireccionEnvio());
         assertNull(anonimizado.getMetodoPagoId());
         assertEquals(pedido.getLineas(), anonimizado.getLineas());
-        InOrder orden = inOrder(listas, metodos, carritos, clientes, sesiones, auditoria);
+        InOrder orden = inOrder(listas, alertas, metodos, carritos, clientes, sesiones, auditoria);
         orden.verify(listas).deleteByUsuarioId("cliente-1");
+        orden.verify(alertas).deleteByClienteId("cliente-1");
         orden.verify(metodos).deleteByClienteId("cliente-1");
         orden.verify(carritos).deleteById("cliente-1");
         orden.verify(clientes).delete(cliente);
@@ -109,6 +110,7 @@ class BajaUsuarioServiceTests {
 
         verify(pedidos, never()).save(any(Pedido.class));
         verify(listas, never()).deleteByUsuarioId(any());
+        verify(alertas, never()).deleteByClienteId(any());
         verify(metodos, never()).deleteByClienteId(any());
         verify(carritos, never()).deleteById(any());
         verify(clientes, never()).delete(any(Cliente.class));

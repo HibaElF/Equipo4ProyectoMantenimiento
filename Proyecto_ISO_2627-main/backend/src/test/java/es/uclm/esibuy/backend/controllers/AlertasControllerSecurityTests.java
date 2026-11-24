@@ -39,7 +39,9 @@ class AlertasControllerSecurityTests {
     static Stream<MockHttpServletRequestBuilder> mutaciones() {
         return Stream.of(
                 patch(RUTA + "/a1/leida"),
-                patch(RUTA + "/leidas"));
+                patch(RUTA + "/leidas"),
+                delete(RUTA + "/a1"),
+                delete(RUTA));
     }
 
     static Stream<MockHttpServletRequestBuilder> todas() {

@@ -75,6 +75,34 @@ class AlertasControllerTests {
     }
 
     @Test
+    void borrarConCsrfDevuelveLasAlertasQueQuedan() throws Exception {
+        when(alertaService.borrar(CORREO, "a1")).thenReturn(new AlertasResponse(List.of(), 0));
+
+        mvc.perform(delete(RUTA + "/a1").with(user(CORREO).roles("CLIENTE")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alertas").isEmpty());
+    }
+
+    @Test
+    void borrarTodasConCsrf() throws Exception {
+        when(alertaService.borrarTodas(CORREO)).thenReturn(new AlertasResponse(List.of(), 0));
+
+        mvc.perform(delete(RUTA).with(user(CORREO).roles("CLIENTE")).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.noLeidas").value(0));
+
+        verify(alertaService).borrarTodas(CORREO);
+    }
+
+    @Test
+    void borrarUnaAlertaAjenaDevuelve404() throws Exception {
+        when(alertaService.borrar(CORREO, "alerta-de-otro")).thenThrow(new AlertaNoEncontradaException());
+
+        mvc.perform(delete(RUTA + "/alerta-de-otro").with(user(CORREO).roles("CLIENTE")).with(csrf()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void marcarLeidaUnaAlertaInexistenteDevuelve404() throws Exception {
         when(alertaService.marcarLeida(CORREO, "otra")).thenThrow(new AlertaNoEncontradaException());
 

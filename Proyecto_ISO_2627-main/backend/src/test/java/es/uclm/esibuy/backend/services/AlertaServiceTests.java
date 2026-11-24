@@ -311,6 +311,38 @@ class AlertaServiceTests {
     }
 
     @Test
+    void borrarEliminaLaAlertaDelClienteYDevuelveLasQueQuedan() {
+        clienteAutenticado();
+        when(alertaDAO.deleteByIdAndClienteId("a1", "cliente-1")).thenReturn(1L);
+        when(alertaDAO.findByClienteIdOrderByFechaDesc("cliente-1")).thenReturn(List.of(alerta("a2", false)));
+
+        AlertasResponse respuesta = alertaService.borrar(CORREO, "a1");
+
+        assertEquals(List.of("a2"), respuesta.alertas().stream().map(a -> a.id()).toList());
+        assertEquals(1, respuesta.noLeidas());
+    }
+
+    @Test
+    void borrarUnaAlertaAjenaOInexistenteDevuelveNoEncontrada() {
+        clienteAutenticado();
+        when(alertaDAO.deleteByIdAndClienteId("alerta-de-otro", "cliente-1")).thenReturn(0L);
+
+        assertThrows(AlertaNoEncontradaException.class, () -> alertaService.borrar(CORREO, "alerta-de-otro"));
+    }
+
+    @Test
+    void borrarTodasEliminaSoloLasAlertasDelCliente() {
+        clienteAutenticado();
+        when(alertaDAO.findByClienteIdOrderByFechaDesc("cliente-1")).thenReturn(List.of());
+
+        AlertasResponse respuesta = alertaService.borrarTodas(CORREO);
+
+        verify(alertaDAO).deleteByClienteId("cliente-1");
+        assertTrue(respuesta.alertas().isEmpty());
+        assertEquals(0, respuesta.noLeidas());
+    }
+
+    @Test
     void soloLaPropiaAlertaSePuedeMarcarComoLeida() {
         clienteAutenticado();
         when(alertaDAO.findByIdAndClienteId("alerta-de-otro", "cliente-1")).thenReturn(Optional.empty());
