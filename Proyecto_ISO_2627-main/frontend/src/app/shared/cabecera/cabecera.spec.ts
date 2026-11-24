@@ -51,7 +51,7 @@ describe('Cabecera (A18, A19)', () => {
 
   it.each([
     ['CLIENTE', '/cliente', ['Catálogo', 'Favoritos', 'Mis listas', 'Mis pedidos', 'Carrito', 'Alertas', 'Mi perfil']],
-    ['VENDEDOR', '/vendedor', ['Mis productos', 'Pedidos', 'Mi perfil']],
+    ['VENDEDOR', '/vendedor', ['Mis productos', 'Pedidos', 'Estadísticas', 'Mi perfil']],
     ['ADMIN', '/admin', ['Panel', 'Usuarios', 'Categorías', 'Productos', 'Administradores', 'Mi perfil']]
   ] as const)('con rol %s muestra sus enlaces y la marca lleva a %s', (rol, inicio, textos) => {
     const raiz = crear(sesionDe(rol));

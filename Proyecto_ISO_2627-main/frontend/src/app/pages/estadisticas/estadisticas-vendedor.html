@@ -1,0 +1,74 @@
+<main class="pagina">
+    <div class="pagina-cabecera">
+        <div>
+            <h1 class="pagina-titulo">Estadísticas de mi tienda</h1>
+            <p class="pagina-descripcion">
+                Ventas y valoraciones de tus productos.
+                Solo cuentan como venta los pedidos finalizados.
+            </p>
+        </div>
+
+        <button type="button" class="boton-secundario" [disabled]="cargando()" (click)="cargar()">
+            Actualizar
+        </button>
+    </div>
+
+    <!-- PBI 276: productos más y menos vendidos -->
+    <section class="tarjeta apartado" aria-labelledby="titulo-ventas">
+        <h2 id="titulo-ventas" class="apartado-titulo">Ventas</h2>
+
+        @if (ventas.cargando()) {
+        <p class="estado"><output>Cargando ventas...</output></p>
+        } @else if (ventas.error()) {
+        <section class="estado" role="alert">
+            <p class="estado-titulo">{{ ventas.error() }}</p>
+            <button type="button" class="boton-secundario" (click)="cargar()">Reintentar</button>
+        </section>
+        } @else if (ventas.datos(); as datos) {
+        @if (datos.aviso) {
+        <p class="aviso aviso-advertencia">{{ datos.aviso }}</p>
+        }
+
+        <div class="rejilla-rankings">
+            <div>
+                <h3 id="titulo-mas-vendidos" class="ranking-titulo">Top 10 más vendidos</h3>
+                <ng-container
+                    *ngTemplateOutlet="tablaVentas; context: { $implicit: datos.masVendidos, titulo: 'titulo-mas-vendidos' }"></ng-container>
+            </div>
+
+            <div>
+                <h3 id="titulo-menos-vendidos" class="ranking-titulo">Top 10 menos vendidos</h3>
+                <ng-container
+                    *ngTemplateOutlet="tablaVentas; context: { $implicit: datos.menosVendidos, titulo: 'titulo-menos-vendidos' }"></ng-container>
+            </div>
+        </div>
+        }
+    </section>
+</main>
+
+<ng-template #tablaVentas let-productos let-titulo="titulo">
+    @if (productos.length === 0) {
+    <p class="sin-datos">No hay productos que mostrar.</p>
+    } @else {
+    <div class="tabla-contenedor">
+        <table class="tabla-ranking" [attr.aria-labelledby]="titulo">
+            <thead>
+                <tr>
+                    <th scope="col" class="posicion">#</th>
+                    <th scope="col">Producto</th>
+                    <th scope="col" class="numero">Unidades vendidas</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (producto of productos; track producto.productoId; let i = $index) {
+                <tr>
+                    <td class="posicion">{{ i + 1 }}</td>
+                    <td>{{ producto.nombre }}</td>
+                    <td class="numero">{{ producto.unidadesVendidas }}</td>
+                </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    }
+</ng-template>

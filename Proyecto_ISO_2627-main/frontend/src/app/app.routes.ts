@@ -24,6 +24,7 @@ import { Alertas } from './pages/alertas/alertas';
 import { Direcciones } from './pages/direcciones/direcciones';
 import { Pagos } from './pages/pagos/pagos';
 import { PedidosVendedor } from './pages/paneles/pedidos-vendedor';
+import { EstadisticasVendedor } from './pages/estadisticas/estadisticas-vendedor';
 import { MisPedidos } from './pages/pedidos/mis-pedidos';
 import { NoEncontrada } from './pages/no-encontrada/no-encontrada';
 
@@ -176,6 +177,13 @@ export const routes: Routes = [
     path: 'vendedor/pedidos',
     title: 'Pedidos · ESIBuy',
     component: PedidosVendedor,
+    canActivate: [rolGuard],
+    data: { rol: 'VENDEDOR' }
+  },
+  {
+    path: 'vendedor/estadisticas',
+    title: 'Estadísticas de mi tienda · ESIBuy',
+    component: EstadisticasVendedor,
     canActivate: [rolGuard],
     data: { rol: 'VENDEDOR' }
   },
