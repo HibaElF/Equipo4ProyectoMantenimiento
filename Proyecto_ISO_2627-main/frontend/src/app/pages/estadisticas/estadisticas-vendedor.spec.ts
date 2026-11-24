@@ -76,9 +76,12 @@ describe('EstadisticasVendedor', () => {
     return Array.from(fixture.nativeElement.querySelectorAll('table') as NodeListOf<HTMLTableElement>);
   }
 
+  // Texto de cada fila, con sus celdas separadas por un espacio
   function filas(tabla: number): string[] {
     return Array.from(tablas()[tabla].querySelectorAll('tbody tr'))
-      .map((fila) => (fila.textContent ?? '').replace(/\s+/g, ' ').trim());
+      .map((fila) => Array.from(fila.querySelectorAll('td'))
+        .map((celda) => (celda.textContent ?? '').replace(/\s+/g, ' ').trim())
+        .join(' '));
   }
 
   async function crear(): Promise<void> {
