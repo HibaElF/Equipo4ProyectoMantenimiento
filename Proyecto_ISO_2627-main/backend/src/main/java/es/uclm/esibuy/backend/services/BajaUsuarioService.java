@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.CarritoDAO;
 import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
@@ -38,6 +39,7 @@ public class BajaUsuarioService {
     private final VendedorDAO vendedorDAO;
     private final CarritoDAO carritoDAO;
     private final ListaProductosDAO listaProductosDAO;
+    private final AlertaDAO alertaDAO;
     private final MetodoPagoDAO metodoPagoDAO;
     private final PedidoDAO pedidoDAO;
     private final ProductoDAO productoDAO;
@@ -51,6 +53,7 @@ public class BajaUsuarioService {
             VendedorDAO vendedorDAO,
             CarritoDAO carritoDAO,
             ListaProductosDAO listaProductosDAO,
+            AlertaDAO alertaDAO,
             MetodoPagoDAO metodoPagoDAO,
             PedidoDAO pedidoDAO,
             ProductoDAO productoDAO,
@@ -62,6 +65,7 @@ public class BajaUsuarioService {
         this.vendedorDAO = vendedorDAO;
         this.carritoDAO = carritoDAO;
         this.listaProductosDAO = listaProductosDAO;
+        this.alertaDAO = alertaDAO;
         this.metodoPagoDAO = metodoPagoDAO;
         this.pedidoDAO = pedidoDAO;
         this.productoDAO = productoDAO;
@@ -83,6 +87,7 @@ public class BajaUsuarioService {
                 pedidoDAO.save(pedido.desvinculadoCliente());
             }
             listaProductosDAO.deleteByUsuarioId(cliente.getId());
+            alertaDAO.deleteByClienteId(cliente.getId());
             metodoPagoDAO.deleteByClienteId(cliente.getId());
             carritoDAO.deleteById(cliente.getId());
             clienteDAO.delete(cliente);

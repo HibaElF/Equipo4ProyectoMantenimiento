@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.CarritoDAO;
 import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
@@ -52,6 +53,7 @@ class BajaUsuarioServiceTests {
     @Mock private VendedorDAO vendedores;
     @Mock private CarritoDAO carritos;
     @Mock private ListaProductosDAO listas;
+    @Mock private AlertaDAO alertas;
     @Mock private MetodoPagoDAO metodos;
     @Mock private PedidoDAO pedidos;
     @Mock private ProductoDAO productos;
@@ -65,7 +67,7 @@ class BajaUsuarioServiceTests {
     @BeforeEach
     void configurar() {
         when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        servicio = new BajaUsuarioService(clientes, vendedores, carritos, listas, metodos, pedidos, productos,
+        servicio = new BajaUsuarioService(clientes, vendedores, carritos, listas, alertas, metodos, pedidos, productos,
                 sesiones, imagenes, auditoria, transacciones);
     }
 
