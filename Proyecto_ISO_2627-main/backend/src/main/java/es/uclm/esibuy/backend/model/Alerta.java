@@ -60,4 +60,8 @@ public class Alerta {
     public boolean isLeida() {
         return leida;
     }
+
+    public void marcarLeida() {
+        this.leida = true;
+    }
 }

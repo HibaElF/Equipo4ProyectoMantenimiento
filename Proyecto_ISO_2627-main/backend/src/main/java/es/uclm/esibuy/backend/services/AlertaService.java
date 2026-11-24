@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
@@ -16,6 +17,9 @@ import es.uclm.esibuy.backend.dao.ListaProductosDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
+import es.uclm.esibuy.backend.dto.AlertaResponse;
+import es.uclm.esibuy.backend.dto.AlertasResponse;
+import es.uclm.esibuy.backend.exceptions.AlertaNoEncontradaException;
 import es.uclm.esibuy.backend.model.Alerta;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
@@ -42,6 +46,28 @@ public class AlertaService {
         this.usuarioDAO = usuarioDAO;
         this.productoDAO = productoDAO;
         this.pedidoDAO = pedidoDAO;
+    }
+
+    // Alertas del cliente, de la más reciente a la más antigua.
+    public AlertasResponse consultar(String correoAutenticado) {
+        return construirRespuesta(obtenerCliente(correoAutenticado));
+    }
+
+    public AlertasResponse marcarLeida(String correoAutenticado, String alertaId) {
+        Cliente cliente = obtenerCliente(correoAutenticado);
+        Alerta alerta = alertaDAO.findByIdAndClienteId(alertaId, cliente.getId())
+                .orElseThrow(AlertaNoEncontradaException::new);
+        alerta.marcarLeida();
+        alertaDAO.save(alerta);
+        return construirRespuesta(cliente);
+    }
+
+    public AlertasResponse marcarTodasLeidas(String correoAutenticado) {
+        Cliente cliente = obtenerCliente(correoAutenticado);
+        List<Alerta> alertas = alertaDAO.findByClienteIdOrderByFechaDesc(cliente.getId());
+        alertas.forEach(Alerta::marcarLeida);
+        alertaDAO.saveAll(alertas);
+        return construirRespuesta(cliente);
     }
 
     // Se compara el precio que paga un cliente estándar (con el descuento normal).
@@ -97,6 +123,25 @@ public class AlertaService {
                 .map(ListaProductos::getUsuarioId)
                 .toList();
         avisar(usuarios, producto, tipo, mensaje);
+    }
+
+    private Cliente obtenerCliente(String correo) {
+        if (correo == null || correo.isBlank()) {
+            throw new AccessDeniedException("No se puede acceder a las alertas.");
+        }
+        return usuarioDAO.findByEmail(correo.trim().toLowerCase(Locale.ROOT))
+                .filter(Cliente.class::isInstance)
+                .map(Cliente.class::cast)
+                .filter(cliente -> cliente.isActivada() && !cliente.isBloqueada())
+                .orElseThrow(() -> new AccessDeniedException("No se puede acceder a las alertas."));
+    }
+
+    private AlertasResponse construirRespuesta(Cliente cliente) {
+        List<AlertaResponse> alertas = alertaDAO.findByClienteIdOrderByFechaDesc(cliente.getId()).stream()
+                .map(AlertaResponse::de)
+                .toList();
+        long noLeidas = alertas.stream().filter(alerta -> !alerta.leida()).count();
+        return new AlertasResponse(alertas, noLeidas);
     }
 
     // Solo reciben alertas los clientes; un producto solo premium no se anuncia a los clientes estándar.
