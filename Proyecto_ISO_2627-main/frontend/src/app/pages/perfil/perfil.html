@@ -270,6 +270,22 @@
         </section>
       }
 
+      @if (!editando()) {
+        <section class="account-deletion-card account-data-card" aria-labelledby="mis-datos-titulo">
+          <div>
+            <p class="account-type-kicker">Privacidad</p>
+            <h3 id="mis-datos-titulo">Descargar mis datos</h3>
+            <p>Obtén una copia de tus datos personales en formato JSON. Solo puedes pedirla una vez por minuto.</p>
+          </div>
+          <button class="boton-secundario" type="button" (click)="descargarMisDatos()" [disabled]="descargaEnCurso()">
+            {{ descargaEnCurso() ? 'Preparando…' : 'Descargar mis datos' }}
+          </button>
+          @if (errorDescarga()) {
+            <p class="field-error" role="alert">{{ errorDescarga() }}</p>
+          }
+        </section>
+      }
+
       @if ((datos.tipoUsuario === 'CLIENTE' || datos.tipoUsuario === 'VENDEDOR') && !editando()) {
         <section class="account-deletion-card" aria-labelledby="dar-de-baja-titulo">
           <div>

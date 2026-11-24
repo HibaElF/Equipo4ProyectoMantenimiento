@@ -53,6 +53,8 @@ h2 { margin-bottom: 0; color: var(--color-text); font-size: 1.6rem; }
 .confirmation-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
 .account-deletion-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; padding: 1.25rem; border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); }
 .account-deletion-card h3 { margin: 0 0 .35rem; color: var(--color-danger); }
+/* T-25: la tarjeta de descarga de datos reutiliza la disposición, sin el título de peligro. */
+.account-data-card h3 { color: inherit; }
 .danger-button { padding: .7rem 1rem; border: 1px solid var(--color-danger); border-radius: 8px; color: var(--color-surface); background: var(--color-danger); font: inherit; font-weight: 800; cursor: pointer; }
 .danger-button:disabled { opacity: .6; cursor: not-allowed; }
 .profile-links { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.25rem; }

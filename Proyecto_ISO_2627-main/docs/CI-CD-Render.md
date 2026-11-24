@@ -257,6 +257,15 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### RGPD: exportación de los datos personales
+
+- `GET /usuarios/mis-datos` (cualquier usuario autenticado) devuelve un JSON con los datos del **propio titular**; el usuario sale siempre de la sesión y no hay parámetros para pedir los de otro. Se entrega como adjunto (`Content-Disposition: attachment; filename="mis-datos.json"`) y con `Cache-Control: no-store`. En el perfil, el botón «Descargar mis datos» lo descarga.
+- **Contenido:** cliente (perfil, cuenta, direcciones, métodos de pago enmascarados, pedidos, listas, carrito y valoraciones), vendedor (perfil, cuenta, productos, listas y los pedidos recibidos solo con sus propias líneas, **sin datos de los compradores**) y administrador (perfil y cuenta). DNI y teléfono se entregan **descifrados**, porque solo los recibe su titular.
+- **Nunca se incluye:** hashes ni historial de contraseñas, secretos TOTP, códigos de respaldo, tokens ni el token del método de pago. El DTO es explícito (`ExportacionDatosResponse`), no la entidad.
+- **Límite:** una exportación por minuto y usuario (persistente, con el mismo almacén que el resto de límites); si se supera, 429 con `Retry-After`. Se suma al límite general de la API.
+- **Auditoría:** cada exportación genera el evento `exportacion_datos` (resultado `exito`, objetivo el identificador del usuario y detalle solo con el tipo de usuario).
+- Sin configuración nueva.
+
 ### RGPD: política de privacidad, aviso legal y consentimiento
 
 - **Documentos** (plantillas con los datos legales pendientes marcados como `[COMPLETAR: …]`) en `documents/rgpd/`: `politica-privacidad.md`, `aviso-legal.md`, `registro-actividades-tratamiento.md` y `politica-retencion.md`. Los destinatarios (MongoDB Atlas, Render, Brevo y VirusTotal si se activa) y los plazos técnicos (auditoría 365 días, sesiones, enlaces) están verificados contra el código. Antes de publicar hay que completar los datos del responsable y que el equipo revise los textos.

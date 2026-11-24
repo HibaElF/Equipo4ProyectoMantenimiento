@@ -10,4 +10,7 @@ public interface ValoracionDAO extends MongoRepository<Valoracion, String> {
     boolean existsByClienteIdAndProductoId(String clienteId, String productoId);
 
     List<Valoracion> findByProductoId(String productoId);
+
+    // T-25: valoraciones escritas por un cliente (exportación de sus datos).
+    List<Valoracion> findByClienteId(String clienteId);
 }

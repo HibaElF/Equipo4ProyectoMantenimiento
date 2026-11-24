@@ -55,6 +55,7 @@ describe('Perfil', () => {
     cambiarContrasena: ReturnType<typeof vi.fn>;
     modificarPreferenciaTercerFactor: ReturnType<typeof vi.fn>;
     darDeBajaCuenta: ReturnType<typeof vi.fn>;
+    descargarMisDatos: ReturnType<typeof vi.fn>;
   };
   let pagosServiceMock: {
     consultarMetodos: ReturnType<typeof vi.fn>;
@@ -77,6 +78,7 @@ describe('Perfil', () => {
       desactivarSegundoFactor: vi.fn(),
       cambiarContrasena: vi.fn(),
       darDeBajaCuenta: vi.fn(),
+      descargarMisDatos: vi.fn(),
       modificarPreferenciaTercerFactor: vi.fn(),
     };
     pagosServiceMock = {
@@ -751,5 +753,74 @@ describe('Perfil', () => {
     expect(fixture.nativeElement.querySelector('#tercer-factor-titulo')).toBeNull();
     componente.cambiarEmailOtp(false);
     expect(perfilServiceMock.modificarPreferenciaTercerFactor).not.toHaveBeenCalled();
+  });
+
+  describe('descarga de los datos personales (T-25)', () => {
+    function simularDescarga() {
+      const crear = vi.fn(() => 'blob:datos');
+      const revocar = vi.fn();
+      Object.assign(URL, { createObjectURL: crear, revokeObjectURL: revocar });
+      const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      return { crear, revocar, clic };
+    }
+
+    it('ofrece la descarga a todos los tipos de usuario', () => {
+      for (const perfil of [perfilCliente, perfilVendedor, perfilAdministrador]) {
+        crearComponente(of(perfil));
+        expect(fixture.nativeElement.textContent).toContain('Descargar mis datos');
+        fixture.destroy();
+      }
+    });
+
+    it('descarga el JSON con un enlace temporal y lo libera', () => {
+      const { crear, revocar, clic } = simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(of(new Blob(['{}'], { type: 'application/json' })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+
+      expect(perfilServiceMock.descargarMisDatos).toHaveBeenCalledTimes(1);
+      expect(crear).toHaveBeenCalledTimes(1);
+      expect(clic).toHaveBeenCalledTimes(1);
+      expect(revocar).toHaveBeenCalledWith('blob:datos');
+      expect(componente.descargaEnCurso()).toBe(false);
+      expect(componente.errorDescarga()).toBe('');
+    });
+
+    it('explica el límite de una descarga por minuto cuando el servidor responde 429', () => {
+      simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 429 })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+      fixture.detectChanges();
+
+      expect(componente.errorDescarga()).toContain('una vez por minuto');
+      expect(fixture.nativeElement.textContent).toContain('una vez por minuto');
+    });
+
+    it('vuelve al inicio de sesión si la sesión ha caducado', () => {
+      simularDescarga();
+      const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      perfilServiceMock.descargarMisDatos.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 401 })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+
+      expect(navegar).toHaveBeenCalledWith(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
+    });
+
+    it('no lanza una segunda descarga mientras hay una en curso', () => {
+      simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(new Subject<Blob>());
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+      componente.descargarMisDatos();
+
+      expect(perfilServiceMock.descargarMisDatos).toHaveBeenCalledTimes(1);
+    });
   });
 });

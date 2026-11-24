@@ -142,6 +142,14 @@ export class PerfilService {
     return this.peticionConCsrf<void>('DELETE', '/usuarios/2fa', { code });
   }
 
+  // T-25: copia de los datos personales del titular (JSON). Es un GET sin efectos: no necesita CSRF.
+  descargarMisDatos(): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/usuarios/mis-datos`, {
+      withCredentials: true,
+      responseType: 'blob'
+    });
+  }
+
   darDeBajaCuenta(tipoUsuario: 'CLIENTE' | 'VENDEDOR'): Observable<void> {
     const ruta = tipoUsuario === 'CLIENTE' ? '/cliente/cuenta' : '/vendedor/cuenta';
     return this.http.get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true }).pipe(      switchMap((respuestaCsrf) => this.http.delete<void>(`${environment.apiUrl}${ruta}`, {

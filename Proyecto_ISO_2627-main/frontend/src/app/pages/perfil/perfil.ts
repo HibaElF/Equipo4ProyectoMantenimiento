@@ -65,6 +65,8 @@ export class Perfil {
   readonly pasoConfirmacionBaja = signal<0 | 1 | 2>(0);
   readonly bajaEnCurso = signal(false);
   readonly errorBaja = signal('');
+  readonly descargaEnCurso = signal(false);
+  readonly errorDescarga = signal('');
   readonly fechaMaximaNacimiento = this.calcularFechaMaximaNacimiento();
   readonly categorias = signal<CategoriaPerfil[]>([]);
   readonly configuracionTOTP = signal<{ otpauthUri: string | null; qrDataUrl: string | null } | null>(null);
@@ -307,6 +309,36 @@ export class Perfil {
             queryParams: { motivo: 'sesion-expirada' }
           });
         }
+      }
+    });
+  }
+
+  // T-25: descarga de los datos personales del titular (blob + enlace temporal).
+  descargarMisDatos(): void {
+    if (this.descargaEnCurso()) {
+      return;
+    }
+    this.descargaEnCurso.set(true);
+    this.errorDescarga.set('');
+    this.servicioPerfil.descargarMisDatos().subscribe({
+      next: (contenido) => {
+        this.descargaEnCurso.set(false);
+        const direccion = URL.createObjectURL(contenido);
+        const enlace = document.createElement('a');
+        enlace.href = direccion;
+        enlace.download = 'mis-datos.json';
+        enlace.click();
+        URL.revokeObjectURL(direccion);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.descargaEnCurso.set(false);
+        if (error.status === 401) {
+          this.enrutador.navigate(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
+          return;
+        }
+        this.errorDescarga.set(error.status === 429
+          ? 'Solo puedes descargar tus datos una vez por minuto. Inténtalo de nuevo en unos segundos.'
+          : this.obtenerMensajeError(error, 'No se pudieron descargar tus datos. Inténtalo de nuevo.'));
       }
     });
   }
