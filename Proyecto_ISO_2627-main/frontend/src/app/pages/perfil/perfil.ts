@@ -5,6 +5,7 @@ import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, Validat
 import { Router, RouterLink } from '@angular/router';
 
 import { CategoriaPerfil, ModificarPerfilRequest, PerfilResponse, PerfilService } from './perfil.service';
+import { EstadoSegundoFactor } from '../../shared/aviso-segundo-factor/estado-segundo-factor';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { MetodoPagoResponse, PagosService } from '../pagos/pagos.service';
 
@@ -43,6 +44,7 @@ const NOMBRES_TIPO_USUARIO: Record<string, string> = {
 })
 export class Perfil {
   private readonly servicioPerfil = inject(PerfilService);
+  private readonly estadoSegundoFactor = inject(EstadoSegundoFactor);
   private readonly servicioPagos = inject(PagosService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly enrutador = inject(Router);
@@ -121,6 +123,7 @@ export class Perfil {
     this.servicioPerfil.consultarPerfil().subscribe({
       next: (respuesta) => {
         this.perfil.set(respuesta);
+        this.estadoSegundoFactor.activado.set(respuesta.totpActivado);
         if (respuesta.tipoUsuario === 'VENDEDOR') {
           this.servicioPerfil.obtenerCategorias().subscribe({
             next: (categorias) => this.categorias.set(categorias),
@@ -432,6 +435,7 @@ export class Perfil {
         this.codigoTOTP.set('');
         this.mensajeTOTP.set('TOTP activado. Guarda estos códigos de respaldo en un lugar seguro.');
         this.perfil.update((valor) => valor ? { ...valor, totpActivado: true } : valor);
+        this.estadoSegundoFactor.activado.set(true);
       },
       error: (error: HttpErrorResponse) => {
         this.cargandoTOTP.set(false);
@@ -517,6 +521,7 @@ export class Perfil {
       next: () => {
         this.cargandoTOTP.set(false);
         this.perfil.update((valor) => valor ? { ...valor, totpActivado: false } : valor);
+        this.estadoSegundoFactor.activado.set(false);
         this.codigoTOTP.set('');
         this.codigosRespaldo.set([]);
         this.configuracionTOTP.set(null);

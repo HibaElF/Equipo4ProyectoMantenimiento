@@ -7,6 +7,7 @@ import { Perfil } from './perfil';
 import { PerfilResponse, PerfilService } from './perfil.service';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { PagosService } from '../pagos/pagos.service';
+import { EstadoSegundoFactor } from '../../shared/aviso-segundo-factor/estado-segundo-factor';
 // M8: la confirmación es un diálogo propio (asíncrono); se simula su respuesta.
 const simularConfirmacion = (aceptada: boolean) =>
   vi.spyOn(TestBed.inject(ConfirmacionService), 'confirmar').mockResolvedValue(aceptada);
@@ -753,6 +754,36 @@ describe('Perfil', () => {
     expect(fixture.nativeElement.querySelector('#tercer-factor-titulo')).toBeNull();
     componente.cambiarEmailOtp(false);
     expect(perfilServiceMock.modificarPreferenciaTercerFactor).not.toHaveBeenCalled();
+  });
+
+  describe('estado del segundo factor para el aviso (T-27)', () => {
+    it('publica si el segundo factor está activado al cargar el perfil', () => {
+      crearComponente(of({ ...perfilCliente, totpActivado: true }));
+
+      expect(TestBed.inject(EstadoSegundoFactor).activado()).toBe(true);
+    });
+
+    it('lo marca como no activado para un cliente sin TOTP', () => {
+      crearComponente(of(perfilCliente));
+
+      expect(TestBed.inject(EstadoSegundoFactor).activado()).toBe(false);
+    });
+
+    it('lo marca como activado al confirmar el segundo factor y como no activado al desactivarlo', async () => {
+      simularConfirmacion(true);
+      perfilServiceMock.confirmarSegundoFactor.mockReturnValue(of({ backupCodes: ['a'] }));
+      perfilServiceMock.desactivarSegundoFactor.mockReturnValue(of(undefined));
+      crearComponente(of(perfilCliente));
+      const estado = TestBed.inject(EstadoSegundoFactor);
+
+      componente.codigoTOTP.set('123456');
+      componente.confirmarTOTP();
+      expect(estado.activado()).toBe(true);
+
+      componente.codigoTOTP.set('654321');
+      await componente.desactivarTOTP();
+      expect(estado.activado()).toBe(false);
+    });
   });
 
   describe('descarga de los datos personales (T-25)', () => {

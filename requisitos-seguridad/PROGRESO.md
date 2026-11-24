@@ -39,7 +39,7 @@
 | 6 | T-34 | URLs firmadas con caducidad para las imágenes (opcional) | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1527 pruebas, 0 fallos, 90,05 %. `FirmaImagenService` (HMAC-SHA256, clave `IMAGENES_FIRMA_KEY` obligatoria, 2 h redondeadas a la hora), `FiltroImagenFirmada` (403 sin firma o inválida, 410 caducada) y URL firmada en catálogo, vendedor, carrito, favoritos y listas. Frontend sin cambios. |
 | 7 | T-24 | RGPD: política de privacidad, aviso legal y consentimiento | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1531 pruebas, 0 fallos, 90,07 %. Frontend: 569 pruebas, 79,51 %, build OK. Documentos en `documents/rgpd/` (plantillas con `[COMPLETAR]`), páginas `/politica-privacidad` y `/aviso-legal`, casilla obligatoria en el registro y `aceptaPolitica` en los DTO con versión y fecha guardadas. |
 | 7 | T-25 | RGPD: exportación de los datos personales del usuario | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Backend: 1545 pruebas, 0 fallos, 90,28 %. Frontend: 576 pruebas, 79,61 %, build OK. `GET /usuarios/mis-datos` (`ExportacionDatosController`/`Service`, DTO explícito), límite de 1 por minuto, evento `exportacion_datos` y botón «Descargar mis datos» en el perfil. |
-| 7 | T-27 | Incentivar la activación del segundo factor en los clientes | Baja | Pendiente | | | |
+| 7 | T-27 | Incentivar la activación del segundo factor en los clientes | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Solo frontend: 588 pruebas, 79,73 %, build OK (backend sin cambios: 1545 pruebas, 90,28 %). Componente `shared/aviso-segundo-factor` bajo la cabecera, `EstadoSegundoFactor` actualizado desde el perfil, descarte en `sessionStorage` que se borra al cerrar sesión. |
 | 8 | T-26 | Documentar la correspondencia con CCN-CERT BP/28 | Media | Pendiente | | | |
 
 ## Decisiones tomadas con el usuario
@@ -62,6 +62,7 @@
 | 2026-11-23 | T-34 | Se implementa (opcional); caducidad de 2 h redondeada a la hora; se conservan los constructores antiguos de `ProductoService`, `CarritoService`, `FavoritoService` y `ListaProductosService` (con servicio sin firma) y se añade el nuevo con la firma, que es el que usa Spring. |
 | 2026-11-23 | T-24 | Datos del responsable y del contacto como `[COMPLETAR]` (no se inventan); versión inicial 1.0, como constante `PoliticaPrivacidad.VERSION_ACTUAL` (no como propiedad, para no cambiar constructores); `aceptaPolitica` es `Boolean` con `@NotNull @AssertTrue` para que su ausencia dé un error por campo y no un 400 vacío. |
 | 2026-11-24 | T-25 | DNI y teléfono completos (solo para su titular); los pedidos recibidos por el vendedor solo llevan sus líneas, sin datos de los compradores; la exportación vive en un controlador nuevo para no chocar con T-04 en `PerfilController`. |
+| 2026-11-24 | T-27 | Aviso global bajo la cabecera (no solo en el panel del cliente), sin ventaja asociada al activar el 2FA (sería una funcionalidad de negocio nueva; anotado como posible mejora). |
 | 2026-11-20 | T-09 | No se avisa a los administradores; solo al titular de la cuenta, como máximo un correo por hora. |
 | 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
 
@@ -72,6 +73,7 @@ El token de sonar se tiene que quedar en el propierties por orden del profesor
 | Tarea | Acción | Hecha |
 |---|---|---|
 | T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
+| T-27 | Con la aplicación arrancada, entrar como cliente sin TOTP: debe verse la franja bajo la cabecera, descartarse con «Ahora no» y desaparecer al activar el segundo factor | No |
 | T-24 | Completar los `[COMPLETAR]` de `documents/rgpd/` y de las páginas `politica-privacidad.html` y `aviso-legal.html`, y que el equipo revise los textos (criterio «el equipo ha revisado los textos») | No |
 | T-34 | **Obligatorio:** crear `IMAGENES_FIRMA_KEY` (Base64 de 32 bytes, p. ej. `openssl rand -base64 32`) en Render y en el `.env` local; sin ella el backend no arranca. Comprobar que las imágenes se ven en catálogo, vendedor, carrito y favoritos | No |
 | T-18 | Opcional: definir `LOG_FORMAT` en Render (por defecto `ecs`, JSON) y comprobar `X-Correlation-Id` y la línea JSON con la app arrancada | No |
@@ -89,6 +91,7 @@ Al terminar cada fase, anota aquí qué requisitos (RQ) quedan afectados para qu
 
 | Fase | Requisitos afectados | Nota |
 |---|---|---|
+| 7 | RQ-15, RQ-16 | T-24 (política de privacidad, aviso legal y consentimiento en el registro), T-25 (exportación de datos personales) y T-27 (aviso para activar el segundo factor en clientes) afectan a «Cumplimiento RGPD» y a «Política por rol». Los textos legales llevan `[COMPLETAR]` pendientes de revisión del equipo. Suite: backend 1545 pruebas, 0 fallos, 90,28 %; frontend 588 pruebas, 79,73 %. |
 | 5 | RQ-15 | T-21 (Content-Security-Policy y cabeceras) y T-23 (permisos finos además de los roles) afectan a «Endurecimiento del frontend» y a «Roles y permisos finos». Suite completa: backend 1500 pruebas, 0 fallos, 90,08 %; frontend 563 pruebas, 79,05 %. |
 | 4 | RQ-06, RQ-15 | T-22 (rate limiting general y OTP), T-11 (validación de entrada), T-10 (límite por IP y CSRF en el alta pública) y T-12 (verificación del correo) afectan a «Rate limiting en peticiones», «Validación de entrada en servidor» y «Registro de usuario seguro». Suite completa: backend 1439 pruebas, 0 fallos, 90,0 %; frontend 563 pruebas, 79,05 %. |
 | 3 | RQ-05, RQ-07 | T-05 (cambio de contraseña), T-13 (rotación de sesión al cambiar factores), T-06 (caducidad a 30 días) y T-09 (alertas de bloqueo) afectan a «política de contraseñas», «caducidad», «alertas de intentos fallidos» y «rotación del ID de sesión al cambiar credenciales». Suite completa: backend 1357 pruebas, 0 fallos, 90,21 %; frontend 543 pruebas, 78,84 %. |

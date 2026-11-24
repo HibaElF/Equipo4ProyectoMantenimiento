@@ -257,6 +257,12 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### Aviso para activar el segundo factor (clientes)
+
+- Los clientes sin TOTP ven, bajo la cabecera de las pantallas privadas, una franja no bloqueante («Protege tu cuenta…») con un enlace a la configuración del segundo factor en el perfil. En vendedores y administradores el segundo factor ya es obligatorio, y no se les muestra.
+- Se puede descartar con «Ahora no»: no reaparece en esa pestaña (`sessionStorage`) hasta que se cierre la sesión. Desaparece en cuanto se activa el segundo factor en el perfil.
+- Es solo frontend (`shared/aviso-segundo-factor`): usa `GET /usuarios/perfil` y no necesita configuración nueva.
+
 ### RGPD: exportación de los datos personales
 
 - `GET /usuarios/mis-datos` (cualquier usuario autenticado) devuelve un JSON con los datos del **propio titular**; el usuario sale siempre de la sesión y no hay parámetros para pedir los de otro. Se entrega como adjunto (`Content-Disposition: attachment; filename="mis-datos.json"`) y con `Cache-Control: no-store`. En el perfil, el botón «Descargar mis datos» lo descarga.

@@ -3,11 +3,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 
+import { AvisoSegundoFactor } from './shared/aviso-segundo-factor/aviso-segundo-factor';
 import { Cabecera } from './shared/cabecera/cabecera';
 import { Confirmacion } from './shared/confirmacion/confirmacion';
 
 @Component({
-  imports: [RouterOutlet, Cabecera, Confirmacion],
+  imports: [RouterOutlet, Cabecera, AvisoSegundoFactor, Confirmacion],
   selector: 'app-root',
   styleUrl: './app.css',
   templateUrl: './app.html',
