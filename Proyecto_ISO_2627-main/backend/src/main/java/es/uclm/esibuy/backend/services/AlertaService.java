@@ -3,17 +3,23 @@ package es.uclm.esibuy.backend.services;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
+import es.uclm.esibuy.backend.dao.PedidoDAO;
+import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.model.Alerta;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
+import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.TipoAlerta;
 import es.uclm.esibuy.backend.model.Usuario;
@@ -26,11 +32,16 @@ public class AlertaService {
     private final AlertaDAO alertaDAO;
     private final ListaProductosDAO listaProductosDAO;
     private final UsuarioDAO usuarioDAO;
+    private final ProductoDAO productoDAO;
+    private final PedidoDAO pedidoDAO;
 
-    public AlertaService(AlertaDAO alertaDAO, ListaProductosDAO listaProductosDAO, UsuarioDAO usuarioDAO) {
+    public AlertaService(AlertaDAO alertaDAO, ListaProductosDAO listaProductosDAO, UsuarioDAO usuarioDAO,
+            ProductoDAO productoDAO, PedidoDAO pedidoDAO) {
         this.alertaDAO = alertaDAO;
         this.listaProductosDAO = listaProductosDAO;
         this.usuarioDAO = usuarioDAO;
+        this.productoDAO = productoDAO;
+        this.pedidoDAO = pedidoDAO;
     }
 
     // Se compara el precio que paga un cliente estándar (con el descuento normal).
@@ -51,6 +62,30 @@ public class AlertaService {
         }
         String mensaje = "«" + producto.getNombre() + "», de tus favoritos, vuelve a estar disponible.";
         avisarClientesConFavorito(producto, TipoAlerta.DISPONIBILIDAD, mensaje);
+    }
+
+    // Interesa a quien tiene en sus favoritos, en sus listas o en sus pedidos algún producto de la misma categoría.
+    public void recomendarNuevoProducto(Producto producto) {
+        if (!estaDisponible(producto)) {
+            return;
+        }
+        List<String> mismaCategoria = productoDAO.findByCategoriaIgnoreCase(producto.getCategoria()).stream()
+                .map(Producto::getId)
+                .filter(id -> !id.equals(producto.getId()))
+                .toList();
+        if (mismaCategoria.isEmpty()) {
+            return;
+        }
+        Set<String> interesados = new LinkedHashSet<>();
+        listaProductosDAO.findConAlgunProducto(mismaCategoria)
+                .forEach(lista -> interesados.add(lista.getUsuarioId()));
+        pedidoDAO.findConAlgunProducto(mismaCategoria).stream()
+                .map(Pedido::getClienteId)
+                .filter(Objects::nonNull)
+                .forEach(interesados::add);
+        String mensaje = "Nuevo producto en " + producto.getCategoria() + " que te puede interesar: «"
+                + producto.getNombre() + "».";
+        avisar(interesados, producto, TipoAlerta.RECOMENDACION, mensaje);
     }
 
     static boolean estaDisponible(Producto producto) {

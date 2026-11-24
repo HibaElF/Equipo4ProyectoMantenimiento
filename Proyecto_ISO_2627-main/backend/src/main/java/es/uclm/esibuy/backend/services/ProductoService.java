@@ -215,6 +215,7 @@ public class ProductoService {
         producto.setImagen(rutaImagen);
 
         Producto nuevoProducto = guardarEliminandoImagenSiFalla(producto, rutaImagen);
+        alertaService.recomendarNuevoProducto(nuevoProducto);
         return new CrearProductoResponse(
                 nuevoProducto.getNombre(),
                 nuevoProducto.getCategoria(),
