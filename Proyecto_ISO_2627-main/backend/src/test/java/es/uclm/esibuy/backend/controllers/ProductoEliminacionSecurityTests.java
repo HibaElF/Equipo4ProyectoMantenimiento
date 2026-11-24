@@ -30,6 +30,7 @@ import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.VendedorDAO;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
+import es.uclm.esibuy.backend.services.AlertaService;
 import es.uclm.esibuy.backend.services.PerfilService;
 import es.uclm.esibuy.backend.services.ProductoImagenService;
 import es.uclm.esibuy.backend.services.ProductoService;
@@ -68,6 +69,9 @@ class ProductoEliminacionSecurityTests {
 
     @MockitoBean
     private ProductoImagenService productoImagenService;
+
+    @MockitoBean
+    private AlertaService alertaService;
 
     @MockitoBean
     private VendedorService vendedorService;

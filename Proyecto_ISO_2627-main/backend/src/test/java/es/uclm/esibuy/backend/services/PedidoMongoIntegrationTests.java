@@ -1,6 +1,7 @@
 package es.uclm.esibuy.backend.services;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -81,7 +82,7 @@ class PedidoMongoIntegrationTests {
         VendedorDAO vendedores = factory.getRepository(VendedorDAO.class);
         manager = new PedidoTransactionConfiguration().pedidoTransactionManager(template.getMongoDatabaseFactory());
         servicio = new PedidoService(new CarritoService(carritos, clientes, productos), carritos, productos,
-                metodos, vendedores, pedidos, manager);
+                metodos, vendedores, pedidos, manager, mock(AlertaService.class));
         Vendedor vendedor = new Vendedor();
         vendedor.setNombreComercial("Tienda");
         vendedores.save(vendedor);
@@ -283,7 +284,8 @@ class PedidoMongoIntegrationTests {
         MongoRepositoryFactory factory = new MongoRepositoryFactory(template);
         ProductoDAO daoConFallo = factory.getRepository(ProductoDAO.class, fragmento);
         servicio = new PedidoService(new CarritoService(carritos, clientes, daoConFallo), carritos, daoConFallo,
-                metodos, factory.getRepository(VendedorDAO.class), pedidos, manager);
+                metodos, factory.getRepository(VendedorDAO.class), pedidos, manager,
+                mock(AlertaService.class));
 
         assertThrows(IllegalArgumentException.class, () -> pagar("a", nuevaOperacion()));
         assertEquals(10, productos.findById("producto").orElseThrow().getStock());

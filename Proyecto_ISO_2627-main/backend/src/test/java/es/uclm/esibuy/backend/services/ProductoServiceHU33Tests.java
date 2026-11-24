@@ -75,12 +75,15 @@ class ProductoServiceHU33Tests {
     @Mock
     private PedidoDAO pedidoDAO;
 
+    @Mock
+    private AlertaService alertaService;
+
     private ProductoService productoService;
 
     @BeforeEach
     void setUp() {
         productoService = new ProductoService(
-                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO);
+                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO, alertaService);
     }
 
     @Test

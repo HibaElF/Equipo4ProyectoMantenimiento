@@ -65,12 +65,15 @@ class ProductoServiceTests {
     @Mock
     private PedidoDAO pedidoDAO;
 
+    @Mock
+    private AlertaService alertaService;
+
     private ProductoService productoService;
 
     @BeforeEach
     void setUp() {
         productoService = new ProductoService(
-                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO);
+                productoDAO, vendedorDAO, categoriaDAO, validator, productoImagenService, clienteDAO, pedidoDAO, alertaService);
         lenient().when(validator.validate(any())).thenReturn(Collections.emptySet());
     }
 
@@ -186,6 +189,7 @@ class ProductoServiceTests {
         assertEquals(5, resultado.descuento());
         assertEquals(10, resultado.descuentoPremium());
         verify(productoDAO).save(any(Producto.class));
+        verify(alertaService).recomendarNuevoProducto(guardado);
     }
 
     @Test
