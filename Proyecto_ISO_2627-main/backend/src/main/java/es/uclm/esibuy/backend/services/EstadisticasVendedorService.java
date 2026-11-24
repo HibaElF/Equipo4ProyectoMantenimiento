@@ -61,7 +61,7 @@ public class EstadisticasVendedorService {
         return new EstadisticasVentasResponse(
                 CalculoEstadisticas.masVendidos(ventas),
                 CalculoEstadisticas.menosVendidos(ventas),
-                avisoVentas(ventas));
+                CalculoEstadisticas.avisoVentas(ventas, AVISO_SIN_PRODUCTOS, AVISO_SIN_VENTAS, AVISO_POCOS_PRODUCTOS));
     }
 
     // PBI 277: Top 10 de productos mejor y peor valorados (solo los que tienen alguna valoración)
@@ -70,7 +70,7 @@ public class EstadisticasVendedorService {
         return new EstadisticasValoracionesResponse(
                 CalculoEstadisticas.mejorValorados(valoraciones),
                 CalculoEstadisticas.peorValorados(valoraciones),
-                avisoValoraciones(valoraciones));
+                CalculoEstadisticas.avisoValoraciones(valoraciones, AVISO_SIN_VALORACIONES, AVISO_POCAS_VALORACIONES));
     }
 
     // PBI 278: valoración media y número de valoraciones de cada producto del catálogo (también de los que
@@ -96,30 +96,6 @@ public class EstadisticasVendedorService {
         }
         return CalculoEstadisticas.puntuacionesPorProducto(
                 valoracionDAO.findByProductoIdIn(CalculoEstadisticas.identificadores(productos)));
-    }
-
-    private static String avisoValoraciones(List<ProductoValoracionResponse> valoraciones) {
-        long valorados = valoraciones.stream().filter(CalculoEstadisticas::tieneValoraciones).count();
-        if (valorados == 0) {
-            return AVISO_SIN_VALORACIONES;
-        }
-        if (valorados < CalculoEstadisticas.TAMANO_RANKING) {
-            return AVISO_POCAS_VALORACIONES;
-        }
-        return null;
-    }
-
-    private static String avisoVentas(List<ProductoVentasResponse> ventas) {
-        if (ventas.isEmpty()) {
-            return AVISO_SIN_PRODUCTOS;
-        }
-        if (ventas.stream().allMatch(venta -> venta.unidadesVendidas() == 0)) {
-            return AVISO_SIN_VENTAS;
-        }
-        if (ventas.size() < CalculoEstadisticas.TAMANO_RANKING) {
-            return AVISO_POCOS_PRODUCTOS;
-        }
-        return null;
     }
 
     private List<Producto> productosDelVendedor(String correo) {

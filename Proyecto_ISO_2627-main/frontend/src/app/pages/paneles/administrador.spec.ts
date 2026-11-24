@@ -24,7 +24,7 @@ describe('PanelAdministrador', () => {
 
     expect(enlace?.textContent).toContain('Abrir productos');
   });
-  it('muestra las cuatro áreas como tarjetas con título y un único h1', () => {
+  it('muestra las cinco áreas como tarjetas con título y un único h1', () => {
     TestBed.configureTestingModule({
       imports: [PanelAdministrador],
       providers: [provideRouter([]), { provide: AuthService, useValue: {} }]
@@ -39,7 +39,8 @@ describe('PanelAdministrador', () => {
       'Usuarios',
       'Categorías',
       'Productos',
-      'Administradores'
+      'Administradores',
+      'Estadísticas'
     ]);
     expect(vista.textContent).toContain('ESIBuy');
     expect(vista.textContent).not.toContain('EsiBuy');

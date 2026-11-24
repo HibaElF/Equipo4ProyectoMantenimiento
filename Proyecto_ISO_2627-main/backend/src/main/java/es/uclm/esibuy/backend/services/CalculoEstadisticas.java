@@ -11,6 +11,7 @@ import java.util.Map;
 
 import es.uclm.esibuy.backend.dto.ProductoValoracionResponse;
 import es.uclm.esibuy.backend.dto.ProductoVentasResponse;
+import es.uclm.esibuy.backend.dto.VendedorValoracionResponse;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
@@ -33,6 +34,12 @@ final class CalculoEstadisticas {
     private static final Comparator<ProductoValoracionResponse> DESEMPATE_VALORACION = Comparator
             .comparingInt(ProductoValoracionResponse::numeroValoraciones).reversed()
             .thenComparing(POR_NOMBRE_VALORACION);
+
+    // Ranking de vendedores: de mayor a menor media; a igualdad, más valoraciones primero y luego por nombre
+    private static final Comparator<VendedorValoracionResponse> ORDEN_VENDEDORES = Comparator
+            .comparing(VendedorValoracionResponse::valoracionMedia).reversed()
+            .thenComparing(Comparator.comparingInt(VendedorValoracionResponse::numeroValoraciones).reversed())
+            .thenComparing(VendedorValoracionResponse::vendedor, String.CASE_INSENSITIVE_ORDER);
 
     private CalculoEstadisticas() {
     }
@@ -135,6 +142,39 @@ final class CalculoEstadisticas {
                 .toList();
     }
 
+    // Valoración de cada vendedor con alguna valoración: media de todas las valoraciones de sus productos
+    // (no la media de las medias de cada producto), número de valoraciones y productos valorados
+    static List<VendedorValoracionResponse> valoracionesPorVendedor(
+            Collection<Producto> productos,
+            Map<String, List<Integer>> puntuacionesPorProducto) {
+
+        Map<String, List<Integer>> porVendedor = new HashMap<>();
+        Map<String, Integer> productosValorados = new HashMap<>();
+        for (Producto producto : productos) {
+            List<Integer> delProducto = puntuacionesPorProducto.getOrDefault(producto.getId(), List.of());
+            if (producto.getVendedor() == null || delProducto.isEmpty()) {
+                continue;
+            }
+            porVendedor.computeIfAbsent(producto.getVendedor(), vendedor -> new ArrayList<>()).addAll(delProducto);
+            productosValorados.merge(producto.getVendedor(), 1, Integer::sum);
+        }
+        return porVendedor.entrySet().stream()
+                .map(entrada -> new VendedorValoracionResponse(
+                        entrada.getKey(),
+                        media(entrada.getValue()),
+                        entrada.getValue().size(),
+                        productosValorados.get(entrada.getKey())))
+                .toList();
+    }
+
+    // Top 10 de vendedores por valoración media
+    static List<VendedorValoracionResponse> mejoresVendedores(List<VendedorValoracionResponse> vendedores) {
+        return vendedores.stream()
+                .sorted(ORDEN_VENDEDORES)
+                .limit(TAMANO_RANKING)
+                .toList();
+    }
+
     // Catálogo completo ordenado por nombre, para encontrar fácilmente cada producto
     static List<ProductoValoracionResponse> porNombre(List<ProductoValoracionResponse> valoraciones) {
         return valoraciones.stream().sorted(POR_NOMBRE_VALORACION).toList();
@@ -157,6 +197,41 @@ final class CalculoEstadisticas {
         }
         double promedio = puntuaciones.stream().mapToInt(Integer::intValue).average().orElse(0.0);
         return BigDecimal.valueOf(promedio).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    // Aviso de las estadísticas de ventas cuando no hay datos suficientes; null si los hay
+    static String avisoVentas(
+            List<ProductoVentasResponse> ventas,
+            String sinProductos,
+            String sinVentas,
+            String pocosProductos) {
+
+        if (ventas.isEmpty()) {
+            return sinProductos;
+        }
+        if (ventas.stream().allMatch(venta -> venta.unidadesVendidas() == 0)) {
+            return sinVentas;
+        }
+        if (ventas.size() < TAMANO_RANKING) {
+            return pocosProductos;
+        }
+        return null;
+    }
+
+    // Aviso de las estadísticas de valoraciones cuando no hay datos suficientes; null si los hay
+    static String avisoValoraciones(
+            List<ProductoValoracionResponse> valoraciones,
+            String sinValoraciones,
+            String pocasValoraciones) {
+
+        long valorados = valoraciones.stream().filter(CalculoEstadisticas::tieneValoraciones).count();
+        if (valorados == 0) {
+            return sinValoraciones;
+        }
+        if (valorados < TAMANO_RANKING) {
+            return pocasValoraciones;
+        }
+        return null;
     }
 
     static List<String> identificadores(Collection<Producto> productos) {

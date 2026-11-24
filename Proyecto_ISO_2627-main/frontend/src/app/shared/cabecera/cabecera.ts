@@ -40,6 +40,7 @@ export const ENLACES_POR_ROL: Record<Rol, readonly EnlaceCabecera[]> = {
     { texto: 'Categorías', ruta: '/admin/categorias', exacto: false },
     { texto: 'Productos', ruta: '/admin/productos', exacto: false },
     { texto: 'Administradores', ruta: '/admin/administradores', exacto: false },
+    { texto: 'Estadísticas', ruta: '/admin/estadisticas', exacto: false },
     { texto: 'Mi perfil', ruta: '/perfil', exacto: false }
   ]
 };
