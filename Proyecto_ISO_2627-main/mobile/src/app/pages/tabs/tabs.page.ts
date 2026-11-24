@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { App } from '@capacitor/app';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { IonBadge, IonIcon, IonLabel, IonTabBar, IonTabButton, IonTabs } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import {
@@ -13,6 +14,7 @@ import {
   storefront,
   storefrontOutline
 } from 'ionicons/icons';
+import { AlertasEstadoService } from '../../core/services/alertas-estado.service';
 import { CarritoEstadoService } from '../../core/services/carrito-estado.service';
 
 /**
@@ -31,6 +33,7 @@ export class TabsPage {
   readonly unidadesCarrito = inject(CarritoEstadoService).unidades;
   /** Pestaña seleccionada: su icono se muestra relleno (no se depende solo del color). */
   readonly activa = signal('tienda');
+  private readonly alertasEstado = inject(AlertasEstadoService);
 
   readonly pestanas = [
     { tab: 'tienda', texto: 'Tienda', icono: 'storefront' },
@@ -54,6 +57,11 @@ export class TabsPage {
       personOutline
     });
     inject(CarritoEstadoService).refrescar();
+    this.alertasEstado.refrescar(true);
+    // Al volver a la app desde segundo plano se comprueba si hay alertas nuevas.
+    void App.addListener('resume', () => this.alertasEstado.refrescar(true))
+      .then((suscripcion) => inject(DestroyRef).onDestroy(() => void suscripcion.remove()))
+      .catch(() => undefined);
   }
 
   etiqueta(p: { tab: string; texto: string }): string {
@@ -63,5 +71,7 @@ export class TabsPage {
 
   cambio(evento: { tab: string }): void {
     this.activa.set(evento.tab);
+    // Como mucho una consulta cada 30 s, para no chocar con el límite de peticiones del backend.
+    this.alertasEstado.refrescar();
   }
 }

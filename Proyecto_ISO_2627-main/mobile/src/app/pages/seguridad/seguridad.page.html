@@ -63,15 +63,15 @@
           <ol class="pasos-totp">
             <li>
               <strong>Añade ESIBuy a tu aplicación de autenticación.</strong>
-              Si la tienes en este móvil, ábrela directamente:
-              @if (configuracion()!.otpauthUri) {
+              @if (esAppInstalada && configuracion()!.otpauthUri) {
+                Si la tienes en este móvil, ábrela directamente:
                 <ion-button expand="block" fill="outline" [href]="configuracion()!.otpauthUri">
                   <ion-icon name="open-outline" slot="start" aria-hidden="true"></ion-icon>
                   Abrir en la aplicación
                 </ion-button>
               }
               @if (secreto()) {
-                <span class="sub">O escribe esta clave en la aplicación:</span>
+                <span class="sub">{{ esAppInstalada ? 'O escribe' : 'Escribe' }} esta clave en la aplicación:</span>
                 <div class="clave">
                   <code>{{ secreto() }}</code>
                   <ion-button fill="clear" size="small" (click)="copiarClave()" aria-label="Copiar la clave">

@@ -3,6 +3,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { environment } from '../../../environments/environment';
 import { Carrito } from '../models/carrito';
+import { AlertasEstadoService } from '../services/alertas-estado.service';
 import { CarritoEstadoService } from '../services/carrito-estado.service';
 import { AuthService } from './auth.service';
 import { RecuperacionContrasenaService } from './recuperacion-contrasena.service';
@@ -65,6 +66,14 @@ describe('AuthService', () => {
     auth.cerrarSesion().subscribe({ error: () => undefined });
     conCsrf('POST', '/usuarios/logout').flush(null, { status: 500, statusText: 'Error' });
     expect(carrito.unidades()).toBe(0);
+  });
+
+  it('al cerrar sesión pone a cero el contador de alertas', () => {
+    const alertas = TestBed.inject(AlertasEstadoService);
+    alertas.noLeidas.set(5);
+    auth.cerrarSesion().subscribe();
+    conCsrf('POST', '/usuarios/logout').flush(null);
+    expect(alertas.noLeidas()).toBe(0);
   });
 
   it('PUT y DELETE también llevan el token y el cuerpo', () => {

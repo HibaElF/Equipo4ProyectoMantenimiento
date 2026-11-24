@@ -4,6 +4,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -26,11 +27,15 @@ import { ListasService, MAX_NOMBRE_LISTA, crearControlNombreLista, mensajeErrorL
  * Pestaña Listas: reúne los apartados «Favoritos» y «Mis listas» de la web.
  * Favoritos es la lista predeterminada (♥): aparece la primera y abre la pantalla de favoritos.
  */
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+
 @Component({
   selector: 'app-listas',
   imports: [
+    BotonAlertasComponent,
     ReactiveFormsModule,
     IonButton,
+    IonButtons,
     IonContent,
     IonHeader,
     IonIcon,

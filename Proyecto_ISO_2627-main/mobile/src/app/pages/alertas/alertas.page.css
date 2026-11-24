@@ -1,0 +1,159 @@
+.contenido {
+  padding: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.descripcion {
+  margin: 4px 2px 12px;
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+}
+
+.barra-acciones {
+  margin-bottom: 10px;
+}
+
+.resumen {
+  margin: 0 2px 6px;
+  font-weight: 600;
+}
+
+.acciones-generales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acciones-generales ion-button {
+  margin: 0;
+  min-height: 40px;
+}
+
+.lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.alerta {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-left: 4px solid var(--ion-color-secondary);
+  border-radius: 0 14px 14px 0;
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.alerta.leida {
+  border-left-color: var(--ion-border-color);
+}
+
+.alerta.leida .mensaje {
+  color: var(--ion-color-medium);
+}
+
+.zona-principal {
+  display: block;
+  width: 100%;
+  padding: 12px 14px 6px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.zona-principal:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+  outline-offset: -3px;
+}
+
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.chip-tipo {
+  background: #eef0f2;
+  color: var(--ion-color-tertiary);
+}
+
+.chip-nueva {
+  background: #fdf0d5;
+  color: #7a4b00;
+}
+
+.mensaje {
+  margin: 0 0 6px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.leida .mensaje {
+  font-weight: 400;
+}
+
+.pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+}
+
+.ver {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 6px 6px;
+}
+
+.acciones ion-button {
+  margin: 0;
+  min-height: 40px;
+}
+
+.estado {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.estado ion-icon {
+  font-size: 56px;
+  color: var(--ion-color-medium);
+}
+
+.estado h2 {
+  margin: 10px 0 6px;
+  font-size: 1.15rem;
+}
+
+.estado p {
+  color: var(--ion-color-medium);
+}
+
+.esqueleto {
+  height: 110px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+}

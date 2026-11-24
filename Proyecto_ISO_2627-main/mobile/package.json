@@ -8,7 +8,10 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:ci": "ng test --watch=false",
-    "test:cobertura": "ng test --watch=false --coverage"
+    "test:cobertura": "ng test --watch=false --coverage",
+    "android:emulador": "ng build && npx cap sync android",
+    "android:dispositivo": "ng build --configuration dispositivo && npx cap sync android",
+    "android:abrir": "npx cap open android"
   },
   "private": true,
   "packageManager": "npm@11.20.0",

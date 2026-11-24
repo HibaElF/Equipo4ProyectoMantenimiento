@@ -66,6 +66,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/perfil/perfil.page').then((m) => m.PerfilPage)
       },
       {
+        path: 'alertas',
+        loadComponent: () => import('./pages/alertas/alertas.page').then((m) => m.AlertasPage)
+      },
+      {
         path: 'perfil/datos',
         loadComponent: () => import('./pages/mis-datos/mis-datos.page').then((m) => m.MisDatosPage)
       },

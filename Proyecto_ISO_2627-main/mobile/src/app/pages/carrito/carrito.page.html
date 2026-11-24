@@ -1,14 +1,15 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Mi carrito</ion-title>
-    @if (carrito()?.productos?.length) {
-      <ion-buttons slot="end">
+    <ion-buttons slot="end">
+      @if (carrito()?.productos?.length) {
         <ion-button (click)="confirmarDescarte()" [disabled]="operacion() !== null" aria-label="Descartar el carrito">
           <ion-icon slot="start" name="trash-outline" aria-hidden="true"></ion-icon>
           Vaciar
         </ion-button>
-      </ion-buttons>
-    }
+      }
+      <app-boton-alertas></app-boton-alertas>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 

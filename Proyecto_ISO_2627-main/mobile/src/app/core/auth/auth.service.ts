@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, finalize, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RespuestaTokenCsrf } from '../models/respuesta-token-csrf';
+import { AlertasEstadoService } from '../services/alertas-estado.service';
 import { CarritoEstadoService } from '../services/carrito-estado.service';
 
 export type Rol = 'ADMIN' | 'CLIENTE' | 'VENDEDOR';
@@ -27,6 +28,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly api = environment.apiUrl;
   private readonly carritoEstado = inject(CarritoEstadoService);
+  private readonly alertasEstado = inject(AlertasEstadoService);
 
   iniciarSesion(correo: string, contrasena: string): Observable<RespuestaInicioSesion> {
     return this.postConCsrf<RespuestaInicioSesion>('/usuarios/login', {
@@ -55,7 +57,10 @@ export class AuthService {
 
   cerrarSesion(): Observable<void> {
     // Al salir se olvida el carrito del usuario anterior (numerito de la pestaña).
-    return this.postConCsrf<void>('/usuarios/logout', null).pipe(finalize(() => this.carritoEstado.reiniciar()));
+    return this.postConCsrf<void>('/usuarios/logout', null).pipe(finalize(() => {
+        this.carritoEstado.reiniciar();
+        this.alertasEstado.reiniciar();
+      }));
   }
 
   /** Pide un token CSRF y lo envía en la petición POST, como hace la web. */

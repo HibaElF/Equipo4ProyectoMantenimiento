@@ -36,9 +36,12 @@ import { CarritoService, mensajeErrorOperacionCarrito } from '../../core/service
 import { ProductoService } from '../../core/services/producto.service';
 
 /** Carrito del cliente: mismas operaciones que la web (cantidades, eliminar, descartar y comprar). */
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+
 @Component({
   selector: 'app-carrito',
   imports: [
+    BotonAlertasComponent,
     DecimalPipe,
     RouterLink,
     IonButton,

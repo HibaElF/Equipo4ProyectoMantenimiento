@@ -1,6 +1,7 @@
 <ion-header>
   <ion-toolbar>
     <ion-title>Mis pedidos</ion-title>
+    <ion-buttons slot="end"><app-boton-alertas></app-boton-alertas></ion-buttons>
   </ion-toolbar>
   <ion-toolbar class="barra-segmento">
     <ion-segment [value]="vista()" (ionChange)="cambiarVista($event.detail.value)" aria-label="Tipo de pedidos">

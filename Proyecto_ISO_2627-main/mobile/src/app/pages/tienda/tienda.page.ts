@@ -42,9 +42,12 @@ type Disponibilidad = 'todos' | 'disponibles' | 'agotados';
  * Catálogo del cliente: mismas funciones que la web (buscar, categoría, precio,
  * disponibilidad, solo favoritos, favoritos y añadir al carrito), en rejilla de dos columnas.
  */
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+
 @Component({
   selector: 'app-tienda',
   imports: [
+    BotonAlertasComponent,
     FormsModule,
     TarjetaProductoComponent,
     IonButton,

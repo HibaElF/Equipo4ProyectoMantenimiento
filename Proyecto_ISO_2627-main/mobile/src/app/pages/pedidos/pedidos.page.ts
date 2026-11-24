@@ -4,6 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import {
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -26,13 +27,17 @@ import { EstadoPedidoComponent } from '../../shared/estado-pedido/estado-pedido.
 type Vista = 'activos' | 'historico';
 
 /** Mis pedidos: activos e historial (incluidos los cancelados), como en la web. */
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+
 @Component({
   selector: 'app-pedidos',
   imports: [
+    BotonAlertasComponent,
     DatePipe,
     DecimalPipe,
     EstadoPedidoComponent,
     IonButton,
+    IonButtons,
     IonContent,
     IonHeader,
     IonIcon,

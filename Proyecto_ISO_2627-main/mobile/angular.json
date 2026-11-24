@@ -91,6 +91,27 @@
                   "with": "src/environments/environment.development.ts"
                 }
               ]
+            },
+            "dispositivo": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1.5MB",
+                  "maximumError": "3MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.dispositivo.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"

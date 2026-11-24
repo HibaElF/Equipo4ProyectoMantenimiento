@@ -45,6 +45,8 @@ describe('SeguridadPage', () => {
     const pagina = crear(perfil(false));
     pagina.configurar();
     expect(pagina.secreto()).toBe('JBSW Y3DP EHPK 3PXP');
+    // En el navegador (tests) no se ofrece abrir la app de autenticación: solo clave y QR.
+    expect(pagina.esAppInstalada).toBe(false);
     pagina.codigo = '12';
     pagina.confirmar();
     expect(api.confirmarSegundoFactor).not.toHaveBeenCalled();

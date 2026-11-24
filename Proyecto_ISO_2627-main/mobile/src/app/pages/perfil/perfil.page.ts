@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import {
   AlertController,
   IonButton,
+  IonButtons,
   IonContent,
   IonHeader,
   IonIcon,
@@ -42,12 +43,16 @@ import { AvatarPerfilComponent } from '../../shared/avatar-perfil/avatar-perfil.
  * Pestaña Perfil: las secciones de «Mi perfil» de la web (datos, tipo de cuenta, seguridad,
  * direcciones, métodos de pago, baja) más «Mis listas» y cerrar sesión.
  */
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+
 @Component({
   selector: 'app-perfil',
   imports: [
+    BotonAlertasComponent,
     RouterLink,
     AvatarPerfilComponent,
     IonButton,
+    IonButtons,
     IonContent,
     IonHeader,
     IonIcon,

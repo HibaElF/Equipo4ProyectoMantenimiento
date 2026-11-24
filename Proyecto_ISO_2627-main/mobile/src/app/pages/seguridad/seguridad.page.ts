@@ -19,6 +19,7 @@ import {
   IonToolbar,
   ToastController
 } from '@ionic/angular';
+import { Capacitor } from '@capacitor/core';
 import { addIcons } from 'ionicons';
 import { closeOutline, copyOutline, keyOutline, mailOutline, openOutline, shieldCheckmark } from 'ionicons/icons';
 import { Perfil, secretoTotp } from '../../core/models/perfil';
@@ -79,6 +80,12 @@ export class SeguridadPage {
   readonly mensajeTotp = signal('');
   readonly errorTotp = signal('');
   codigo = '';
+
+  /**
+   * El enlace otpauth:// solo lo puede abrir una app de autenticación del propio móvil:
+   * en el navegador del ordenador no hace nada, así que allí solo se muestran la clave y el QR.
+   */
+  readonly esAppInstalada = Capacitor.isNativePlatform();
 
   // Tercer factor
   readonly guardandoCorreo = signal(false);
