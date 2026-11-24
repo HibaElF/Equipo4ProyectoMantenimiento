@@ -3,6 +3,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
+import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
+
 import {
   Alerta,
   AlertasResponse,
@@ -27,6 +29,7 @@ export class Alertas implements OnInit {
 
   private readonly servicioAlertas = inject(AlertasService);
   private readonly enrutador = inject(Router);
+  private readonly confirmacion = inject(ConfirmacionService);
 
   readonly alertas = signal<Alerta[]>([]);
   readonly noLeidas = signal(0);
@@ -100,6 +103,62 @@ export class Alertas implements OnInit {
       error: (fallo: HttpErrorResponse) => {
         this.operacion.set(null);
         this.gestionarError(fallo, 'No se pudieron marcar las alertas como leídas.');
+      }
+    });
+  }
+
+  borrar(alerta: Alerta): void {
+    if (this.operacion() !== null) {
+      return;
+    }
+
+    this.operacion.set(alerta.id);
+    this.error.set('');
+    this.exito.set('');
+
+    this.servicioAlertas.borrar(alerta.id).subscribe({
+      next: (respuesta) => {
+        this.actualizarAlertas(respuesta);
+        this.operacion.set(null);
+        this.exito.set('Alerta borrada.');
+      },
+
+      error: (fallo: HttpErrorResponse) => {
+        this.operacion.set(null);
+        this.gestionarError(fallo, 'No se pudo borrar la alerta.');
+      }
+    });
+  }
+
+  async borrarTodas(): Promise<void> {
+    if (this.operacion() !== null) {
+      return;
+    }
+
+    const confirmado = await this.confirmacion.confirmar({
+      titulo: 'Borrar alertas',
+      mensaje: '¿Borrar todas tus alertas? No se podrán recuperar.',
+      aceptar: 'Borrar todas',
+      peligro: true
+    });
+    if (!confirmado) {
+      return;
+    }
+
+    this.operacion.set('todas');
+    this.error.set('');
+    this.exito.set('');
+
+    this.servicioAlertas.borrarTodas().subscribe({
+      next: (respuesta) => {
+        this.actualizarAlertas(respuesta);
+        this.operacion.set(null);
+        this.exito.set('Se han borrado todas tus alertas.');
+      },
+
+      error: (fallo: HttpErrorResponse) => {
+        this.operacion.set(null);
+        this.gestionarError(fallo, 'No se pudieron borrar las alertas.');
       }
     });
   }

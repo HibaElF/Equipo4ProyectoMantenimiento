@@ -6,15 +6,26 @@
         Avisos de bajadas de precio y de disponibilidad de tus favoritos, y productos nuevos que te pueden interesar.
       </p>
     </div>
-    @if (noLeidas() > 0) {
-      <button
-        type="button"
-        class="boton-secundario"
-        [disabled]="operacion() !== null"
-        (click)="marcarTodasLeidas()">
-        Marcar todas como leídas
-      </button>
-    }
+    <div class="alertas-acciones-generales">
+      @if (noLeidas() > 0) {
+        <button
+          type="button"
+          class="boton-secundario"
+          [disabled]="operacion() !== null"
+          (click)="marcarTodasLeidas()">
+          Marcar todas como leídas
+        </button>
+      }
+      @if (alertas().length > 0) {
+        <button
+          type="button"
+          class="boton-peligro"
+          [disabled]="operacion() !== null"
+          (click)="borrarTodas()">
+          Borrar todas
+        </button>
+      }
+    </div>
   </div>
 
   @if (exito()) {
@@ -57,8 +68,8 @@
             <time class="alerta-fecha" [attr.datetime]="alerta.fecha">{{ alerta.fecha | date: 'dd/MM/yyyy HH:mm' }}</time>
           </div>
 
-          @if (!alerta.leida) {
-            <div class="alerta-acciones">
+          <div class="alerta-acciones">
+            @if (!alerta.leida) {
               <button
                 type="button"
                 class="boton-secundario"
@@ -66,8 +77,16 @@
                 (click)="marcarLeida(alerta)">
                 {{ operacion() === alerta.id ? 'Procesando...' : 'Marcar como leída' }}
               </button>
-            </div>
-          }
+            }
+            <button
+              type="button"
+              class="boton-peligro"
+              [disabled]="operacion() !== null"
+              [attr.aria-label]="'Borrar la alerta: ' + alerta.mensaje"
+              (click)="borrar(alerta)">
+              Borrar
+            </button>
+          </div>
         </li>
       }
     </ul>

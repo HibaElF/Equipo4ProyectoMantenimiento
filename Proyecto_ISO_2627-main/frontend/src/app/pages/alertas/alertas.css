@@ -1,5 +1,11 @@
 /* Alertas. La página, tarjetas, botones, avisos y chips vienen de ../tienda/tienda.css. */
 
+.alertas-acciones-generales {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+}
+
 .alertas-resumen {
   margin: 0 0 1rem;
   color: var(--color-text-secondary);

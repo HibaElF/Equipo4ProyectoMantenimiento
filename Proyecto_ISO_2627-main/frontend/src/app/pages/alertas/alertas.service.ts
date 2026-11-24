@@ -47,8 +47,16 @@ export class AlertasService {
     return this.modificar('PATCH', '/leidas');
   }
 
+  borrar(alertaId: string): Observable<AlertasResponse> {
+    return this.modificar('DELETE', `/${encodeURIComponent(alertaId)}`);
+  }
+
+  borrarTodas(): Observable<AlertasResponse> {
+    return this.modificar('DELETE', '');
+  }
+
   private modificar(
-    metodo: 'PATCH',
+    metodo: 'PATCH' | 'DELETE',
     ruta: string
   ): Observable<AlertasResponse> {
 

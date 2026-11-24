@@ -65,7 +65,7 @@ describe('Alertas', () => {
     http.expectOne(`${url}/a1/leida`).flush({ alertas: [{ ...alertaNueva, leida: true }], noLeidas: 0 });
 
     expect(texto()).toContain('0 alertas sin leer');
-    expect(fixture.nativeElement.querySelector('.alerta-acciones')).toBeNull();
+    expect(texto()).not.toContain('Marcar como leída');
   });
 
   it('si falla la carga muestra el error con «Reintentar»', () => {
