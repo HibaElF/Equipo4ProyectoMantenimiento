@@ -12,4 +12,8 @@ public interface AlertaDAO extends MongoRepository<Alerta, String> {
     List<Alerta> findByClienteIdOrderByFechaDesc(String clienteId);
 
     Optional<Alerta> findByIdAndClienteId(String id, String clienteId);
+
+    long deleteByIdAndClienteId(String id, String clienteId);
+
+    void deleteByClienteId(String clienteId);
 }

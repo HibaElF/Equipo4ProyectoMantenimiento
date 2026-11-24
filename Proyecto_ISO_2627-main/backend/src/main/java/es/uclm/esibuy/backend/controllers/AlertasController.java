@@ -1,6 +1,7 @@
 package es.uclm.esibuy.backend.controllers;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,5 +35,15 @@ public class AlertasController {
     @PatchMapping("/leidas")
     public AlertasResponse marcarTodasLeidas(Authentication authentication) {
         return alertaService.marcarTodasLeidas(authentication.getName());
+    }
+
+    @DeleteMapping("/{alertaId}")
+    public AlertasResponse borrar(Authentication authentication, @PathVariable String alertaId) {
+        return alertaService.borrar(authentication.getName(), alertaId);
+    }
+
+    @DeleteMapping
+    public AlertasResponse borrarTodas(Authentication authentication) {
+        return alertaService.borrarTodas(authentication.getName());
     }
 }

@@ -70,6 +70,20 @@ public class AlertaService {
         return construirRespuesta(cliente);
     }
 
+    public AlertasResponse borrar(String correoAutenticado, String alertaId) {
+        Cliente cliente = obtenerCliente(correoAutenticado);
+        if (alertaDAO.deleteByIdAndClienteId(alertaId, cliente.getId()) == 0) {
+            throw new AlertaNoEncontradaException();
+        }
+        return construirRespuesta(cliente);
+    }
+
+    public AlertasResponse borrarTodas(String correoAutenticado) {
+        Cliente cliente = obtenerCliente(correoAutenticado);
+        alertaDAO.deleteByClienteId(cliente.getId());
+        return construirRespuesta(cliente);
+    }
+
     // Se compara el precio que paga un cliente estándar (con el descuento normal).
     public void avisarSiBajaPrecio(Producto producto, Double precioAnterior) {
         Double precioNuevo = PrecioProducto.paraCliente(producto, false);
