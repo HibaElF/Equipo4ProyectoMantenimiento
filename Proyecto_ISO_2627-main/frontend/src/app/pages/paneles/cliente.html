@@ -25,6 +25,22 @@
   </output>
   }
 
+  @if (errorCategoriasFavoritas()) {
+  <p class="status-message error-message" role="alert">
+    {{ errorCategoriasFavoritas() }}
+  </p>
+
+  <button type="button" class="secondary-button" (click)="cargarCategoriasFavoritas()">
+    Reintentar categorías favoritas
+  </button>
+  }
+
+  @if (mensajeCategoriasFavoritas()) {
+  <output class="status-message" aria-live="polite">
+    {{ mensajeCategoriasFavoritas() }}
+  </output>
+  }
+
   <!-- =====================================================
        MENSAJE DE ERROR GENERAL
        ===================================================== -->
@@ -86,6 +102,7 @@
       Filtros{{ numeroFiltrosAvanzados() ? ' (' + numeroFiltrosAvanzados() + ')' : '' }}
     </button>
     <div id="filtros-avanzados" class="filtros-avanzados" [class.abiertos]="filtrosAbiertos()">
+    <div class="filtro-categoria">
     <label>
       Categoría
 
@@ -99,11 +116,31 @@
         track categoria
         ) {
         <option [value]="categoria">
-          {{ categoria }}
+          {{ esCategoriaFavorita(categoria) ? '★ ' + categoria + ' (favorita)' : categoria }}
         </option>
         }
       </select>
     </label>
+
+    <!-- Marca o quita como favorita la categoría seleccionada en el filtro. -->
+    <button
+      class="favorite-button category-favorite-button"
+      type="button"
+      [class.favorite-selected]="categoriaSeleccionadaEsFavorita()"
+      [disabled]="
+        idCategoriaSeleccionada() === null ||
+        !categoriasFavoritasDisponibles() ||
+        modificandoCategoriaFavorita()
+      "
+      [attr.aria-pressed]="categoriaSeleccionadaEsFavorita()"
+      [attr.aria-label]="etiquetaCategoriaFavorita()"
+      [attr.title]="etiquetaCategoriaFavorita()"
+      [attr.aria-busy]="modificandoCategoriaFavorita()"
+      (click)="cambiarCategoriaFavorita()"
+    >
+      <span aria-hidden="true">{{ categoriaSeleccionadaEsFavorita() ? '★' : '☆' }}</span>
+    </button>
+    </div>
 
 
     <label>

@@ -13,6 +13,10 @@ import {
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FavoritosService } from '../favoritos/favoritos.service';
+import {
+  CategoriaFavorita,
+  CategoriasFavoritasService
+} from '../favoritos/categorias-favoritas.service';
 import { ListasService, ResumenLista } from '../listas/listas.service';
 
 import { AuthService } from '../login/auth.service';
@@ -78,10 +82,66 @@ export class PanelCliente implements OnInit {
    */
   readonly cantidadDetalle = signal(1);
 
-  readonly categoriasDisponibles = computed(() =>
-    [...this.categoriasCatalogo()]
-      .sort((a, b) => a.localeCompare(b, 'es'))
-  );
+  // Categorías favoritas: el cliente las marca con la estrella del filtro de categoría.
+  private readonly servicioCategoriasFavoritas = inject(CategoriasFavoritasService);
+
+  readonly catalogoCategorias = signal<CategoriaFavorita[]>([]);
+  readonly categoriasFavoritas = signal<CategoriaFavorita[]>([]);
+  readonly categoriasFavoritasDisponibles = signal(false);
+  readonly modificandoCategoriaFavorita = signal(false);
+  readonly errorCategoriasFavoritas = signal('');
+  readonly mensajeCategoriasFavoritas = signal('');
+
+  // Las favoritas siempre aparecen en el desplegable, aunque ahora no haya productos suyos,
+  // para que el cliente pueda quitarlas.
+  readonly categoriasDisponibles = computed(() => {
+    const nombres = new Map<string, string>();
+
+    for (const nombre of [
+      ...this.categoriasCatalogo(),
+      ...this.categoriasFavoritas().map(categoria => categoria.nombre)
+    ]) {
+      const clave = this.claveCategoria(nombre);
+      if (!nombres.has(clave)) {
+        nombres.set(clave, nombre);
+      }
+    }
+
+    return [...nombres.values()]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+  });
+
+  // Id de la categoría seleccionada en el filtro; null si no hay ninguna o no se conoce.
+  readonly idCategoriaSeleccionada = computed(() => {
+    const seleccionada = this.categoriaFiltro();
+
+    if (!seleccionada) {
+      return null;
+    }
+
+    const clave = this.claveCategoria(seleccionada);
+
+    return [...this.categoriasFavoritas(), ...this.catalogoCategorias()]
+      .find(categoria => this.claveCategoria(categoria.nombre) === clave)
+      ?.id ?? null;
+  });
+
+  readonly categoriaSeleccionadaEsFavorita = computed(() => {
+    const id = this.idCategoriaSeleccionada();
+    return id !== null && this.categoriasFavoritas().some(categoria => categoria.id === id);
+  });
+
+  readonly etiquetaCategoriaFavorita = computed(() => {
+    const nombre = this.categoriaFiltro();
+
+    if (!nombre) {
+      return 'Selecciona una categoría para marcarla como favorita';
+    }
+
+    return this.categoriaSeleccionadaEsFavorita()
+      ? `Quitar ${nombre} de categorías favoritas`
+      : `Marcar ${nombre} como categoría favorita`;
+  });
 
   // A14: en móvil los filtros (salvo el buscador) se pliegan tras «Filtros (n)».
   readonly filtrosAbiertos = signal(false);
@@ -136,6 +196,7 @@ export class PanelCliente implements OnInit {
   ngOnInit(): void {
     this.cargarProductos({});
     this.cargarFavoritos();
+    this.cargarCategoriasFavoritas();
   }
 
 
@@ -759,6 +820,101 @@ export class PanelCliente implements OnInit {
         }
       }
     });
+  }
+
+  cargarCategoriasFavoritas(): void {
+    this.categoriasFavoritasDisponibles.set(false);
+    this.errorCategoriasFavoritas.set('');
+
+    this.servicioCategoriasFavoritas.consultarCategorias().subscribe({
+      next: categorias => this.catalogoCategorias.set(categorias),
+      // Sin catálogo solo se pueden gestionar las categorías que ya son favoritas.
+      error: () => this.catalogoCategorias.set([])
+    });
+
+    this.servicioCategoriasFavoritas.consultar().subscribe({
+      next: categorias => {
+        this.categoriasFavoritas.set(categorias);
+        this.categoriasFavoritasDisponibles.set(true);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.errorCategoriasFavoritas.set(
+          error.status === 0
+            ? 'No se pudo conectar con el servicio de categorías favoritas.'
+            : 'No se pudieron consultar tus categorías favoritas.'
+        );
+
+        if (error.status === 401) {
+          this.irALogin();
+        }
+      }
+    });
+  }
+
+  esCategoriaFavorita(nombre: string): boolean {
+    const clave = this.claveCategoria(nombre);
+    return this.categoriasFavoritas().some(
+      categoria => this.claveCategoria(categoria.nombre) === clave
+    );
+  }
+
+  cambiarCategoriaFavorita(): void {
+    const categoriaId = this.idCategoriaSeleccionada();
+    const nombre = this.categoriaFiltro();
+
+    if (
+      categoriaId === null ||
+      !this.categoriasFavoritasDisponibles() ||
+      this.modificandoCategoriaFavorita()
+    ) {
+      return;
+    }
+
+    const yaFavorita = this.categoriaSeleccionadaEsFavorita();
+
+    this.modificandoCategoriaFavorita.set(true);
+    this.errorCategoriasFavoritas.set('');
+    this.mensajeCategoriasFavoritas.set('');
+
+    const peticion = yaFavorita
+      ? this.servicioCategoriasFavoritas.quitar(categoriaId)
+      : this.servicioCategoriasFavoritas.anadir(categoriaId);
+
+    peticion.subscribe({
+      next: categorias => {
+        this.categoriasFavoritas.set(categorias);
+        this.modificandoCategoriaFavorita.set(false);
+        this.mensajeCategoriasFavoritas.set(
+          yaFavorita
+            ? `Categoría «${nombre}» eliminada de tus favoritas.`
+            : `Categoría «${nombre}» guardada en tus favoritas.`
+        );
+      },
+      error: (error: HttpErrorResponse) => {
+        this.modificandoCategoriaFavorita.set(false);
+
+        this.errorCategoriasFavoritas.set(this.mensajeErrorCategoriaFavorita(error.status));
+
+        if (error.status === 401) {
+          this.irALogin();
+        }
+      }
+    });
+  }
+
+  private mensajeErrorCategoriaFavorita(estado: number): string {
+    if (estado === 0) {
+      return 'No se pudo conectar con el servidor.';
+    }
+    if (estado === 404) {
+      return 'La categoría ya no existe.';
+    }
+    return 'No se pudo actualizar la categoría favorita.';
+  }
+
+  // Los productos guardan el nombre de la categoría sin distinguir mayúsculas.
+  private claveCategoria(nombre: string): string {
+    return nombre.trim().toLowerCase();
   }
 
   actualizarFiltroFavoritos(evento: Event): void {

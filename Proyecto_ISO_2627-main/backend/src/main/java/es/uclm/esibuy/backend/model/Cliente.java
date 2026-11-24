@@ -29,6 +29,9 @@ public class Cliente extends Usuario {
 
 	private List<Direccion> direcciones = new ArrayList<>();
 
+	// Identificadores de las categorías marcadas como favoritas por el cliente.
+	private List<String> categoriasFavoritas = new ArrayList<>();
+
 	public LocalDate getFechaNacimiento() {
 		return fechaNacimiento;
 	}
@@ -74,5 +77,24 @@ public class Cliente extends Usuario {
 	public boolean eliminarDireccion(String idDireccion) {
 		return direcciones != null
 				&& direcciones.removeIf(direccion -> idDireccion.equals(direccion.getId()));
+	}
+
+	@JsonIgnore
+	public List<String> getCategoriasFavoritas() {
+		return categoriasFavoritas == null ? List.of() : List.copyOf(categoriasFavoritas);
+	}
+
+	public boolean agregarCategoriaFavorita(String idCategoria) {
+		if (categoriasFavoritas == null) {
+			categoriasFavoritas = new ArrayList<>();
+		}
+		if (categoriasFavoritas.contains(idCategoria)) {
+			return false;
+		}
+		return categoriasFavoritas.add(idCategoria);
+	}
+
+	public boolean eliminarCategoriaFavorita(String idCategoria) {
+		return categoriasFavoritas != null && categoriasFavoritas.remove(idCategoria);
 	}
 }
