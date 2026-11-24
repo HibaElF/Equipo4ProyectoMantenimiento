@@ -61,6 +61,21 @@ describe('Cabecera (A18, A19)', () => {
     expect(raiz.querySelector('.marca')?.getAttribute('aria-label')).toBe('ESIBuy, inicio');
   });
 
+  it('el cliente ve en «Alertas» cuántas tiene sin leer', () => {
+    alertasMock.noLeidas.set(2);
+    const raiz = crear(sesionDe('CLIENTE'));
+
+    expect(alertasMock.consultar).toHaveBeenCalled();
+    expect(raiz.querySelector('nav a[href="/alertas"] .contador')?.textContent?.trim()).toBe('2');
+    alertasMock.noLeidas.set(0);
+  });
+
+  it('vendedor y administrador no consultan alertas', () => {
+    crear(sesionDe('VENDEDOR'));
+
+    expect(alertasMock.consultar).not.toHaveBeenCalled();
+  });
+
   it('vendedor y administrador no ven «Mis listas» (pendiente del PO)', () => {
     expect(ENLACES_POR_ROL.VENDEDOR.map((e) => e.ruta)).not.toContain('/listas');
     expect(ENLACES_POR_ROL.ADMIN.map((e) => e.ruta)).not.toContain('/listas');

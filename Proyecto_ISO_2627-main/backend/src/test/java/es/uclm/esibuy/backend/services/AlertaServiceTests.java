@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -14,12 +16,15 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
+import es.uclm.esibuy.backend.dto.AlertasResponse;
+import es.uclm.esibuy.backend.exceptions.AlertaNoEncontradaException;
 import es.uclm.esibuy.backend.model.Alerta;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
@@ -234,6 +239,74 @@ class AlertaServiceTests {
         alertaService.recomendarNuevoProducto(oculto);
 
         verifyNoInteractions(productoDAO, listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
+    }
+
+    private static final String CORREO = "cliente@test.com";
+
+    private Cliente clienteAutenticado() {
+        Cliente cliente = cliente("cliente-1", false);
+        cliente.setActivada(true);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
+        return cliente;
+    }
+
+    private static Alerta alerta(String id, boolean leida) {
+        Alerta alerta = new Alerta("cliente-1", TipoAlerta.BAJADA_PRECIO, PRODUCTO_ID, "Mensaje " + id,
+                Instant.parse("2026-11-24T10:00:00Z"));
+        ReflectionTestUtils.setField(alerta, "id", id);
+        if (leida) {
+            alerta.marcarLeida();
+        }
+        return alerta;
+    }
+
+    @Test
+    void consultarDevuelveLasAlertasDelClienteYCuantasQuedanSinLeer() {
+        clienteAutenticado();
+        when(alertaDAO.findByClienteIdOrderByFechaDesc("cliente-1"))
+                .thenReturn(List.of(alerta("a2", false), alerta("a1", true)));
+
+        AlertasResponse respuesta = alertaService.consultar(" Cliente@Test.com ");
+
+        assertEquals(List.of("a2", "a1"), respuesta.alertas().stream().map(a -> a.id()).toList());
+        assertEquals("Mensaje a2", respuesta.alertas().get(0).mensaje());
+        assertEquals(1, respuesta.noLeidas());
+    }
+
+    @Test
+    void marcarLeidaGuardaLaAlertaComoLeida() {
+        clienteAutenticado();
+        Alerta alerta = alerta("a1", false);
+        when(alertaDAO.findByIdAndClienteId("a1", "cliente-1")).thenReturn(Optional.of(alerta));
+        when(alertaDAO.findByClienteIdOrderByFechaDesc("cliente-1")).thenReturn(List.of(alerta));
+
+        AlertasResponse respuesta = alertaService.marcarLeida(CORREO, "a1");
+
+        assertTrue(alerta.isLeida());
+        verify(alertaDAO).save(alerta);
+        assertEquals(0, respuesta.noLeidas());
+    }
+
+    @Test
+    void marcarLeidaUnaAlertaQueNoExisteDevuelveNoEncontrada() {
+        clienteAutenticado();
+        when(alertaDAO.findByIdAndClienteId("otra", "cliente-1")).thenReturn(Optional.empty());
+
+        assertThrows(AlertaNoEncontradaException.class, () -> alertaService.marcarLeida(CORREO, "otra"));
+        verify(alertaDAO, never()).save(any());
+    }
+
+    @Test
+    void marcarTodasLeidasMarcaTodasLasAlertasDelCliente() {
+        clienteAutenticado();
+        List<Alerta> alertas = List.of(alerta("a1", false), alerta("a2", false));
+        when(alertaDAO.findByClienteIdOrderByFechaDesc("cliente-1")).thenReturn(alertas);
+
+        AlertasResponse respuesta = alertaService.marcarTodasLeidas(CORREO);
+
+        assertTrue(alertas.stream().allMatch(Alerta::isLeida));
+        verify(alertaDAO).saveAll(alertas);
+        assertEquals(0, respuesta.noLeidas());
     }
 
     @Test
