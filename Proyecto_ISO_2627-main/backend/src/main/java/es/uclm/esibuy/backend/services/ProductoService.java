@@ -42,6 +42,7 @@ public class ProductoService {
     private final ProductoImagenService productoImagenService;
     private final ClienteDAO clienteDAO;
     private final PedidoDAO pedidoDAO;
+    private final AlertaService alertaService;
 
     public ProductoService(
             ProductoDAO productoDAO,
@@ -50,7 +51,8 @@ public class ProductoService {
             Validator validar,
             ProductoImagenService productoImagenService,
             ClienteDAO clienteDAO,
-            PedidoDAO pedidoDAO) {
+            PedidoDAO pedidoDAO,
+            AlertaService alertaService) {
         this.productoDAO = productoDAO;
         this.vendedorDAO = vendedorDAO;
         this.categoriaDAO = categoriaDAO;
@@ -58,6 +60,7 @@ public class ProductoService {
         this.productoImagenService = productoImagenService;
         this.clienteDAO = clienteDAO;
         this.pedidoDAO = pedidoDAO;
+        this.alertaService = alertaService;
     }
 
     public List<ConsultarProductosResponse> consultarProductosPropios(String emailVendedor) {
@@ -234,6 +237,7 @@ public class ProductoService {
 
         int stockActual = producto.getStock();
         int stockNuevo = stockAGuardar(request, stockActual);
+        Double precioAnterior = PrecioProducto.paraCliente(producto, false);
 
         // Solo se actualizan los campos permitidos; el vendedor y la visibilidad se conservan.
         ValidacionProducto.asignarDatos(producto, request, nombreCategoria);
@@ -266,6 +270,7 @@ public class ProductoService {
         if (imagenNueva != null) {
             productoImagenService.eliminar(imagenAnterior);
         }
+        alertaService.avisarSiBajaPrecio(productoModificado, precioAnterior);
         return aConsultarProductosResponse(productoModificado);
     }
 
