@@ -189,6 +189,7 @@ class ProductoServiceTests {
         assertEquals(5, resultado.descuento());
         assertEquals(10, resultado.descuentoPremium());
         verify(productoDAO).save(any(Producto.class));
+        verify(alertaService).recomendarNuevoProducto(guardado);
     }
 
     @Test

@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,10 +17,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
+import es.uclm.esibuy.backend.dao.PedidoDAO;
+import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.model.Alerta;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
+import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.TipoAlerta;
 import es.uclm.esibuy.backend.model.Usuario;
@@ -38,6 +42,12 @@ class AlertaServiceTests {
 
     @Mock
     private UsuarioDAO usuarioDAO;
+
+    @Mock
+    private ProductoDAO productoDAO;
+
+    @Mock
+    private PedidoDAO pedidoDAO;
 
     @InjectMocks
     private AlertaService alertaService;
@@ -175,6 +185,55 @@ class AlertaServiceTests {
         alertaService.avisarSiVuelveADisponible(desactivado, false);
 
         verifyNoInteractions(listaProductosDAO, usuarioDAO, alertaDAO);
+    }
+
+    private void otroProductoDeLaCategoria(String id) {
+        Producto otro = producto(10.0, 0);
+        otro.setId(id);
+        when(productoDAO.findByCategoriaIgnoreCase("Informática")).thenReturn(List.of(producto(15.0, 0), otro));
+    }
+
+    private static Pedido pedidoDe(String clienteId) {
+        Pedido pedido = mock(Pedido.class);
+        when(pedido.getClienteId()).thenReturn(clienteId);
+        return pedido;
+    }
+
+    @Test
+    void unProductoNuevoSeRecomiendaAQuienTieneOHaCompradoProductosDeSuCategoria() {
+        otroProductoDeLaCategoria("raton");
+        ListaProductos lista = ListaProductos.crearLista("cliente-lista", "Regalos");
+        when(listaProductosDAO.findConAlgunProducto(List.of("raton"))).thenReturn(List.of(lista));
+        List<Pedido> pedidos = List.of(pedidoDe("cliente-pedido"), pedidoDe("cliente-lista"), pedidoDe(null));
+        when(pedidoDAO.findConAlgunProducto(List.of("raton"))).thenReturn(pedidos);
+        when(usuarioDAO.findAllById(Set.of("cliente-lista", "cliente-pedido")))
+                .thenReturn(List.of(cliente("cliente-lista", false), cliente("cliente-pedido", false)));
+
+        alertaService.recomendarNuevoProducto(producto(15.0, 0));
+
+        List<Alerta> alertas = alertasGuardadas();
+        assertEquals(2, alertas.size());
+        assertEquals(TipoAlerta.RECOMENDACION, alertas.get(0).getTipo());
+        assertEquals("Nuevo producto en Informática que te puede interesar: «Teclado».", alertas.get(0).getMensaje());
+    }
+
+    @Test
+    void siNoHayOtrosProductosDeLaCategoriaNoSeRecomienda() {
+        when(productoDAO.findByCategoriaIgnoreCase("Informática")).thenReturn(List.of(producto(15.0, 0)));
+
+        alertaService.recomendarNuevoProducto(producto(15.0, 0));
+
+        verifyNoInteractions(listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
+    }
+
+    @Test
+    void unProductoNuevoNoDisponibleNoSeRecomienda() {
+        Producto oculto = producto(15.0, 0);
+        oculto.setEsVisible(false);
+
+        alertaService.recomendarNuevoProducto(oculto);
+
+        verifyNoInteractions(productoDAO, listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
     }
 
     @Test
