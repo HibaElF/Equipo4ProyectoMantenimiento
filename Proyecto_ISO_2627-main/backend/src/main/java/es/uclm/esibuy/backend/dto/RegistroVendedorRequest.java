@@ -1,7 +1,9 @@
 package es.uclm.esibuy.backend.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import es.uclm.esibuy.backend.validation.ImagenPerfilHttps;
@@ -16,7 +18,8 @@ public record RegistroVendedorRequest(
 		@NotBlank String categoriaId,
 		@NotBlank @Size(max = PatronesEntrada.MAX_NOMBRE_COMERCIAL) @Pattern(regexp = PatronesEntrada.SIN_CARACTERES_DE_CONTROL, message = PatronesEntrada.MENSAJE_SIN_CARACTERES_DE_CONTROL) String nombreComercial,
 		@Pattern(regexp = PatronesEntrada.TELEFONO, message = PatronesEntrada.MENSAJE_TELEFONO) @Size(max = 20) String telefono,
-		@ImagenPerfilHttps String imagenPerfil) {
+		@ImagenPerfilHttps String imagenPerfil,
+		@NotNull(message = "Debes aceptar la política de privacidad.") @AssertTrue(message = "Debes aceptar la política de privacidad.") Boolean aceptaPolitica) {
 
 	public RegistroVendedorRequest {
 		if (email != null) {

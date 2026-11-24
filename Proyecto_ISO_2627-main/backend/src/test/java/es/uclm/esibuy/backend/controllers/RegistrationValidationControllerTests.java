@@ -64,7 +64,8 @@ class RegistrationValidationControllerTests {
 				  "contrasena": "%s",
 				  "telefono": "abc",
 				  "imagenPerfil": "http://cdn.example.com/ada.png",
-				  "esPremium": false
+				  "esPremium": false,
+				  "aceptaPolitica": true
 				}
 				""".formatted("a".repeat(101), "a".repeat(129));
 
@@ -94,7 +95,8 @@ class RegistrationValidationControllerTests {
 				  "categoriaId": "cat-1",
 				  "nombreComercial": "UrbanStyle",
 				  "telefono": "12",
-				  "imagenPerfil": "perfil.png"
+				  "imagenPerfil": "perfil.png",
+				  "aceptaPolitica": true
 				}
 				""";
 
@@ -108,6 +110,29 @@ class RegistrationValidationControllerTests {
 		verifyNoInteractions(vendedorService);
 	}
 
+	// T-24: el registro público exige aceptar la política de privacidad (cliente y vendedor).
+	@Test
+	void elRegistroSinAceptarLaPoliticaDevuelve400ConErrorPorCampo() throws Exception {
+		String cliente = """
+				{"nombre": "Ada", "apellidos": "Lovelace", "fechaNacimiento": "2000-01-01", "dniNif": "12345678A",
+				 "email": "ada@example.com", "contrasena": "ClaveSegura9!", "esPremium": false}
+				""";
+		String vendedor = """
+				{"nombre": "Ada", "apellidos": "Lovelace", "dniNif": "12345678A", "email": "ada@example.com",
+				 "contrasena": "ClaveSegura9!", "categoriaId": "cat-1", "nombreComercial": "Ada Shop",
+				 "aceptaPolitica": false}
+				""";
+
+		mockMvc.perform(post("/cliente/register").contentType(MediaType.APPLICATION_JSON).content(cliente))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errores.aceptaPolitica[0]").value("Debes aceptar la política de privacidad."));
+		mockMvc.perform(post("/vendedor/register").contentType(MediaType.APPLICATION_JSON).content(vendedor))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.errores.aceptaPolitica[0]").value("Debes aceptar la política de privacidad."));
+
+		verifyNoInteractions(clienteService, vendedorService);
+	}
+
 	@Test
 	void returnsAllValidationErrorsForAnUnderageCustomerRequest() throws Exception {
 		String underageDate = LocalDate.now().minusYears(17).toString();
@@ -119,7 +144,8 @@ class RegistrationValidationControllerTests {
 				  "dniNif": "12345678A",
 				  "email": "invalid-email",
 				  "contrasena": "ClaveSegura9!",
-				  "esPremium": false
+				  "esPremium": false,
+				  "aceptaPolitica": true
 				}
 				""".formatted(underageDate);
 
@@ -150,7 +176,8 @@ class RegistrationValidationControllerTests {
 				  "dniNif": "12345678Z",
 				  "email": "ada@example.com",
 				  "contrasena": "ClaveSegura9!",
-				  "esPremium": false
+				  "esPremium": false,
+				  "aceptaPolitica": true
 				}
 				""";
 
@@ -188,7 +215,8 @@ class RegistrationValidationControllerTests {
 				  "email": "ada@example.com",
 				  "contrasena": "ClaveSegura9!",
 				  "categoriaId": "categoria-1",
-				  "nombreComercial": "Ada Shop"
+				  "nombreComercial": "Ada Shop",
+				  "aceptaPolitica": true
 				}
 				""";
 

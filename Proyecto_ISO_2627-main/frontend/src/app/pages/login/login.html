@@ -140,6 +140,10 @@
             ¿No tienes cuenta?
             <a class="enlace" routerLink="/registro">Regístrate</a>
           </p>
+          <p class="acceso-pie">
+            <a class="enlace" routerLink="/politica-privacidad">Política de privacidad</a> ·
+            <a class="enlace" routerLink="/aviso-legal">Aviso legal</a>
+          </p>
         </form>
       } @else if (requiereVerificacionEmail()) {
         <form (ngSubmit)="onSubmit()" class="acceso-formulario" novalidate>

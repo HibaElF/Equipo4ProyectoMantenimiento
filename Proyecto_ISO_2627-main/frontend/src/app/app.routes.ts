@@ -4,6 +4,8 @@ import { Login } from './pages/login/login';
 import { Register } from './pages/register/register';
 import { RecuperacionContrasena } from './pages/recuperacion-contrasena/recuperacion-contrasena';
 import { VerificarCorreo } from './pages/verificar-correo/verificar-correo';
+import { PoliticaPrivacidad } from './pages/legal/politica-privacidad';
+import { AvisoLegal } from './pages/legal/aviso-legal';
 import { PanelAdministrador } from './pages/paneles/administrador';
 import { PanelCliente } from './pages/paneles/cliente';
 import { PanelVendedor } from './pages/paneles/vendedor';
@@ -56,6 +58,18 @@ export const routes: Routes = [
     path: 'verificar-correo',
     title: 'Verificar correo · ESIBuy',
     component: VerificarCorreo,
+    data: { cabecera: false }
+  },
+  {
+    path: 'politica-privacidad',
+    title: 'Política de privacidad · ESIBuy',
+    component: PoliticaPrivacidad,
+    data: { cabecera: false }
+  },
+  {
+    path: 'aviso-legal',
+    title: 'Aviso legal · ESIBuy',
+    component: AvisoLegal,
     data: { cabecera: false }
   },
   {

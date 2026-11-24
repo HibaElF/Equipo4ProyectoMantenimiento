@@ -3,6 +3,7 @@ package es.uclm.esibuy.backend.services;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -22,6 +23,7 @@ import es.uclm.esibuy.backend.exceptions.InvalidRegistrationException;
 import es.uclm.esibuy.backend.exceptions.PagoPremiumException;
 import es.uclm.esibuy.backend.exceptions.UsuarioNoEncontradoException;
 import es.uclm.esibuy.backend.model.Cliente;
+import es.uclm.esibuy.backend.model.PoliticaPrivacidad;
 import es.uclm.esibuy.backend.model.Direccion;
 import es.uclm.esibuy.backend.model.MetodoPago;
 import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
@@ -118,6 +120,7 @@ public class ClienteService {
                 cliente.setBloqueada(false);
                 cliente.setActivada(false);
                 cliente.setCorreoVerificado(false);
+                cliente.registrarAceptacionPolitica(PoliticaPrivacidad.VERSION_ACTUAL, Instant.now());
                 cliente.registrarContrasenaHash(soporteRegistro.codificarContrasena(request.contrasena()));
 
                 Cliente guardado = soporteRegistro.guardarRegistroPublico(

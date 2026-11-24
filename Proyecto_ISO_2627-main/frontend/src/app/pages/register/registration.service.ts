@@ -15,6 +15,7 @@ export interface ClienteRegistrationRequest {
   telefono?: string;
   imagenPerfil?: string;
   esPremium: boolean;
+  aceptaPolitica: boolean;
 }
 
 export interface VendedorRegistrationRequest {
@@ -27,6 +28,7 @@ export interface VendedorRegistrationRequest {
   nombreComercial: string;
   telefono?: string;
   imagenPerfil?: string;
+  aceptaPolitica: boolean;
 }
 
 export interface CategoriaRegistro {

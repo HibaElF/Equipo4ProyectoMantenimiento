@@ -12,6 +12,8 @@ public class SpaController {
             "/registro",
             "/recuperar-contrasena",
             "/verificar-correo",
+            "/politica-privacidad",
+            "/aviso-legal",
             "/perfil",
             "/listas",
             "/perfil/direcciones",

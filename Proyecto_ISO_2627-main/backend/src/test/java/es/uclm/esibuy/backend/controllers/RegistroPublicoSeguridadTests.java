@@ -41,11 +41,11 @@ class RegistroPublicoSeguridadTests {
 
     private static final String CLIENTE = """
             {"nombre":"Ada","apellidos":"Lovelace","fechaNacimiento":"1990-12-10","dniNif":"12345678Z",
-             "email":"ada@example.com","contrasena":"ClaveSegura9!","esPremium":false}
+             "email":"ada@example.com","contrasena":"ClaveSegura9!","esPremium":false,"aceptaPolitica":true}
             """;
     private static final String VENDEDOR = """
             {"nombre":"Luis","apellidos":"Martín","dniNif":"12345678Z","email":"luis@example.com",
-             "contrasena":"ClaveSegura9!","categoriaId":"cat-1","nombreComercial":"UrbanStyle"}
+             "contrasena":"ClaveSegura9!","categoriaId":"cat-1","nombreComercial":"UrbanStyle","aceptaPolitica":true}
             """;
 
     @Autowired

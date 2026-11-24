@@ -1,0 +1,93 @@
+<main class="legal">
+  <a class="marca" routerLink="/" aria-label="ESIBuy, inicio">ESI<span>Buy</span></a>
+
+  <h1>Política de privacidad</h1>
+  <p class="version">Versión {{ version }} · Última actualización: [COMPLETAR: fecha de publicación]</p>
+
+  <p class="aviso-plantilla">
+    Los datos marcados como [COMPLETAR: …] están pendientes de que el responsable los aporte.
+  </p>
+
+  <h2>1. Responsable del tratamiento</h2>
+  <ul>
+    <li>Responsable: [COMPLETAR: nombre o razón social]</li>
+    <li>Identificación fiscal: [COMPLETAR: NIF/CIF]</li>
+    <li>Domicilio: [COMPLETAR: dirección]</li>
+    <li>Contacto para cuestiones de privacidad: [COMPLETAR: correo de contacto]</li>
+  </ul>
+
+  <h2>2. Datos que tratamos</h2>
+  <div class="tabla">
+    <table>
+      <thead>
+        <tr><th>Categoría</th><th>Datos</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Identificación y contacto</td><td>Nombre, apellidos, correo electrónico, teléfono (opcional) e imagen de perfil (opcional)</td></tr>
+        <tr><td>Identificadores</td><td>DNI/NIF (se guarda cifrado) y fecha de nacimiento (solo clientes)</td></tr>
+        <tr><td>Cuenta y seguridad</td><td>Contraseña (solo se guarda un hash), estado de la cuenta, factores de autenticación y versión y fecha de aceptación de esta política</td></tr>
+        <tr><td>Actividad</td><td>Carrito, favoritos y listas, direcciones, métodos de pago (simulados), pedidos y valoraciones</td></tr>
+        <tr><td>Vendedores</td><td>Nombre comercial y categoría</td></tr>
+        <tr><td>Registros de seguridad</td><td>Eventos de seguridad con identificadores seudonimizados, dirección IP, navegador e identificador de correlación</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    No utilizamos cookies de publicidad ni de análisis. Solo usamos cookies técnicas imprescindibles: la sesión
+    y la protección frente a CSRF.
+  </p>
+
+  <h2>3. Finalidades y base jurídica</h2>
+  <ul>
+    <li>Crear y gestionar la cuenta y prestar el servicio: ejecución del contrato [COMPLETAR: confirmar].</li>
+    <li>Seguridad de la cuenta y del sistema: interés legítimo [COMPLETAR: confirmar y documentar la ponderación].</li>
+    <li>Correos de servicio (verificación del correo, recuperación de contraseña y avisos de seguridad): ejecución del contrato e interés legítimo [COMPLETAR: confirmar].</li>
+    <li>Aceptación de esta política en el registro: consentimiento informado y expreso.</li>
+    <li>Obligaciones legales: [COMPLETAR: si procede].</li>
+  </ul>
+
+  <h2>4. Destinatarios y encargados del tratamiento</h2>
+  <p>Los datos no se venden ni se ceden con fines comerciales. Para prestar el servicio intervienen:</p>
+  <ul>
+    <li><strong>MongoDB Atlas</strong>: base de datos del servicio.</li>
+    <li><strong>Render</strong>: alojamiento de la aplicación.</li>
+    <li><strong>Brevo</strong>: envío de correo transaccional.</li>
+    <li><strong>VirusTotal</strong> (solo si está activado): análisis antivirus de las imágenes de producto subidas por los vendedores.</li>
+  </ul>
+  <p>[COMPLETAR: ubicación de los proveedores, transferencias internacionales y garantías aplicables]</p>
+
+  <h2>5. Plazos de conservación</h2>
+  <ul>
+    <li>Datos de la cuenta: mientras la cuenta esté activa; al darte de baja se eliminan la cuenta y los datos asociados.</li>
+    <li>Registros de seguridad: 365 días.</li>
+    <li>Enlaces de recuperación de contraseña y de verificación del correo: caducan y se eliminan automáticamente.</li>
+    <li>Sesiones: 30 minutos de inactividad y 8 horas como máximo.</li>
+    <li>Pedidos y datos contables: [COMPLETAR: plazo legal y tratamiento tras la baja].</li>
+  </ul>
+
+  <h2>6. Derechos</h2>
+  <p>
+    Puedes ejercer los derechos de acceso, rectificación, supresión, oposición, limitación del tratamiento y
+    portabilidad escribiendo a [COMPLETAR: correo de contacto]. Puedes darte de baja desde tu perfil. Si
+    consideras que tus derechos no se han atendido, puedes reclamar ante la Agencia Española de Protección de
+    Datos (www.aepd.es).
+  </p>
+
+  <h2>7. Seguridad</h2>
+  <p>
+    Aplicamos medidas técnicas y organizativas proporcionales: contraseñas con hash y pepper, cifrado de DNI/NIF
+    y teléfono, segundo factor de autenticación para vendedores y administradores, límites de intentos, registros
+    de seguridad y cabeceras de seguridad en la web.
+  </p>
+
+  <h2>8. Cambios en esta política</h2>
+  <p>
+    Si cambia de forma sustancial, se publicará una nueva versión con su fecha. La versión aceptada por cada
+    usuario al registrarse queda registrada junto con la fecha de aceptación.
+  </p>
+
+  <p class="volver">
+    <a routerLink="/aviso-legal">Aviso legal</a> ·
+    <a routerLink="/">Volver al inicio</a>
+  </p>
+</main>

@@ -37,7 +37,7 @@
 | 6 | T-33 | Recodificar las imágenes subidas y eliminar metadatos | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1508 pruebas, 0 fallos, 89,97 %. Frontend sin cambios. `ProductoImagenService` recodifica con `ImageIO` antes de VirusTotal y del almacenamiento (disco y Mongo); límites 4000 px por lado y 10 s; GIF animado rechazado. Pruebas con imágenes reales generadas con `BufferedImage`. |
 | 6 | T-35 | Activar el antivirus y reforzar las cabeceras de entrega de imágenes (opcional) | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Cabeceras (`nosniff`, CSP `default-src 'none'; sandbox`, `Content-Disposition`) en modo local y `mongo` (`CabecerasEntregaImagen`); la CSP de la imagen prevalece sobre la global. VirusTotal documentado (cuota, 60 s, fail-closed) y sin activar: pendiente manual. |
 | 6 | T-34 | URLs firmadas con caducidad para las imágenes (opcional) | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1527 pruebas, 0 fallos, 90,05 %. `FirmaImagenService` (HMAC-SHA256, clave `IMAGENES_FIRMA_KEY` obligatoria, 2 h redondeadas a la hora), `FiltroImagenFirmada` (403 sin firma o inválida, 410 caducada) y URL firmada en catálogo, vendedor, carrito, favoritos y listas. Frontend sin cambios. |
-| 7 | T-24 | RGPD: política de privacidad, aviso legal y consentimiento | Baja | Pendiente | | | |
+| 7 | T-24 | RGPD: política de privacidad, aviso legal y consentimiento | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1531 pruebas, 0 fallos, 90,07 %. Frontend: 569 pruebas, 79,51 %, build OK. Documentos en `documents/rgpd/` (plantillas con `[COMPLETAR]`), páginas `/politica-privacidad` y `/aviso-legal`, casilla obligatoria en el registro y `aceptaPolitica` en los DTO con versión y fecha guardadas. |
 | 7 | T-25 | RGPD: exportación de los datos personales del usuario | Baja | Pendiente | | | |
 | 7 | T-27 | Incentivar la activación del segundo factor en los clientes | Baja | Pendiente | | | |
 | 8 | T-26 | Documentar la correspondencia con CCN-CERT BP/28 | Media | Pendiente | | | |
@@ -60,6 +60,7 @@
 | 2026-11-23 | T-33 | GIF animado: se rechaza («El GIF no puede ser animado.»); el GIF estático se recodifica. Límites fijos en el servicio (4000 px por lado, 16 Mpx, 10 s); JPEG a RGB con calidad 0,85 (un JPEG CMYK se rechaza). |
 | 2026-11-23 | T-35 | VirusTotal solo se documenta (cuota, tiempos y compromiso del `fail-closed`); su activación en Render queda como pendiente manual y el valor por defecto sigue en `false`. |
 | 2026-11-23 | T-34 | Se implementa (opcional); caducidad de 2 h redondeada a la hora; se conservan los constructores antiguos de `ProductoService`, `CarritoService`, `FavoritoService` y `ListaProductosService` (con servicio sin firma) y se añade el nuevo con la firma, que es el que usa Spring. |
+| 2026-11-23 | T-24 | Datos del responsable y del contacto como `[COMPLETAR]` (no se inventan); versión inicial 1.0, como constante `PoliticaPrivacidad.VERSION_ACTUAL` (no como propiedad, para no cambiar constructores); `aceptaPolitica` es `Boolean` con `@NotNull @AssertTrue` para que su ausencia dé un error por campo y no un 400 vacío. |
 | 2026-11-20 | T-09 | No se avisa a los administradores; solo al titular de la cuenta, como máximo un correo por hora. |
 | 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
 
@@ -70,6 +71,7 @@ El token de sonar se tiene que quedar en el propierties por orden del profesor
 | Tarea | Acción | Hecha |
 |---|---|---|
 | T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
+| T-24 | Completar los `[COMPLETAR]` de `documents/rgpd/` y de las páginas `politica-privacidad.html` y `aviso-legal.html`, y que el equipo revise los textos (criterio «el equipo ha revisado los textos») | No |
 | T-34 | **Obligatorio:** crear `IMAGENES_FIRMA_KEY` (Base64 de 32 bytes, p. ej. `openssl rand -base64 32`) en Render y en el `.env` local; sin ella el backend no arranca. Comprobar que las imágenes se ven en catálogo, vendedor, carrito y favoritos | No |
 | T-18 | Opcional: definir `LOG_FORMAT` en Render (por defecto `ecs`, JSON) y comprobar `X-Correlation-Id` y la línea JSON con la app arrancada | No |
 | T-21 | Con la app completa (Docker/Render): abrir la consola del navegador y navegar por login, catálogo, imágenes de producto, perfil con imagen externa y activación del QR del TOTP; no debe haber violaciones de la CSP. Si las hay, poner `APP_SECURITY_CSP_REPORT_ONLY=true` | No |

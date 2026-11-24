@@ -40,6 +40,11 @@ public abstract class Usuario {
 	// consideran verificadas; solo los registros públicos nuevos parten de false.
 	private Boolean correoVerificado;
 
+	// T-24: política de privacidad aceptada en el registro público (null en las cuentas anteriores).
+	private String versionPoliticaAceptada;
+
+	private Instant fechaAceptacionPolitica;
+
 	// Fecha del último cambio de contraseña (null en las cuentas anteriores a la caducidad).
 	private Instant contrasenaCambiadaEn;
 
@@ -113,6 +118,19 @@ public abstract class Usuario {
 	@JsonIgnore
 	public List<String> getHistorialContrasenasHash() {
 		return historialContrasenasHash == null ? List.of() : List.copyOf(historialContrasenasHash);
+	}
+
+	public String getVersionPoliticaAceptada() {
+		return versionPoliticaAceptada;
+	}
+
+	public Instant getFechaAceptacionPolitica() {
+		return fechaAceptacionPolitica;
+	}
+
+	public void registrarAceptacionPolitica(String version, Instant fecha) {
+		this.versionPoliticaAceptada = version;
+		this.fechaAceptacionPolitica = fecha;
 	}
 
 	public Instant getContrasenaCambiadaEn() {

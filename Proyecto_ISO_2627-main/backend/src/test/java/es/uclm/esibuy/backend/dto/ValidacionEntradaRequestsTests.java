@@ -46,7 +46,7 @@ class ValidacionEntradaRequestsTests {
     private static RegistroClienteRequest cliente(String nombre, String apellidos, String email,
             String contrasena, String telefono, String imagen) {
         return new RegistroClienteRequest(nombre, apellidos, LocalDate.of(2000, 1, 1), "12345678Z",
-                email, contrasena, telefono, imagen, false);
+                email, contrasena, telefono, imagen, false, true);
     }
 
     private static RegistroClienteRequest clienteValido() {
@@ -56,12 +56,24 @@ class ValidacionEntradaRequestsTests {
 
     private static RegistroVendedorRequest vendedor(String nombre, String comercial, String telefono, String imagen) {
         return new RegistroVendedorRequest(nombre, "López", "12345678Z", "luis@example.com",
-                "ClaveSegura9!", "cat-1", comercial, telefono, imagen);
+                "ClaveSegura9!", "cat-1", comercial, telefono, imagen, true);
     }
 
     private static RegistroAdministradorRequest admin(String sede, String imagen) {
         return new RegistroAdministradorRequest("Ada", "Admin", "ada@example.com", "ClaveSegura9!",
                 sede, null, imagen);
+    }
+
+    // T-24: sin aceptar la política de privacidad la petición no es válida.
+    @Test
+    void elRegistroExigeAceptarLaPoliticaDePrivacidad() {
+        RegistroClienteRequest cliente = new RegistroClienteRequest("Ana", "García", LocalDate.of(2000, 1, 1),
+                "12345678Z", "ana@example.com", "ClaveSegura9!", null, null, false, false);
+        RegistroVendedorRequest vendedor = new RegistroVendedorRequest("Luis", "López", "12345678Z",
+                "luis@example.com", "ClaveSegura9!", "cat-1", "UrbanStyle", null, null, false);
+
+        assertEquals(Set.of("aceptaPolitica"), camposInvalidos(cliente));
+        assertEquals(Set.of("aceptaPolitica"), camposInvalidos(vendedor));
     }
 
     @Test
@@ -167,7 +179,7 @@ class ValidacionEntradaRequestsTests {
                         "a".repeat(250) + "@e.es", "a".repeat(129), null, null, null)));
         assertEquals(Set.of("email", "contrasena"),
                 camposInvalidos(new RegistroVendedorRequest("Luis", "López", "12345678Z",
-                        "a".repeat(250) + "@e.es", "a".repeat(129), "cat-1", "UrbanStyle", null, null)));
+                        "a".repeat(250) + "@e.es", "a".repeat(129), "cat-1", "UrbanStyle", null, null, true)));
     }
 
     @Test

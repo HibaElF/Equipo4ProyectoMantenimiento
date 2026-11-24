@@ -3,6 +3,7 @@ package es.uclm.esibuy.backend.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -145,7 +146,7 @@ class RegistrationSecurityTests {
                     password,
                     "+34 600 123 456",
                     null,
-                    false);
+                    false, true);
 
             assertThrows(InvalidRegistrationException.class, () -> service.registrar(request));
         }
@@ -169,7 +170,7 @@ class RegistrationSecurityTests {
                 "000000000000000000000000",
                 "Tienda Segura",
                 "+34 600 123 456",
-                null);
+                null, true);
 
         assertThrows(InvalidRegistrationException.class, () -> service.registrar(request));
         verifyNoInteractions(vendedorDAO, categoriaDAO, usuarioDAO);
@@ -228,7 +229,7 @@ class RegistrationSecurityTests {
                 rawPassword,
                 null,
                 null,
-                false);
+                false, true);
 
         var response = service.registrar(request);
 
@@ -260,6 +261,10 @@ class RegistrationSecurityTests {
         assertFalse(savedCustomer.getValue().isActivada());
         // T-12: la cuenta nueva parte sin el correo verificado y se envía el enlace de confirmación.
         assertFalse(savedCustomer.getValue().isCorreoVerificado());
+        // T-24: se guardan la versión de la política aceptada y la fecha de aceptación.
+        assertEquals(es.uclm.esibuy.backend.model.PoliticaPrivacidad.VERSION_ACTUAL,
+                savedCustomer.getValue().getVersionPoliticaAceptada());
+        assertNotNull(savedCustomer.getValue().getFechaAceptacionPolitica());
         verify(verificacionCorreoService).iniciar(savedCustomer.getValue());
     }
 
@@ -279,7 +284,7 @@ class RegistrationSecurityTests {
                 "ClaveSegura9!",
                 null,
                 null,
-                false);
+                false, true);
 
         assertThrows(
                 CorreoYaRegistradoException.class,
@@ -312,7 +317,7 @@ class RegistrationSecurityTests {
                 categoriaId,
                 "Tienda Segura",
                 null,
-                null);
+                null, true);
 
         assertThrows(
                 CorreoYaRegistradoException.class,
@@ -338,7 +343,7 @@ class RegistrationSecurityTests {
                 "ClaveSegura9!",
                 null,
                 null,
-                false);
+                false, true);
 
         assertThrows(
                 CorreoYaRegistradoException.class,
@@ -385,7 +390,7 @@ class RegistrationSecurityTests {
                 categoriaId,
                 "Tienda Segura",
                 null,
-                null);
+                null, true);
 
         var response = service.registrar(request);
 
@@ -396,6 +401,11 @@ class RegistrationSecurityTests {
                 ArgumentCaptor.forClass(Vendedor.class);
 
         verify(vendedorDAO).save(savedSeller.capture());
+
+        // T-24: se guardan la versión de la política aceptada y la fecha de aceptación.
+        assertEquals(es.uclm.esibuy.backend.model.PoliticaPrivacidad.VERSION_ACTUAL,
+                savedSeller.getValue().getVersionPoliticaAceptada());
+        assertNotNull(savedSeller.getValue().getFechaAceptacionPolitica());
 
         // Debe almacenarse el identificador, no el nombre.
         assertEquals(
@@ -453,7 +463,7 @@ class RegistrationSecurityTests {
                 categoriaId,
                 "Tienda Segura",
                 null,
-                null);
+                null, true);
 
         // Mockito devuelve false por defecto cuando no hemos configurado
         // una respuesta booleana. Así simulamos una categoría inexistente.
@@ -480,7 +490,7 @@ class RegistrationSecurityTests {
                 "weak",
                 null,
                 null,
-                false);
+                false, true);
 
         assertThrows(
                 InvalidRegistrationException.class,
@@ -501,7 +511,7 @@ class RegistrationSecurityTests {
                                 "ClaveSegura9!",
                                 null,
                                 null,
-                                false);
+                                false, true);
 
                 assertThrows(InvalidRegistrationException.class, () -> service.registrar(request));
                 verify(clienteDAO, never()).save(any(Cliente.class));
@@ -522,7 +532,7 @@ class RegistrationSecurityTests {
                                 "ClaveSegura9!",
                                 null,
                                 null,
-                                false);
+                                false, true);
 
                 service.registrar(request);
 

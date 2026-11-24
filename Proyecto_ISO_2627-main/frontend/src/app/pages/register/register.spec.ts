@@ -96,6 +96,42 @@ describe('Register', () => {
     httpMock.expectNone('https://localhost:8443/cliente/register');
   });
 
+  describe('consentimiento de la política de privacidad (T-24)', () => {
+    it('la casilla no está premarcada y es obligatoria en cliente y vendedor', () => {
+      expect(component.clienteForm.controls.aceptaPolitica.value).toBe(false);
+      expect(component.vendedorForm.controls.aceptaPolitica.value).toBe(false);
+      expect(component.clienteForm.controls.aceptaPolitica.hasError('required')).toBe(true);
+      expect(component.vendedorForm.controls.aceptaPolitica.hasError('required')).toBe(true);
+    });
+
+    it('no envía el registro de cliente sin aceptar y muestra el aviso', () => {
+      component.clienteForm.patchValue({
+        nombre: 'Ada',
+        apellidos: 'Lovelace',
+        fechaNacimiento: '1990-12-10',
+        dniNif: '12345678A',
+        email: 'ada@example.com',
+        contrasena: 'Strong-pass-123!',
+        repetirContrasena: 'Strong-pass-123!',
+      });
+
+      component.register();
+      fixture.detectChanges();
+
+      expect(component.clienteForm.invalid).toBe(true);
+      expect(fixture.nativeElement.textContent).toContain('Debes aceptar la política de privacidad');
+      httpMock.expectNone('https://localhost:8443/cliente/register');
+    });
+
+    it('enlaza la política de privacidad y el aviso legal desde el registro', () => {
+      const enlaces = Array.from<HTMLAnchorElement>(
+        fixture.nativeElement.querySelectorAll('.consentimiento a')
+      ).map((enlace) => enlace.getAttribute('href'));
+
+      expect(enlaces).toEqual(['/politica-privacidad', '/aviso-legal']);
+    });
+  });
+
   describe('validación de entrada igual que el servidor (T-11)', () => {
     it('limita la longitud de nombre, apellidos, correo y contraseña', () => {
       const f = component.clienteForm.controls;
@@ -343,6 +379,7 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'premium',
+      aceptaPolitica: true,
     });
 
     component.register();
@@ -359,6 +396,7 @@ describe('Register', () => {
       email: 'ada@example.com',
       contrasena: 'Strong-pass-123!',
       esPremium: true,
+      aceptaPolitica: true,
     });
 
     request.flush({
@@ -384,6 +422,7 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'normal',
+      aceptaPolitica: true,
     });
 
     component.register();
@@ -418,6 +457,7 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'normal',
+      aceptaPolitica: true,
     });
 
     component.register();
@@ -496,6 +536,7 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       categoriaId: '6abe34098deff53da8a2c052',
       nombreComercial: 'Grace Shop',
+      aceptaPolitica: true,
     };
 
     registrationService.registerVendedor(requestBody).subscribe();

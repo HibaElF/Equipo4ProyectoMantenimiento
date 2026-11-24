@@ -257,6 +257,14 @@ La rotación de la clave de cifrado TOTP requiere especial cuidado para conserva
 
 Se ha comprobado el despliegue automático con los checks correctos, pero queda pendiente validar explícitamente que un fallo de CI impide publicar un nuevo commit.
 
+### RGPD: política de privacidad, aviso legal y consentimiento
+
+- **Documentos** (plantillas con los datos legales pendientes marcados como `[COMPLETAR: …]`) en `documents/rgpd/`: `politica-privacidad.md`, `aviso-legal.md`, `registro-actividades-tratamiento.md` y `politica-retencion.md`. Los destinatarios (MongoDB Atlas, Render, Brevo y VirusTotal si se activa) y los plazos técnicos (auditoría 365 días, sesiones, enlaces) están verificados contra el código. Antes de publicar hay que completar los datos del responsable y que el equipo revise los textos.
+- **Páginas públicas** `/politica-privacidad` y `/aviso-legal` (Angular), enlazadas desde el registro, el login y la recuperación de contraseña. Su texto debe coincidir con los documentos.
+- **Consentimiento:** el registro público de clientes y vendedores exige la casilla «He leído y acepto…» (no premarcada). El backend rechaza con 400 (`errores.aceptaPolitica`) una petición sin `aceptaPolitica: true` y guarda en el usuario `versionPoliticaAceptada` y `fechaAceptacionPolitica`.
+- **Versión de la política:** constante `PoliticaPrivacidad.VERSION_ACTUAL` del backend (inicial `1.0`) y `version` de la página del frontend. Al cambiar el texto de forma sustancial se suben las dos y los documentos.
+- Las cuentas anteriores y las de administrador no tienen versión ni fecha de aceptación (`null`): no se les pide aceptar de nuevo.
+
 ### URLs firmadas con caducidad para las imágenes
 
 - Las respuestas que incluyen la imagen de un producto (catálogo, detalle, panel del vendedor, carrito, favoritos y listas) devuelven `/product-images/<nombre>?exp=<epoch>&sig=<firma>`. La firma es `HMAC-SHA256(nombre ":" expiración)` con `IMAGENES_FIRMA_KEY`. El único punto que la construye es `FirmaImagenService`.

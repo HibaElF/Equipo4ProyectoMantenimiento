@@ -2,6 +2,7 @@ package es.uclm.esibuy.backend.dto;
 
 import java.time.LocalDate;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,7 +21,8 @@ public record RegistroClienteRequest(
 		@NotBlank @Size(max = PatronesEntrada.MAX_CONTRASENA) String contrasena,
 		@Pattern(regexp = PatronesEntrada.TELEFONO, message = PatronesEntrada.MENSAJE_TELEFONO) @Size(max = 20) String telefono,
 		@ImagenPerfilHttps String imagenPerfil,
-		boolean esPremium) {
+		boolean esPremium,
+		@NotNull(message = "Debes aceptar la política de privacidad.") @AssertTrue(message = "Debes aceptar la política de privacidad.") Boolean aceptaPolitica) {
 
 	public RegistroClienteRequest {
 		if (email != null) {

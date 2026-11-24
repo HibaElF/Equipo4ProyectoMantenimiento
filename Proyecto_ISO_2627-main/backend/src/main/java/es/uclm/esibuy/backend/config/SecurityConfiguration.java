@@ -261,6 +261,8 @@ public class SecurityConfiguration {
                                                                 "/registro",
                                                                 "/recuperar-contrasena",
                                                                 "/verificar-correo",
+                                                                "/politica-privacidad",
+                                                                "/aviso-legal",
                                                                 "/perfil",
                                                                 "/listas",
                                                                 "/perfil/direcciones",

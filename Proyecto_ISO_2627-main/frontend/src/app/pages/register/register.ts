@@ -193,6 +193,9 @@ export class Register {
     repetirContrasena: ['', Validators.required],
 
     tipoCliente: ['normal'],
+
+    // T-24: consentimiento expreso, nunca premarcado.
+    aceptaPolitica: [false, Validators.requiredTrue],
   }, {
     validators: passwordMatchValidator
   });
@@ -235,6 +238,9 @@ export class Register {
     ]],
 
     repetirContrasena: ['', Validators.required],
+
+    // T-24: consentimiento expreso, nunca premarcado.
+    aceptaPolitica: [false, Validators.requiredTrue],
   }, {
     validators: passwordMatchValidator
   });
@@ -441,6 +447,7 @@ export class Register {
         email: values.email.trim(),
         contrasena: values.contrasena,
         esPremium: values.tipoCliente === 'premium',
+        aceptaPolitica: values.aceptaPolitica,
 
         ...this.optionalDetails(
           values.telefono,
@@ -469,6 +476,7 @@ export class Register {
       categoriaId: values.categoriaId,
 
       nombreComercial: values.nombreComercial.trim(),
+      aceptaPolitica: values.aceptaPolitica,
 
       ...this.optionalDetails(
         values.telefono,
