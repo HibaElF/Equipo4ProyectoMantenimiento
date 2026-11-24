@@ -1,0 +1,97 @@
+/* Páginas de estadísticas (vendedor y administrador) */
+
+.apartado {
+  margin-bottom: 1.5rem;
+}
+
+.apartado-titulo {
+  margin: 0 0 1rem;
+  color: var(--color-text);
+  font-size: 1.3rem;
+}
+
+.ranking-titulo {
+  margin: 0 0 .5rem;
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+/* Las dos listas de cada apartado (más / menos vendidos, mejor / peor valorados) van separadas por una línea:
+   horizontal cuando están una debajo de otra y vertical cuando están una al lado de otra. */
+.rejilla-rankings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+}
+
+.rejilla-rankings > * + * {
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--color-border);
+}
+
+@media (min-width: 860px) {
+  .rejilla-rankings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .rejilla-rankings > * {
+    padding-right: 1.5rem;
+  }
+
+  .rejilla-rankings > * + * {
+    padding: 0 0 0 1.5rem;
+    border-top: 0;
+    border-left: 2px solid var(--color-border);
+  }
+}
+
+.tabla-contenedor {
+  overflow-x: auto;
+}
+
+.tabla-ranking {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabla-ranking th,
+.tabla-ranking td {
+  padding: .6rem .7rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tabla-ranking th {
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.tabla-ranking .posicion {
+  width: 2.5rem;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tabla-ranking .numero {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sin-datos {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.resumen-tienda {
+  margin: 0 0 1rem;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.sin-valoraciones {
+  color: var(--color-text-secondary);
+  font-style: italic;
+}

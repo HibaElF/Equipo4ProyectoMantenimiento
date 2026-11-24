@@ -31,6 +31,7 @@ export const ENLACES_POR_ROL: Record<Rol, readonly EnlaceCabecera[]> = {
   VENDEDOR: [
     { texto: 'Mis productos', ruta: '/vendedor', exacto: true },
     { texto: 'Pedidos', ruta: '/vendedor/pedidos', exacto: false },
+    { texto: 'Estadísticas', ruta: '/vendedor/estadisticas', exacto: false },
     { texto: 'Mi perfil', ruta: '/perfil', exacto: false }
   ],
   ADMIN: [
