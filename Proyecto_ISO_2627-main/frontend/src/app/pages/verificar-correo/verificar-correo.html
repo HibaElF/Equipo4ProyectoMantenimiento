@@ -1,0 +1,36 @@
+<main class="acceso">
+  <a class="acceso-marca" routerLink="/" aria-label="ESIBuy, inicio">ESI<span>Buy</span></a>
+
+  <div class="acceso-cuerpo">
+    <section class="acceso-intro">
+      <p class="acceso-lema">Confirma tu correo electrónico.</p>
+      <p class="acceso-texto">Así sabemos que la dirección es tuya y podrás recibir los avisos de seguridad de tu cuenta.</p>
+    </section>
+
+    <section class="acceso-tarjeta" aria-labelledby="titulo-verificacion">
+      <h1 id="titulo-verificacion" class="acceso-titulo">Verificación del correo</h1>
+
+      <div class="acceso-formulario">
+        @switch (estado()) {
+          @case ('verificando') {
+            <output class="aviso aviso-info">Comprobando el enlace...</output>
+          }
+          @case ('verificado') {
+            <output class="aviso aviso-exito">
+              Correo confirmado. Cuando el equipo administrador active tu cuenta podrás iniciar sesión.
+            </output>
+            <a class="boton-principal" routerLink="/login">Ir a iniciar sesión</a>
+          }
+          @case ('error') {
+            <p class="aviso aviso-error" role="alert">{{ mensajeError() }}</p>
+            <p class="acceso-texto">
+              Si tu enlace ha caducado, puedes restablecer tu contraseña desde
+              «He olvidado mi contraseña»: eso también confirma tu correo.
+            </p>
+            <a class="boton-secundario" routerLink="/recuperar-contrasena">Recuperar contraseña</a>
+          }
+        }
+      </div>
+    </section>
+  </div>
+</main>

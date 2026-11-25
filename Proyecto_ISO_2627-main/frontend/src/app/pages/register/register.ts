@@ -66,12 +66,16 @@ const adultDateValidator: ValidatorFn = (
 };
 
 
+// Mismas reglas que el servidor (T-11): solo espacio normal, no tabuladores ni saltos de línea.
 const optionalPhoneValidator =
-  Validators.pattern(/^\+?[0-9\s().-]{7,20}$/);
+  Validators.pattern(/^\+?[0-9 ().-]{7,20}$/);
 
 
-const optionalImageUrlValidator =
-  Validators.pattern(/^https?:\/\/.+/i);
+// El servidor exige una URL HTTPS de hasta 1000 caracteres.
+const optionalImageUrlValidator = Validators.compose([
+  Validators.maxLength(1000),
+  Validators.pattern(/^https:\/\/[^\s/]+(?:\/\S*)?$/i)
+])!;
 
 
 const passwordRules = [
@@ -150,9 +154,9 @@ export class Register {
 
 
   readonly clienteForm = this.formBuilder.nonNullable.group({
-    nombre: ['', Validators.required],
+    nombre: ['', [Validators.required, Validators.maxLength(100)]],
 
-    apellidos: ['', Validators.required],
+    apellidos: ['', [Validators.required, Validators.maxLength(150)]],
 
     fechaNacimiento: ['', [
       Validators.required,
@@ -171,7 +175,8 @@ export class Register {
 
     email: ['', [
       Validators.required,
-      Validators.email
+      Validators.email,
+      Validators.maxLength(254)
     ]],
 
     telefono: ['', optionalPhoneValidator],
@@ -181,25 +186,29 @@ export class Register {
     contrasena: ['', [
       Validators.required,
       Validators.minLength(8),
+      Validators.maxLength(128),
       passwordRequirementsValidator
     ]],
 
     repetirContrasena: ['', Validators.required],
 
     tipoCliente: ['normal'],
+
+    // T-24: consentimiento expreso, nunca premarcado.
+    aceptaPolitica: [false, Validators.requiredTrue],
   }, {
     validators: passwordMatchValidator
   });
 
 
   readonly vendedorForm = this.formBuilder.nonNullable.group({
-    nombre: ['', Validators.required],
+    nombre: ['', [Validators.required, Validators.maxLength(100)]],
 
-    apellidos: ['', Validators.required],
+    apellidos: ['', [Validators.required, Validators.maxLength(150)]],
 
     categoriaId: ['', Validators.required],
 
-    nombreComercial: ['', Validators.required],
+    nombreComercial: ['', [Validators.required, Validators.maxLength(100)]],
 
     dniNif: [
       '',
@@ -213,7 +222,8 @@ export class Register {
 
     email: ['', [
       Validators.required,
-      Validators.email
+      Validators.email,
+      Validators.maxLength(254)
     ]],
 
     telefono: ['', optionalPhoneValidator],
@@ -223,10 +233,14 @@ export class Register {
     contrasena: ['', [
       Validators.required,
       Validators.minLength(8),
+      Validators.maxLength(128),
       passwordRequirementsValidator
     ]],
 
     repetirContrasena: ['', Validators.required],
+
+    // T-24: consentimiento expreso, nunca premarcado.
+    aceptaPolitica: [false, Validators.requiredTrue],
   }, {
     validators: passwordMatchValidator
   });
@@ -326,13 +340,26 @@ export class Register {
       return 'Introduce un correo electrónico válido.';
     }
 
+    const especifico = this.errorDniOContrasena(control, name);
+    if (especifico) {
+      return especifico;
+    }
+
+    if (control.hasError('maxlength') && name !== 'imagenPerfil') {
+      return 'Has superado la longitud máxima permitida.';
+    }
+
+    if (control.hasError('underage')) {
+      return 'Debes tener al menos 18 años para registrarte como cliente.';
+    }
+
+    return this.errorTelefonoOImagen(control, name) ?? 'Revisa este campo.';
+  }
+
+  private errorDniOContrasena(control: AbstractControl, name: string): string | null {
     if (
       name === 'dniNif' &&
-      (
-        control.hasError('minlength') ||
-        control.hasError('maxlength') ||
-        control.hasError('pattern')
-      )
+      (control.hasError('minlength') || control.hasError('maxlength') || control.hasError('pattern'))
     ) {
       return 'El DNI/NIF debe tener 8 números y una letra.';
     }
@@ -344,25 +371,19 @@ export class Register {
       return 'La contraseña debe cumplir todos los requisitos indicados.';
     }
 
-    if (control.hasError('underage')) {
-      return 'Debes tener al menos 18 años para registrarte como cliente.';
-    }
+    return null;
+  }
 
-    if (
-      control.hasError('pattern') &&
-      name === 'telefono'
-    ) {
+  private errorTelefonoOImagen(control: AbstractControl, name: string): string | null {
+    if (control.hasError('pattern') && name === 'telefono') {
       return 'Introduce un teléfono válido o deja el campo vacío.';
     }
 
-    if (
-      control.hasError('pattern') &&
-      name === 'imagenPerfil'
-    ) {
-      return 'Introduce una URL que empiece por http:// o https://.';
+    if ((control.hasError('pattern') || control.hasError('maxlength')) && name === 'imagenPerfil') {
+      return 'Introduce una URL que empiece por https:// (máximo 1000 caracteres).';
     }
 
-    return 'Revisa este campo.';
+    return null;
   }
 
 
@@ -429,6 +450,7 @@ export class Register {
         email: values.email.trim(),
         contrasena: values.contrasena,
         esPremium: values.tipoCliente === 'premium',
+        aceptaPolitica: values.aceptaPolitica,
 
         ...this.optionalDetails(
           values.telefono,
@@ -457,6 +479,7 @@ export class Register {
       categoriaId: values.categoriaId,
 
       nombreComercial: values.nombreComercial.trim(),
+      aceptaPolitica: values.aceptaPolitica,
 
       ...this.optionalDetails(
         values.telefono,

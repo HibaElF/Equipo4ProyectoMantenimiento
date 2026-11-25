@@ -83,7 +83,7 @@ class AdministradorServiceTests {
 				"GestorX9!Clave",
 				"Sede central",
 				LocalDate.of(2026, Month.OCTOBER, 1),
-				"perfil.png");
+				"https://cdn.example.com/perfil.png");
 
 		var response = service.registrar(request);
 
@@ -95,6 +95,23 @@ class AdministradorServiceTests {
 		assertEquals("bcrypt-admin-hash", saved.getValue().getContrasenaHash());
 		assertEquals(List.of("bcrypt-admin-hash"), saved.getValue().getHistorialContrasenasHash());
 		assertEquals("ADMIN", saved.getValue().getRol());
+	}
+
+	@Test
+	void elAltaDeAdministradorDevuelveLosErroresPorCampo() {
+		AdministradorService service = new AdministradorService(
+				administradorDAO, categoriaDAO, usuarioDAO, passwordEncoder,
+				new PasswordPolicy(), VALIDATOR, sesionService, null, auditoriaService);
+		RegistroAdministradorRequest request = new RegistroAdministradorRequest(
+				"", "a".repeat(151), "no-es-un-correo", "a".repeat(129), "Sede", null, "http://cdn.example.com/a.png");
+
+		var error = assertThrows(es.uclm.esibuy.backend.exceptions.InvalidRegistrationException.class,
+				() -> service.registrar(request));
+
+		var campos = error.getFieldErrors().keySet();
+		org.junit.jupiter.api.Assertions.assertTrue(campos.containsAll(java.util.Set.of("nombre", "apellidos", "email", "contrasena", "imagenPerfil")),
+				campos.toString());
+		org.mockito.Mockito.verifyNoInteractions(usuarioDAO);
 	}
 
 	@Test
@@ -159,6 +176,7 @@ class AdministradorServiceTests {
 		assertEquals(LocalDate.of(2024, 1, 10), administrador.getFechaIncorporacion());
 		assertEquals("Nombre actualizado", administrador.getNombre());
 		assertEquals("Toledo", administrador.getSede());
+		verify(auditoriaService).registrarUsuarioModificado("admin-1");
 	}
 
 	@Test

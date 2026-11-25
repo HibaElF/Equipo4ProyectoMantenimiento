@@ -62,6 +62,9 @@
           @if (mensajeError()) {
             <p class="aviso aviso-error" role="alert">{{ mensajeError() }}</p>
           }
+          @if (contrasenaCaducada()) {
+            <a class="enlace enlace-caducada" routerLink="/recuperar-contrasena">Restablecer mi contraseña</a>
+          }
           @if (mensajeExito()) {
             <output class="aviso aviso-exito">{{ mensajeExito() }}</output>
           }
@@ -75,6 +78,7 @@
               id="email"
               type="email"
               formControlName="email"
+              maxlength="254"
               autocomplete="email"
               [attr.aria-invalid]="campoInvalido('email')"
               [attr.aria-describedby]="campoInvalido('email') ? 'email-error' : null">
@@ -97,6 +101,7 @@
                 type="password"
                 [type]="hidePassword ? 'password' : 'text'"
                 formControlName="password"
+                maxlength="128"
                 autocomplete="current-password"
                 [attr.aria-invalid]="campoInvalido('password')"
                 [attr.aria-describedby]="campoInvalido('password') ? 'password-error' : null">
@@ -134,6 +139,10 @@
           <p class="acceso-pie">
             ¿No tienes cuenta?
             <a class="enlace" routerLink="/registro">Regístrate</a>
+          </p>
+          <p class="acceso-pie">
+            <a class="enlace" routerLink="/politica-privacidad">Política de privacidad</a> ·
+            <a class="enlace" routerLink="/aviso-legal">Aviso legal</a>
           </p>
         </form>
       } @else if (requiereVerificacionEmail()) {

@@ -1,0 +1,12 @@
+@if (visible()) {
+  <aside class="aviso-segundo-factor" role="status" aria-label="Recomendación de seguridad">
+    <p class="aviso-texto">
+      <strong>Protege tu cuenta.</strong>
+      Activa el segundo factor de autenticación para que nadie pueda entrar solo con tu contraseña.
+    </p>
+    <div class="aviso-acciones">
+      <a class="aviso-enlace" routerLink="/perfil" fragment="segundo-factor-titulo">Activar segundo factor</a>
+      <button class="aviso-descartar" type="button" (click)="descartar()">Ahora no</button>
+    </div>
+  </aside>
+}

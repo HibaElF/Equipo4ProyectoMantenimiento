@@ -3,6 +3,7 @@ package es.uclm.esibuy.backend.services;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
+import java.time.Instant;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -22,8 +23,10 @@ import es.uclm.esibuy.backend.exceptions.InvalidRegistrationException;
 import es.uclm.esibuy.backend.exceptions.PagoPremiumException;
 import es.uclm.esibuy.backend.exceptions.UsuarioNoEncontradoException;
 import es.uclm.esibuy.backend.model.Cliente;
+import es.uclm.esibuy.backend.model.PoliticaPrivacidad;
 import es.uclm.esibuy.backend.model.Direccion;
 import es.uclm.esibuy.backend.model.MetodoPago;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class ClienteService {
@@ -116,6 +119,8 @@ public class ClienteService {
                 cliente.setEsPremium(request.esPremium());
                 cliente.setBloqueada(false);
                 cliente.setActivada(false);
+                cliente.setCorreoVerificado(false);
+                cliente.registrarAceptacionPolitica(PoliticaPrivacidad.VERSION_ACTUAL, Instant.now());
                 cliente.registrarContrasenaHash(soporteRegistro.codificarContrasena(request.contrasena()));
 
                 Cliente guardado = soporteRegistro.guardarRegistroPublico(
@@ -127,6 +132,8 @@ public class ClienteService {
                                 guardado.getId()
                         );
                 }
+
+                soporteRegistro.iniciarVerificacionCorreo(guardado);
 
                 return new RegistroUsuarioResponse(guardado.getId(), "cliente");
         }
@@ -140,7 +147,7 @@ public class ClienteService {
                         throw new UsuarioNoEncontradoException();
                 }
                 if (esPremium == null) {
-                        throw new IllegalArgumentException("El tipo de cliente es obligatorio.");
+                        throw new DatosNoValidosException("El tipo de cliente es obligatorio.");
                 }
 
                 Cliente cliente = clienteDAO.findByEmail(emailAutenticado)

@@ -38,6 +38,7 @@ import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.services.PedidoService;
 import es.uclm.esibuy.backend.services.ValoracionService;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @WebMvcTest(PedidoController.class)
 @Import(SecurityConfiguration.class)
@@ -245,7 +246,7 @@ class PedidoControllerTests {
     @ValueSource(strings = {"Carrito vacío.", "Producto eliminado.", "No hay stock suficiente.",
             "La dirección no pertenece al cliente o no existe.", "El método de pago no pertenece al cliente o no existe."})
     void devuelveMotivoFuncionalCon400(String motivo) throws Exception {
-        when(servicio.realizarPedido(anyString(), anyString(), anyString())).thenThrow(new IllegalArgumentException(motivo));
+        when(servicio.realizarPedido(anyString(), anyString(), anyString())).thenThrow(new DatosNoValidosException(motivo));
         mvc.perform(peticion(JSON)).andExpect(status().isBadRequest()).andExpect(jsonPath("$.error").value(motivo));
     }
 

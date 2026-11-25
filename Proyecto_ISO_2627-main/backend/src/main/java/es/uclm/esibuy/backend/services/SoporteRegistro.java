@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.exceptions.CorreoYaRegistradoException;
 import es.uclm.esibuy.backend.exceptions.InvalidRegistrationException;
+import es.uclm.esibuy.backend.model.Usuario;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 
@@ -27,16 +28,19 @@ public class SoporteRegistro {
 	private final PasswordEncoder codificadorContrasena;
 	private final PasswordPolicy politicaContrasenas;
 	private final Validator validador;
+	private final VerificacionCorreoService verificacionCorreoService;
 
 	public SoporteRegistro(
 			UsuarioDAO usuarioDAO,
 			PasswordEncoder codificadorContrasena,
 			PasswordPolicy politicaContrasenas,
-			Validator validador) {
+			Validator validador,
+			VerificacionCorreoService verificacionCorreoService) {
 		this.usuarioDAO = usuarioDAO;
 		this.codificadorContrasena = codificadorContrasena;
 		this.politicaContrasenas = politicaContrasenas;
 		this.validador = validador;
+		this.verificacionCorreoService = verificacionCorreoService;
 	}
 
 	public void validarSolicitud(Object solicitud, String contrasena, String... datosPersonales) {
@@ -59,6 +63,11 @@ public class SoporteRegistro {
 				.filter(dato -> dato != null && !dato.isBlank())
 				.toList();
 		politicaContrasenas.validate(contrasena, datosNoNulos);
+	}
+
+	// Tras guardar una cuenta pública nueva: envía el enlace para confirmar la propiedad del correo.
+	public void iniciarVerificacionCorreo(Usuario usuarioGuardado) {
+		verificacionCorreoService.iniciar(usuarioGuardado);
 	}
 
 	public String normalizarCorreo(String correo) {

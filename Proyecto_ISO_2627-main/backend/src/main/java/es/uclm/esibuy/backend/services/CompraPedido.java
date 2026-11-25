@@ -23,6 +23,7 @@ import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Vendedor;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /*
  * HU-26 - Compra del carrito dentro de la transacción que abre PedidoService: crea los pedidos,
@@ -59,16 +60,16 @@ final class CompraPedido {
             return List.copyOf(anteriores);
         }
         Direccion direccion = cliente.buscarDireccion(direccionId)
-                .orElseThrow(() -> new IllegalArgumentException("La dirección no pertenece al cliente o no existe."));
+                .orElseThrow(() -> new DatosNoValidosException("La dirección no pertenece al cliente o no existe."));
         boolean metodoPropio = metodoPagoDAO.findByClienteId(cliente.getId()).stream()
                 .anyMatch(metodo -> metodoPagoId.equals(metodo.getId())
                         && cliente.getId().equals(metodo.getClienteId()));
         if (!metodoPropio) {
-            throw new IllegalArgumentException("El método de pago no pertenece al cliente o no existe.");
+            throw new DatosNoValidosException("El método de pago no pertenece al cliente o no existe.");
         }
         Carrito carrito = carritoDAO.findById(cliente.getId())
-                .orElseThrow(() -> new IllegalArgumentException("El carrito está vacío."));
-        if (carrito.getProductos().isEmpty()) throw new IllegalArgumentException("El carrito está vacío.");
+                .orElseThrow(() -> new DatosNoValidosException("El carrito está vacío."));
+        if (carrito.getProductos().isEmpty()) throw new DatosNoValidosException("El carrito está vacío.");
 
         // Ordenados por id de vendedor: los pedidos se crean siempre en el mismo orden.
         Map<String, List<LineaPedido>> lineasPorVendedor = new TreeMap<>();
@@ -79,10 +80,10 @@ final class CompraPedido {
             Producto producto = productoDAO.findById(entrada.getKey()).orElse(null);
             var calculo = carritoService.validarLineaParaCompra(producto, entrada.getValue(), cliente);
             if (producto.getVendedor() == null || producto.getVendedor().isBlank()) {
-                throw new IllegalArgumentException("El producto no tiene un vendedor válido.");
+                throw new DatosNoValidosException("El producto no tiene un vendedor válido.");
             }
             Vendedor vendedor = vendedorDAO.findByNombreComercial(producto.getVendedor())
-                    .orElseThrow(() -> new IllegalArgumentException("El vendedor del producto ya no existe."));
+                    .orElseThrow(() -> new DatosNoValidosException("El vendedor del producto ya no existe."));
             LineaPedido linea = new LineaPedido(producto.getId(), producto.getNombre(), calculo.precioUnitario(),
                     entrada.getValue(), vendedor.getId(), vendedor.getNombreComercial());
             lineasPorVendedor.computeIfAbsent(vendedor.getId(), id -> new ArrayList<>()).add(linea);

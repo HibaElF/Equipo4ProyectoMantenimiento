@@ -43,6 +43,11 @@ export interface TwoFactorConfirmationResponse {
   backupCodes: string[];
 }
 
+export interface CambiarContrasenaRequest {
+  contrasenaActual: string;
+  nuevaContrasena: string;
+}
+
 export interface ModificarPerfilRequest {
   nombre: string;
   apellidos: string;
@@ -129,8 +134,20 @@ export class PerfilService {
     return this.peticionConCsrf<void>('PUT', '/usuarios/3fa/preferencia', { activado });
   }
 
+  cambiarContrasena(datos: CambiarContrasenaRequest): Observable<void> {
+    return this.peticionConCsrf<void>('PUT', '/usuarios/contrasena', datos);
+  }
+
   desactivarSegundoFactor(code: string): Observable<void> {
     return this.peticionConCsrf<void>('DELETE', '/usuarios/2fa', { code });
+  }
+
+  // T-25: copia de los datos personales del titular (JSON). Es un GET sin efectos: no necesita CSRF.
+  descargarMisDatos(): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/usuarios/mis-datos`, {
+      withCredentials: true,
+      responseType: 'blob'
+    });
   }
 
   darDeBajaCuenta(tipoUsuario: 'CLIENTE' | 'VENDEDOR'): Observable<void> {

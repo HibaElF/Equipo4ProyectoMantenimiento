@@ -21,6 +21,6 @@ describe('rutas de la aplicación (A4)', () => {
       .filter((ruta) => ruta.data?.['cabecera'] === false)
       .map((ruta) => ruta.path);
 
-    expect(sinCabecera).toEqual(['', 'login', 'registro', 'recuperar-contrasena', '**']);
+    expect(sinCabecera).toEqual(['', 'login', 'registro', 'recuperar-contrasena', 'verificar-correo', 'politica-privacidad', 'aviso-legal', '**']);
   });
 });

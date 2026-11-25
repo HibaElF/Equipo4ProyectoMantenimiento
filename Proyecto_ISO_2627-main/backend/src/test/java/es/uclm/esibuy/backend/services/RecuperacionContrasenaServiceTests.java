@@ -147,7 +147,7 @@ class RecuperacionContrasenaServiceTests {
 
         servicio.completar(TOKEN, NUEVA_CONTRASENA);
 
-        verify(passwordPolicy).validate(NUEVA_CONTRASENA);
+        verify(passwordPolicy).validate(NUEVA_CONTRASENA, PasswordPolicy.datosPersonalesDe(cliente));
         verify(passwordPolicy).matchesRecentPassword(
                 eq(NUEVA_CONTRASENA), any(), eq(passwordEncoder));
         verify(tokenDAO).consumirSiValido(eq("token-doc-1"), any(Instant.class));
@@ -156,6 +156,47 @@ class RecuperacionContrasenaServiceTests {
         assertEquals("hash-nuevo", cliente.getHistorialContrasenasHash().getFirst());
         verify(sesionService).cerrarSesiones(EMAIL);
         verify(auditoriaService).registrarRestablecimientoContrasena("usuario-1");
+    }
+
+    @Test
+    void restablecerLaContrasenaTambienVerificaElCorreoYLoAudita() {
+        cliente.setCorreoVerificado(false);
+        when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));
+        when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.encode(NUEVA_CONTRASENA)).thenReturn("hash-nuevo");
+        when(tokenDAO.consumirSiValido(eq("token-doc-1"), any(Instant.class))).thenReturn(1L);
+
+        servicio.completar(TOKEN, NUEVA_CONTRASENA);
+
+        assertTrue(cliente.isCorreoVerificado());
+        verify(auditoriaService).registrarCorreoVerificado("usuario-1", "recuperacion");
+    }
+
+    @Test
+    void siElCorreoYaEstabaVerificadoNoSeVuelveAAuditar() {
+        cliente.setCorreoVerificado(true);
+        when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));
+        when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.encode(NUEVA_CONTRASENA)).thenReturn("hash-nuevo");
+        when(tokenDAO.consumirSiValido(eq("token-doc-1"), any(Instant.class))).thenReturn(1L);
+
+        servicio.completar(TOKEN, NUEVA_CONTRASENA);
+
+        assertTrue(cliente.isCorreoVerificado());
+        verify(auditoriaService, never()).registrarCorreoVerificado(anyString(), anyString());
+    }
+
+    @Test
+    void restablecerLaContrasenaRenuevaLaFechaDeCaducidad() {
+        cliente.setContrasenaCambiadaEn(Instant.EPOCH);
+        when(tokenDAO.findByHashToken(hash(TOKEN))).thenReturn(Optional.of(tokenValido()));
+        when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.encode(NUEVA_CONTRASENA)).thenReturn("hash-nuevo");
+        when(tokenDAO.consumirSiValido(eq("token-doc-1"), any(Instant.class))).thenReturn(1L);
+
+        servicio.completar(TOKEN, NUEVA_CONTRASENA);
+
+        assertTrue(cliente.getContrasenaCambiadaEn().isAfter(Instant.now().minusSeconds(60)));
     }
 
     @Test
@@ -198,7 +239,7 @@ class RecuperacionContrasenaServiceTests {
         when(usuarioDAO.findById("usuario-1")).thenReturn(Optional.of(cliente));
         org.mockito.Mockito.doThrow(new InvalidRegistrationException(
                 "contrasena", "La contraseña no cumple los requisitos."))
-                .when(passwordPolicy).validate(NUEVA_CONTRASENA);
+                .when(passwordPolicy).validate(NUEVA_CONTRASENA, PasswordPolicy.datosPersonalesDe(cliente));
 
         assertThrows(InvalidRegistrationException.class,
                 () -> servicio.completar(TOKEN, NUEVA_CONTRASENA));

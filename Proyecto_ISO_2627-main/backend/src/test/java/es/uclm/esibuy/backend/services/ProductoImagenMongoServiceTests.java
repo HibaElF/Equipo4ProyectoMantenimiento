@@ -24,10 +24,7 @@ class ProductoImagenMongoServiceTests {
             new ProductoImagenService(
                     "uploads/productos", "mongo", mongo);
 
-    private static final byte[] GIF = {
-            'G', 'I', 'F', '8', '9', 'a',
-            1, 0, 1, 0, 0x3B
-    };
+    private static final byte[] GIF = ProductoImagenServiceTests.GIF;
 
     @Test
     void almacenaImagenEnMongoYConservaRutaPublica() {
@@ -51,9 +48,15 @@ class ProductoImagenMongoServiceTests {
                 "image/gif",
                 captor.getValue().getContentType());
 
-        assertArrayEquals(
-                GIF,
-                captor.getValue().getContenido());
+        // T-33: en Mongo se guarda la imagen recodificada, que sigue siendo un GIF válido de 4x4.
+        byte[] guardado = captor.getValue().getContenido();
+        assertEquals("GIF89a", new String(guardado, 0, 6, java.nio.charset.StandardCharsets.US_ASCII));
+        try {
+            var imagen = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(guardado));
+            assertEquals(4, imagen.getWidth());
+        } catch (java.io.IOException e) {
+            fail(e);
+        }
 
         assertEquals(
                 ruta.substring("/product-images/".length()),

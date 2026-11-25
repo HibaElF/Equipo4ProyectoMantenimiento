@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
 import es.uclm.esibuy.backend.model.ListaProductos;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class FavoritosRegistroService {
@@ -18,7 +19,7 @@ public class FavoritosRegistroService {
 
     public void crearListaPredeterminada(String usuarioId) {
         if (usuarioId == null || usuarioId.isBlank()) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El identificador del usuario es obligatorio."
             );
         }

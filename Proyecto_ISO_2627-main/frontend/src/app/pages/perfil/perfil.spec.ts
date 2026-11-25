@@ -7,6 +7,7 @@ import { Perfil } from './perfil';
 import { PerfilResponse, PerfilService } from './perfil.service';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { PagosService } from '../pagos/pagos.service';
+import { EstadoSegundoFactor } from '../../shared/aviso-segundo-factor/estado-segundo-factor';
 // M8: la confirmación es un diálogo propio (asíncrono); se simula su respuesta.
 const simularConfirmacion = (aceptada: boolean) =>
   vi.spyOn(TestBed.inject(ConfirmacionService), 'confirmar').mockResolvedValue(aceptada);
@@ -52,8 +53,10 @@ describe('Perfil', () => {
     cambiarTipoCliente: ReturnType<typeof vi.fn>;
     confirmarSegundoFactor: ReturnType<typeof vi.fn>;
     desactivarSegundoFactor: ReturnType<typeof vi.fn>;
+    cambiarContrasena: ReturnType<typeof vi.fn>;
     modificarPreferenciaTercerFactor: ReturnType<typeof vi.fn>;
     darDeBajaCuenta: ReturnType<typeof vi.fn>;
+    descargarMisDatos: ReturnType<typeof vi.fn>;
   };
   let pagosServiceMock: {
     consultarMetodos: ReturnType<typeof vi.fn>;
@@ -74,7 +77,9 @@ describe('Perfil', () => {
       cambiarTipoCliente: vi.fn(),
       confirmarSegundoFactor: vi.fn(),
       desactivarSegundoFactor: vi.fn(),
+      cambiarContrasena: vi.fn(),
       darDeBajaCuenta: vi.fn(),
+      descargarMisDatos: vi.fn(),
       modificarPreferenciaTercerFactor: vi.fn(),
     };
     pagosServiceMock = {
@@ -151,6 +156,100 @@ describe('Perfil', () => {
     expect(componente.perfil()?.totpActivado).toBe(true);
     expect(componente.errorTOTP()).toBe('Espera 5 minutos.');
     expect(componente.cargandoTOTP()).toBe(false);
+  });
+
+  describe('cambio de contraseña (T-05)', () => {
+    const rellenar = (actual: string, nueva: string, confirmar: string) =>
+      componente.formularioContrasena.setValue({
+        contrasenaActual: actual, nuevaContrasena: nueva, confirmarContrasena: confirmar,
+      });
+
+    it('muestra el formulario de cambio de contraseña en la sección de seguridad', () => {
+      crearComponente(of(perfilCliente));
+
+      const formulario = fixture.nativeElement.querySelector('#cambiar-contrasena-titulo');
+      expect(formulario?.textContent).toContain('Cambiar contraseña');
+      expect(fixture.nativeElement.querySelector('#contrasena-actual')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('#contrasena-nueva')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('#contrasena-confirmar')).not.toBeNull();
+    });
+
+    it('no envía el formulario incompleto o con una contraseña demasiado corta', () => {
+      crearComponente(of(perfilCliente));
+
+      componente.cambiarContrasena();
+      rellenar('ClaveActual9!x', 'corta', 'corta');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).not.toHaveBeenCalled();
+      expect(componente.errorContrasena()).toContain('al menos 8 caracteres');
+    });
+
+    it('no envía la contraseña nueva si la confirmación no coincide', () => {
+      crearComponente(of(perfilCliente));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'OtraDistinta7#');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).not.toHaveBeenCalled();
+      expect(componente.errorContrasena()).toContain('no coinciden');
+    });
+
+    it('cambia la contraseña, limpia el formulario y avisa del cierre de otras sesiones', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(of(undefined));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(perfilServiceMock.cambiarContrasena).toHaveBeenCalledWith({
+        contrasenaActual: 'ClaveActual9!x',
+        nuevaContrasena: 'NuevaClaveSegura7#',
+      });
+      expect(componente.formularioContrasena.getRawValue()).toEqual({
+        contrasenaActual: '', nuevaContrasena: '', confirmarContrasena: '',
+      });
+      expect(componente.mensajeContrasena()).toContain('otras sesiones');
+      expect(componente.errorContrasena()).toBe('');
+      expect(componente.cambiandoContrasena()).toBe(false);
+    });
+
+    it('muestra el mensaje del servidor si la contraseña actual es incorrecta o incumple la política', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 400, error: { error: 'La contraseña actual no es correcta.' } })));
+
+      rellenar('Incorrecta1!', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('La contraseña actual no es correcta.');
+      expect(componente.mensajeContrasena()).toBe('');
+      expect(componente.cambiandoContrasena()).toBe(false);
+      // No se borra lo escrito para poder corregirlo.
+      expect(componente.formularioContrasena.getRawValue().nuevaContrasena).toBe('NuevaClaveSegura7#');
+    });
+
+    it('muestra el bloqueo temporal cuando se agotan los intentos', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 429, error: { error: 'Demasiados intentos. Espera 30 segundos.' } })));
+
+      rellenar('Incorrecta1!', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('Demasiados intentos. Espera 30 segundos.');
+    });
+
+    it('usa un mensaje genérico si el servidor falla', () => {
+      crearComponente(of(perfilCliente));
+      perfilServiceMock.cambiarContrasena.mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 500, error: { error: 'detalle interno' } })));
+
+      rellenar('ClaveActual9!x', 'NuevaClaveSegura7#', 'NuevaClaveSegura7#');
+      componente.cambiarContrasena();
+
+      expect(componente.errorContrasena()).toBe('No se pudo cambiar la contraseña. Inténtalo de nuevo.');
+    });
   });
 
   it('muestra la tarjeta de tipo y el boton Premium para un cliente normal', () => {
@@ -655,5 +754,104 @@ describe('Perfil', () => {
     expect(fixture.nativeElement.querySelector('#tercer-factor-titulo')).toBeNull();
     componente.cambiarEmailOtp(false);
     expect(perfilServiceMock.modificarPreferenciaTercerFactor).not.toHaveBeenCalled();
+  });
+
+  describe('estado del segundo factor para el aviso (T-27)', () => {
+    it('publica si el segundo factor está activado al cargar el perfil', () => {
+      crearComponente(of({ ...perfilCliente, totpActivado: true }));
+
+      expect(TestBed.inject(EstadoSegundoFactor).activado()).toBe(true);
+    });
+
+    it('lo marca como no activado para un cliente sin TOTP', () => {
+      crearComponente(of(perfilCliente));
+
+      expect(TestBed.inject(EstadoSegundoFactor).activado()).toBe(false);
+    });
+
+    it('lo marca como activado al confirmar el segundo factor y como no activado al desactivarlo', async () => {
+      simularConfirmacion(true);
+      perfilServiceMock.confirmarSegundoFactor.mockReturnValue(of({ backupCodes: ['a'] }));
+      perfilServiceMock.desactivarSegundoFactor.mockReturnValue(of(undefined));
+      crearComponente(of(perfilCliente));
+      const estado = TestBed.inject(EstadoSegundoFactor);
+
+      componente.codigoTOTP.set('123456');
+      componente.confirmarTOTP();
+      expect(estado.activado()).toBe(true);
+
+      componente.codigoTOTP.set('654321');
+      await componente.desactivarTOTP();
+      expect(estado.activado()).toBe(false);
+    });
+  });
+
+  describe('descarga de los datos personales (T-25)', () => {
+    function simularDescarga() {
+      const crear = vi.fn(() => 'blob:datos');
+      const revocar = vi.fn();
+      Object.assign(URL, { createObjectURL: crear, revokeObjectURL: revocar });
+      const clic = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+      return { crear, revocar, clic };
+    }
+
+    it('ofrece la descarga a todos los tipos de usuario', () => {
+      for (const perfil of [perfilCliente, perfilVendedor, perfilAdministrador]) {
+        crearComponente(of(perfil));
+        expect(fixture.nativeElement.textContent).toContain('Descargar mis datos');
+        fixture.destroy();
+      }
+    });
+
+    it('descarga el JSON con un enlace temporal y lo libera', () => {
+      const { crear, revocar, clic } = simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(of(new Blob(['{}'], { type: 'application/json' })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+
+      expect(perfilServiceMock.descargarMisDatos).toHaveBeenCalledTimes(1);
+      expect(crear).toHaveBeenCalledTimes(1);
+      expect(clic).toHaveBeenCalledTimes(1);
+      expect(revocar).toHaveBeenCalledWith('blob:datos');
+      expect(componente.descargaEnCurso()).toBe(false);
+      expect(componente.errorDescarga()).toBe('');
+    });
+
+    it('explica el límite de una descarga por minuto cuando el servidor responde 429', () => {
+      simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 429 })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+      fixture.detectChanges();
+
+      expect(componente.errorDescarga()).toContain('una vez por minuto');
+      expect(fixture.nativeElement.textContent).toContain('una vez por minuto');
+    });
+
+    it('vuelve al inicio de sesión si la sesión ha caducado', () => {
+      simularDescarga();
+      const navegar = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      perfilServiceMock.descargarMisDatos.mockReturnValue(
+        throwError(() => new HttpErrorResponse({ status: 401 })));
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+
+      expect(navegar).toHaveBeenCalledWith(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
+    });
+
+    it('no lanza una segunda descarga mientras hay una en curso', () => {
+      simularDescarga();
+      perfilServiceMock.descargarMisDatos.mockReturnValue(new Subject<Blob>());
+      crearComponente(of(perfilCliente));
+
+      componente.descargarMisDatos();
+      componente.descargarMisDatos();
+
+      expect(perfilServiceMock.descargarMisDatos).toHaveBeenCalledTimes(1);
+    });
   });
 });

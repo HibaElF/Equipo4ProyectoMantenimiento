@@ -1,0 +1,48 @@
+{
+  "skill_name": "security-review",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "/security-review",
+      "expected_output": "The skill reviews git-staged files against all 10 OWASP Proactive Controls, loads threat-model.md and security-scan-report.md if present for context, produces a security-review-report.md with a Controls Overview table (Pass/Partial/Fail per control), detailed findings with file and line references, and a prioritised remediation list.",
+      "expectations": [
+        "The skill checks for threat-model.md and security-scan-report.md and notes whether they were loaded",
+        "Only staged files are reviewed (not the full codebase)",
+        "All 10 OWASP Proactive Controls are evaluated and appear in the Controls Overview table",
+        "Every finding includes a specific file path reference (not just generic advice)",
+        "The report is saved to security-review-report.md",
+        "Controls rated Pass, Partial, Fail, or N/A — not left blank",
+        "An executive summary with severity counts is included",
+        "The report distinguishes between what scan tools already found vs new manual findings"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "/security-review full",
+      "expected_output": "The skill reviews the entire codebase against all 10 OWASP Proactive Controls, prioritises controls that address high-risk threats from threat-model.md if present, and produces a comprehensive security-review-report.md with code-level evidence for every finding.",
+      "expectations": [
+        "The skill scans the full codebase, not just staged files",
+        "Tech stack is detected from dependency manifests and noted in the report header",
+        "High-risk threat model items (if present) are cross-referenced with relevant controls",
+        "Controls are evaluated with code-level evidence (file paths and line numbers or function names)",
+        "The Priority Gaps section appears if threat-model.md was loaded",
+        "Recommended Actions are split into Critical/High and Medium sections",
+        "The report is saved to security-review-report.md (or timestamped variant if file exists)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "can you do a security code review of the auth module? I want to know if the session management and password handling are correct",
+      "expected_output": "The skill recognises this as a security review request, focuses on auth-related files in staged or full mode, evaluates C7 (Digital Identity) and C2 (Cryptography) most deeply, loads existing threat model context if available, and produces a targeted security-review-report.md with specific findings on session management and password storage.",
+      "expectations": [
+        "The skill triggers in response to the natural language security review request",
+        "C7 (Digital Identity) and C2 (Cryptography) receive the most detailed analysis",
+        "Password hashing implementation is assessed (algorithm, work factor, salting)",
+        "Session management is reviewed (cookie flags, session ID regeneration, expiry)",
+        "Findings include specific file paths and function names from the actual codebase",
+        "A security-review-report.md is produced",
+        "If threat-model.md exists, auth-related threats are cross-referenced"
+      ]
+    }
+  ]
+}

@@ -1,66 +1,65 @@
 package es.uclm.esibuy.backend.services;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.security.core.session.SessionInformation;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
 
 class SesionServiceTests {
 
-	private static final String EMAIL = "admin@esibuy.es";
-	private static final String OTRO_EMAIL = "otro@esibuy.es";
+    private static final String CORREO = "cliente@example.com";
 
-	private SessionRegistryImpl sessionRegistry;
-	private SesionService sesionService;
+    private final SessionRegistry registro = new SessionRegistryImpl();
+    private final SesionService servicio = new SesionService(registro);
 
-	@BeforeEach
-	void setUp() {
-		sessionRegistry = new SessionRegistryImpl();
-		sesionService = new SesionService(sessionRegistry);
-	}
+    @Test
+    void rotarSesionCambiaElIdentificadorConservaLaSesionYCierraLasDemas() {
+        MockHttpSession sesion = new MockHttpSession();
+        sesion.setAttribute("marca", "valor");
+        String idAnterior = sesion.getId();
+        MockHttpServletRequest peticion = new MockHttpServletRequest();
+        peticion.setSession(sesion);
+        servicio.registrarSesion(idAnterior, CORREO);
+        servicio.registrarSesion("sesion-de-otro-navegador", CORREO);
+        servicio.registrarSesion("sesion-de-otro-usuario", "otro@example.com");
 
-	@Test
-	void registrarSesion_asociaLaSesionAlEmailNormalizado() {
-		sesionService.registrarSesion("s1", "  Admin@Esibuy.es ");
+        servicio.rotarSesion(peticion, "  Cliente@Example.com ");
 
-		SessionInformation info = sessionRegistry.getSessionInformation("s1");
-		assertNotNull(info);
-		assertEquals(EMAIL, info.getPrincipal());
-		assertFalse(info.isExpired());
-	}
+        String idNuevo = peticion.getSession(false).getId();
+        assertNotEquals(idAnterior, idNuevo);
+        assertEquals("valor", peticion.getSession(false).getAttribute("marca"));
+        assertFalse(registro.getSessionInformation(idNuevo).isExpired());
+        assertTrue(registro.getSessionInformation("sesion-de-otro-navegador").isExpired());
+        assertFalse(registro.getSessionInformation("sesion-de-otro-usuario").isExpired());
+    }
 
-	@Test
-	void cerrarSesiones_expiraTodasLasSesionesDelUsuarioYSoloLasSuyas() {
-		sesionService.registrarSesion("s1", EMAIL);
-		sesionService.registrarSesion("s2", EMAIL);
-		sesionService.registrarSesion("s3", OTRO_EMAIL);
+    @Test
+    void sinSesionActivaCierraTodasLasSesionesDelUsuario() {
+        servicio.registrarSesion("sesion-1", CORREO);
 
-		sesionService.cerrarSesiones(EMAIL);
+        servicio.rotarSesion(new MockHttpServletRequest(), CORREO);
 
-		assertTrue(sessionRegistry.getSessionInformation("s1").isExpired());
-		assertTrue(sessionRegistry.getSessionInformation("s2").isExpired());
-		assertFalse(sessionRegistry.getSessionInformation("s3").isExpired());
-	}
+        assertTrue(registro.getSessionInformation("sesion-1").isExpired());
+    }
 
-	@Test
-	void cerrarSesiones_conOtroFormatoDeEmail_tambienExpiraLasSesiones() {
-		sesionService.registrarSesion("s1", EMAIL);
+    @Test
+    void cerrarOtrasSesionesRespetaLaActualYTolerasEmailsVacios() {
+        servicio.registrarSesion("actual", CORREO);
+        servicio.registrarSesion("otra", CORREO);
 
-		sesionService.cerrarSesiones("  ADMIN@ESIBUY.ES ");
+        servicio.cerrarOtrasSesiones(CORREO, "actual");
+        servicio.cerrarOtrasSesiones(null, "actual");
+        servicio.cerrarOtrasSesiones("  ", "actual");
 
-		assertTrue(sessionRegistry.getSessionInformation("s1").isExpired());
-	}
-
-	@Test
-	void cerrarSesiones_sinSesionesONuloOEnBlanco_noLanzaExcepcion() {
-		assertDoesNotThrow(() -> sesionService.cerrarSesiones(EMAIL));
-		assertDoesNotThrow(() -> sesionService.cerrarSesiones(null));
-		assertDoesNotThrow(() -> sesionService.cerrarSesiones("  "));
-	}
+        assertFalse(registro.getSessionInformation("actual").isExpired());
+        assertTrue(registro.getSessionInformation("otra").isExpired());
+        assertNull(registro.getSessionInformation("inexistente"));
+    }
 }

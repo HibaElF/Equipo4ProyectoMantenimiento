@@ -37,6 +37,7 @@ import es.uclm.esibuy.backend.services.AuthService;
 import es.uclm.esibuy.backend.services.EmailOtpService;
 import es.uclm.esibuy.backend.services.SesionService;
 import es.uclm.esibuy.backend.services.TotpService;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /*
  * Alta obligatoria del segundo factor (TOTP) para vendedores y administradores durante el login:
@@ -230,7 +231,7 @@ class AuthControllerAltaTotpObligatoriaTests {
     void confirmarConUnCodigoInvalidoNoIniciaSesionYConservaElRetoParaReintentar() {
         var request = iniciarAltaPendiente();
         when(totp.confirmarConfiguracion(vendedor, CODIGO))
-                .thenThrow(new IllegalArgumentException("El código TOTP no es válido o ya se ha utilizado."));
+                .thenThrow(new DatosNoValidosException("El código TOTP no es válido o ya se ha utilizado."));
 
         assertThrows(IllegalArgumentException.class,
                 () -> controller.confirmarAltaObligatoria(new TwoFactorCodeRequest(CODIGO), request));

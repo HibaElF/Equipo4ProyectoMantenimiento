@@ -65,6 +65,23 @@ class ProductoCatalogoServiceHU19Tests {
     }
 
     @Test
+    void elDetalleDevuelveLaUrlDeLaImagenFirmada() {
+        FirmaImagenService firmas = new FirmaImagenService(FirmaImagenServiceTests.CLAVE,
+                java.time.Duration.ofHours(2), java.time.Clock.systemUTC());
+        productoService = new ProductoService(productoDAO, vendedorDAO, categoriaDAO, validator,
+                productoImagenService, clienteDAO, pedidoDAO, firmas);
+        Producto producto = crearProducto(ID_PRODUCTO, "Detalle", "Informática", 4, 50.0, 10, 20, false);
+        producto.setImagen("/product-images/b.png");
+        when(clienteDAO.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(crearCliente(true, true)));
+        when(productoDAO.findById(ID_PRODUCTO)).thenReturn(Optional.of(producto));
+
+        String imagen = productoService.consultarDetalleParaCliente(EMAIL_CLIENTE, ID_PRODUCTO).imagen();
+
+        assertTrue(imagen.startsWith("/product-images/b.png?exp="));
+        assertTrue(imagen.contains("&sig="));
+    }
+
+    @Test
     void combinaNombreCategoriaRangoPrecioDisponibilidadYDescuentoSegunCliente() {
         Producto matching = crearProducto(ID_PRODUCTO, "Teclado Gaming", "Informática", 4, 100.0, 10, 20, false);
         matching.setDescripcion("<b>mecánico</b>");

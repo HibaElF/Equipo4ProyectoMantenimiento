@@ -22,6 +22,7 @@ import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.LineaPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Vendedor;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class PedidosVendedorService {
@@ -66,7 +67,7 @@ public class PedidosVendedorService {
         ).getId();
 
         if (pedidoId == null || pedidoId.isBlank()) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El identificador del pedido es obligatorio."
             );
         }
@@ -90,7 +91,7 @@ public class PedidosVendedorService {
         ).getId();
 
         if (pedidoId == null || pedidoId.isBlank()) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El identificador del pedido es obligatorio."
             );
         }

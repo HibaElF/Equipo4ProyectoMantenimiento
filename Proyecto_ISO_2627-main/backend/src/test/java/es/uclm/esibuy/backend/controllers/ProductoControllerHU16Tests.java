@@ -31,6 +31,7 @@ import es.uclm.esibuy.backend.services.PerfilService;
 import es.uclm.esibuy.backend.services.ProductoService;
 import es.uclm.esibuy.backend.services.SesionService;
 import es.uclm.esibuy.backend.services.VendedorService;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @WebMvcTest(controllers = {
         VendedorController.class,
@@ -238,7 +239,7 @@ class ProductoControllerHU16Tests {
     void rechazaRangoDePrecioInvertido() throws Exception {
         when(productoService.consultarProductosParaClientes(
                 EMAIL_CLIENTE, new FiltroProductosRequest(null, null, 20.0, 10.0, null)))
-                .thenThrow(new IllegalArgumentException("El precio mínimo no puede superar el precio máximo."));
+                .thenThrow(new DatosNoValidosException("El precio mínimo no puede superar el precio máximo."));
 
         mockMvc.perform(get("/cliente/productos")
                         .param("precioMinimo", "20")

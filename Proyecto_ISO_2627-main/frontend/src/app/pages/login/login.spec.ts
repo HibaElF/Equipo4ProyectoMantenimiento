@@ -266,4 +266,65 @@ describe('Login', () => {
       'Tu sesión ya no es válida. Es posible que tu cuenta haya sido bloqueada.'
     );
   });
+
+  it('no envía credenciales demasiado largas (T-11)', () => {
+    const iniciar = vi.spyOn(servicioAutenticacion, 'iniciarSesion');
+
+    componente.loginForm.patchValue({ email: 'a'.repeat(250) + '@e.es', password: 'ClaveSegura9!' });
+    componente.onSubmit();
+    componente.loginForm.patchValue({ email: 'ana@esibuy.com', password: 'a'.repeat(129) });
+    componente.onSubmit();
+
+    expect(componente.loginForm.get('email')?.valid).toBe(true);
+    expect(componente.loginForm.get('password')?.hasError('maxlength')).toBe(true);
+    expect(iniciar).not.toHaveBeenCalled();
+
+    componente.loginForm.patchValue({ email: 'a'.repeat(250) + '@e.es', password: 'ClaveSegura9!' });
+    expect(componente.loginForm.get('email')?.hasError('maxlength')).toBe(true);
+  });
+
+  describe('contraseña caducada (T-06)', () => {
+    const credenciales = { email: 'ana@esibuy.com', password: 'Clave-Segura-1' };
+    const cuerpoCaducada = {
+      error: 'Tu contraseña ha caducado. Restablécela desde «He olvidado mi contraseña».',
+      errores: { codigo: ['CONTRASENA_CADUCADA'] },
+    };
+
+    it('muestra el aviso y ofrece restablecer la contraseña por correo', () => {
+      vi.spyOn(servicioAutenticacion, 'iniciarSesion').mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 403, error: cuerpoCaducada })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+
+      expect(componente.contrasenaCaducada()).toBe(true);
+      expect(componente.mensajeError()).toContain('ha caducado');
+    });
+
+    it('no ofrece el enlace para otros errores 403, como la cuenta pendiente', () => {
+      vi.spyOn(servicioAutenticacion, 'iniciarSesion').mockReturnValue(throwError(() =>
+        new HttpErrorResponse({ status: 403, error: { error: 'Tu cuenta está pendiente de revisión.' } })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+
+      expect(componente.contrasenaCaducada()).toBe(false);
+      expect(componente.mensajeError()).toBe('Tu cuenta está pendiente de revisión.');
+    });
+
+    it('quita el aviso al volver a intentarlo', () => {
+      const iniciar = vi.spyOn(servicioAutenticacion, 'iniciarSesion')
+        .mockReturnValueOnce(throwError(() => new HttpErrorResponse({ status: 403, error: cuerpoCaducada })))
+        .mockReturnValueOnce(throwError(() =>
+          new HttpErrorResponse({ status: 401, error: { error: 'Correo o contraseña incorrectos.' } })));
+      componente.loginForm.patchValue(credenciales);
+
+      componente.onSubmit();
+      expect(componente.contrasenaCaducada()).toBe(true);
+      componente.onSubmit();
+
+      expect(iniciar).toHaveBeenCalledTimes(2);
+      expect(componente.contrasenaCaducada()).toBe(false);
+    });
+  });
 });

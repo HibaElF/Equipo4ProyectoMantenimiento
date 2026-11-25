@@ -81,6 +81,71 @@ class LoginAttemptStoreTests {
     }
 
     @Test
+    void indicaSiElFalloHaCreadoUnBloqueoNuevoOLaCuentaYaEstabaBloqueada() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("failures", 5).append("backoffStep", 0)
+                        .append("lockUntil", Date.from(now.plusSeconds(20))));
+        // Preparar ventana, contar el fallo y, por último, la actualización condicional que crea el bloqueo.
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null));
+        LoginAttemptStore store = new LoginAttemptStore(mongo, PEPPER);
+
+        ResultadoFalloLogin nuevo = store.registrarFalloDetallado("ana@example.com", now);
+        ResultadoFalloLogin yaBloqueada = store.registrarFalloDetallado("ana@example.com", now.plusSeconds(1));
+
+        assertEquals(new ResultadoFalloLogin(30, true), nuevo);
+        assertFalse(yaBloqueada.nuevoBloqueo());
+        assertTrue(yaBloqueada.retryAfter() > 0);
+    }
+
+    @Test
+    void sinLlegarAlLimiteNoHayBloqueoNiAviso() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(1, 1L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("failures", 2).append("backoffStep", 0));
+
+        assertEquals(ResultadoFalloLogin.SIN_BLOQUEO,
+                new LoginAttemptStore(mongo, PEPPER).registrarFalloDetallado("ana@example.com", now));
+    }
+
+    @Test
+    void elAvisoDeBloqueoSoloSeReservaUnaVezPorHoraYCuentaYNoGuardaElCorreo() {
+        Instant now = Instant.parse("2026-11-04T12:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(0, 0L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("windowStart", Date.from(now)));
+        LoginAttemptStore store = new LoginAttemptStore(mongo, PEPPER);
+
+        assertTrue(store.reservarAvisoBloqueo("Ana@Example.com", now));
+        assertFalse(store.reservarAvisoBloqueo("ana@example.com", now.plusSeconds(60)));
+
+        ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
+        verify(mongo, org.mockito.Mockito.atLeastOnce()).updateFirst(queries.capture(), any(Update.class), eq(COLLECTION));
+        for (Query consulta : queries.getAllValues()) {
+            assertFalse(consulta.getQueryObject().toJson().contains("example.com"));
+        }
+        // La ventana es de una hora y admite un solo aviso.
+        assertEquals(Date.from(now.minusSeconds(3600)),
+                queries.getAllValues().get(1).getQueryObject().get("windowStart", Document.class).get("$gt"));
+        assertEquals(1, queries.getAllValues().get(1).getQueryObject().get("attempts", Document.class).get("$lt"));
+    }
+
+    @Test
     void cuentaFallosDeCuentaDentroDeUnaVentanaExactaDeDiezMinutos() {
         Instant now = Instant.parse("2026-11-04T12:00:00Z");
         when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
@@ -157,7 +222,7 @@ class LoginAttemptStoreTests {
                 .get("adaptiveAttempts", Document.class).get("$lt"));
     }
     @Test
-    void correoUsaVentanaDeDiezMinutosCincoEnviosYClaveNormalizada() {
+    void elEnvioDeCodigosSeLimitaADiezAlDiaPorCorreoYClaveNormalizadaYSeComprueba1Primero() {
         Instant now = Instant.parse("2026-11-07T10:00:00Z");
         when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
         when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
@@ -165,14 +230,80 @@ class LoginAttemptStoreTests {
         when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
                 .thenReturn(new Document("windowStart", Date.from(now.minusSeconds(100))));
         LoginAttemptStore store = new LoginAttemptStore(mongo, PEPPER);
-        assertEquals(500, store.reservarEnvioOtp(" ANA@EXAMPLE.COM ", now));
-        assertEquals(500, store.reservarEnvioOtp("ana@example.com", now));
+
+        assertEquals(86300, store.reservarEnvioOtp(" ANA@EXAMPLE.COM ", now));
+        assertEquals(86300, store.reservarEnvioOtp("ana@example.com", now));
+
         ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
         verify(mongo, org.mockito.Mockito.times(4)).updateFirst(queries.capture(), any(Update.class), eq(COLLECTION));
         Document reserva = queries.getAllValues().get(1).getQueryObject();
-        assertEquals(5, reserva.get("attempts", Document.class).get("$lt"));
-        assertEquals(Date.from(now.minusSeconds(600)), reserva.get("windowStart", Document.class).get("$gt"));
+        assertEquals(10, reserva.get("attempts", Document.class).get("$lt"));
+        assertEquals(Date.from(now.minusSeconds(86400)), reserva.get("windowStart", Document.class).get("$gt"));
         assertEquals(reserva.get("_id"), queries.getAllValues().get(3).getQueryObject().get("_id"));
         assertFalse(reserva.toJson().contains("ana@example.com"));
+    }
+
+    @Test
+    void elEnvioDeCodigosSeLimitaATresPorHoraYDevuelveElCupoDiarioSiLaHorariaDeniega() {
+        Instant now = Instant.parse("2026-11-07T10:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        // Diaria: preparar (0) y reservar (1, concedida). Horaria: preparar (0) y reservar (0, denegada).
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("windowStart", Date.from(now.minusSeconds(100))));
+
+        int espera = new LoginAttemptStore(mongo, PEPPER).reservarEnvioOtp("ana@example.com", now);
+
+        assertEquals(3500, espera);
+        ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
+        ArgumentCaptor<Update> updates = ArgumentCaptor.forClass(Update.class);
+        verify(mongo, org.mockito.Mockito.times(5)).updateFirst(queries.capture(), updates.capture(), eq(COLLECTION));
+        Document horaria = queries.getAllValues().get(3).getQueryObject();
+        assertEquals(3, horaria.get("attempts", Document.class).get("$lt"));
+        assertEquals(Date.from(now.minusSeconds(3600)), horaria.get("windowStart", Document.class).get("$gt"));
+        // El quinto updateFirst devuelve el cupo diario: mismo documento que la reserva diaria.
+        assertEquals(queries.getAllValues().get(1).getQueryObject().get("_id"),
+                queries.getAllValues().get(4).getQueryObject().get("_id"));
+        assertTrue(updates.getAllValues().get(4).getUpdateObject().toJson().contains("-1"));
+    }
+
+    @Test
+    void lasCuotasDelOtpSonConfigurables() {
+        Instant now = Instant.parse("2026-11-07T10:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null));
+        when(mongo.findOne(any(Query.class), eq(Document.class), eq(COLLECTION)))
+                .thenReturn(new Document("windowStart", Date.from(now)));
+
+        new LoginAttemptStore(mongo, PEPPER, 7, 25).reservarEnvioOtp("ana@example.com", now);
+
+        ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
+        verify(mongo, org.mockito.Mockito.atLeast(2)).updateFirst(queries.capture(), any(Update.class), eq(COLLECTION));
+        assertEquals(25, queries.getAllValues().get(1).getQueryObject().get("attempts", Document.class).get("$lt"));
+    }
+
+    @Test
+    void elMetodoGenericoReservaEnUnaVentanaPersistenteConClaveSeudonimizada() {
+        Instant now = Instant.parse("2026-11-07T10:00:00Z");
+        when(mongo.indexOps(COLLECTION)).thenReturn(mock(IndexOperations.class));
+        when(mongo.updateFirst(any(Query.class), any(Update.class), eq(COLLECTION)))
+                .thenReturn(UpdateResult.acknowledged(0, 0L, null),
+                        UpdateResult.acknowledged(1, 1L, null));
+
+        assertEquals(0, new LoginAttemptStore(mongo, PEPPER).reservar("registro-ip", "198.51.100.7", now, 900, 5));
+
+        ArgumentCaptor<Query> queries = ArgumentCaptor.forClass(Query.class);
+        verify(mongo, org.mockito.Mockito.times(2)).updateFirst(queries.capture(), any(Update.class), eq(COLLECTION));
+        Document reserva = queries.getAllValues().get(1).getQueryObject();
+        assertEquals(5, reserva.get("attempts", Document.class).get("$lt"));
+        assertEquals(Date.from(now.minusSeconds(900)), reserva.get("windowStart", Document.class).get("$gt"));
+        assertFalse(reserva.toJson().contains("198.51.100.7"));
+        assertTrue(reserva.getString("_id").startsWith("registro-ip:"));
     }
 }

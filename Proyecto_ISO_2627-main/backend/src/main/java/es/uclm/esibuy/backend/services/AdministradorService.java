@@ -1,8 +1,11 @@
 package es.uclm.esibuy.backend.services;
 
-import java.net.URI;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -28,7 +31,11 @@ import es.uclm.esibuy.backend.exceptions.UltimoAdministradorException;
 import es.uclm.esibuy.backend.exceptions.UsuarioNoEncontradoException;
 import es.uclm.esibuy.backend.model.Administrador;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import es.uclm.esibuy.backend.validation.ImagenPerfilHttpsValidator;
+import es.uclm.esibuy.backend.validation.PatronesEntrada;
 
 @Service
 public class AdministradorService {
@@ -109,7 +116,7 @@ public class AdministradorService {
 			ModificarUsuarioRequest request) {
 
 		if (request == null) {
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"Los datos de modificación son obligatorios.");
 		}
 
@@ -123,14 +130,14 @@ public class AdministradorService {
 		if (request.nombre() == null ||
 				request.nombre().isBlank()) {
 
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"El nombre es obligatorio.");
 		}
 
 		if (request.apellidos() == null ||
 				request.apellidos().isBlank()) {
 
-			throw new IllegalArgumentException(
+			throw new DatosNoValidosException(
 					"Los apellidos son obligatorios.");
 		}
 
@@ -164,14 +171,16 @@ public class AdministradorService {
 		Usuario usuarioGuardado =
 				usuarioDAO.save(usuario);
 
+		auditoriaService.registrarUsuarioModificado(usuarioGuardado.getId());
+
 		return UsuarioAdministracionResponse.desde(
 				usuarioGuardado);
 	}
 
 	private void validarTelefono(String telefono) {
 		if (telefono != null && !telefono.isBlank()
-				&& !telefono.matches("^\\+?[0-9\\s().-]{7,20}$")) {
-			throw new IllegalArgumentException("Introduce un teléfono válido o deja el campo vacío.");
+				&& !telefono.matches(PatronesEntrada.TELEFONO)) {
+			throw new DatosNoValidosException("Introduce un teléfono válido o deja el campo vacío.");
 		}
 	}
 
@@ -182,30 +191,31 @@ public class AdministradorService {
 
 		String url = imagenPerfil.trim();
 		if (url.length() > 1000) {
-			throw new IllegalArgumentException("La URL de la imagen de perfil no puede superar 1000 caracteres.");
+			throw new DatosNoValidosException("La URL de la imagen de perfil no puede superar 1000 caracteres.");
 		}
 
-		try {
-			URI uri = URI.create(url);
-			if (!"https".equalsIgnoreCase(uri.getScheme())
-					|| uri.getHost() == null
-					|| uri.getUserInfo() != null) {
-				throw new IllegalArgumentException(
-						"La imagen de perfil debe utilizar una URL HTTPS válida.");
-			}
-		} catch (IllegalArgumentException exception) {
-			throw new IllegalArgumentException(
-					"La imagen de perfil debe utilizar una URL HTTPS válida.", exception);
+		// Misma comprobación que el alta (@ImagenPerfilHttps): una sola fuente de verdad.
+		if (!ImagenPerfilHttpsValidator.esUrlHttpsValida(url)) {
+			throw new DatosNoValidosException(
+					"La imagen de perfil debe utilizar una URL HTTPS válida.");
 		}
 	}
 
 	public RegistroUsuarioResponse registrar(
 			RegistroAdministradorRequest request) {
 
-		if (request == null ||
-				!validator.validate(request).isEmpty()) {
-
+		if (request == null) {
 			throw new InvalidRegistrationException();
+		}
+
+		// Errores por campo, con el mismo formato que el alta de cliente y de vendedor.
+		Map<String, List<String>> errores = new LinkedHashMap<>();
+		for (ConstraintViolation<RegistroAdministradorRequest> incumplimiento : validator.validate(request)) {
+			errores.computeIfAbsent(incumplimiento.getPropertyPath().toString(), campo -> new ArrayList<>())
+					.add(incumplimiento.getMessage());
+		}
+		if (!errores.isEmpty()) {
+			throw new InvalidRegistrationException(errores);
 		}
 
 		passwordPolicy.validate(
@@ -287,6 +297,8 @@ public class AdministradorService {
 			usuario.setActivada(true);
 
 			usuarioDAO.save(usuario);
+
+			auditoriaService.registrarUsuarioActivado(usuario.getId());
 		}
 	}
 
@@ -325,6 +337,8 @@ public class AdministradorService {
 
 			sesionService.cerrarSesiones(
 					usuario.getEmail());
+
+			auditoriaService.registrarUsuarioBloqueado(usuario.getId());
 		}
 	}
 
@@ -360,6 +374,8 @@ public class AdministradorService {
 			usuario.setBloqueada(false);
 
 			usuarioDAO.save(usuario);
+
+			auditoriaService.registrarUsuarioDesbloqueado(usuario.getId());
 		}
 	}
 

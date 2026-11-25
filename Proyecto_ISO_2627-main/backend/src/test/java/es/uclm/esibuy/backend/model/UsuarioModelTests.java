@@ -54,6 +54,25 @@ class UsuarioModelTests {
     }
 
     @Test
+    void laFechaDelUltimoCambioSeActualizaAlRegistrarUnaContrasenaPeroNoAlReCifrarla() {
+        Cliente cliente = new Cliente();
+        assertEquals(null, cliente.getContrasenaCambiadaEn());
+
+        java.time.Instant antes = java.time.Instant.now();
+        cliente.registrarContrasenaHash("hash-1");
+        java.time.Instant fecha = cliente.getContrasenaCambiadaEn();
+
+        assertTrue(!fecha.isBefore(antes) && !fecha.isAfter(java.time.Instant.now()));
+
+        cliente.actualizarContrasenaHash("hash-1-recifrado");
+        assertEquals(fecha, cliente.getContrasenaCambiadaEn());
+
+        cliente.setContrasenaCambiadaEn(java.time.Instant.EPOCH);
+        cliente.registrarContrasenaHash("hash-2");
+        assertTrue(cliente.getContrasenaCambiadaEn().isAfter(java.time.Instant.EPOCH));
+    }
+
+    @Test
     void emailIsTrimmedAndLowercased() {
         Cliente cliente = new Cliente();
 

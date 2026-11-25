@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -46,11 +51,17 @@ class AuthServiceTests {
     @Mock
     private AuditoriaService auditoriaService;
 
+    @Mock
+    private AvisoBloqueoService avisoBloqueoService;
+
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService);
+        authService = new AuthService(usuarioDAO, passwordEncoder, loginAttemptService, auditoriaService,
+                avisoBloqueoService);
+        org.mockito.Mockito.lenient().when(loginAttemptService.registrarFalloDetallado(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(es.uclm.esibuy.backend.dao.ResultadoFalloLogin.SIN_BLOQUEO);
     }
 
     @Test
@@ -92,6 +103,41 @@ class AuthServiceTests {
 
         assertEquals("Correo o contraseña incorrectos.", error.getMessage());
         verify(auditoriaService).registrarIntentoLoginFallido();
+        verify(loginAttemptService).registrarFalloDetallado(CORREO);
+        verify(passwordEncoder).matches(eq(CONTRASENA), any());
+    }
+
+    @Test
+    void ejecutaLaComprobacionDeContrasenaTambienConUsuarioSinHash() {
+        Cliente cliente = crearCliente(true, false);
+        cliente.setContrasenaHash(null);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
+
+        BadCredentialsException error = assertThrows(
+                BadCredentialsException.class,
+                () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        assertEquals("Correo o contraseña incorrectos.", error.getMessage());
+        verify(passwordEncoder).matches(eq(CONTRASENA), any());
+        verify(loginAttemptService).registrarFalloDetallado(CORREO);
+    }
+
+    @Test
+    void correoInexistenteComparaContraUnHashSenueloConElFormatoDeUnHashReal() {
+        PasswordEncoder encoderReal = spy(new PepperedBCryptPasswordEncoder(
+                "test-pepper-that-is-never-used-outside-tests-123456", 4));
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.empty());
+        AuthService service = new AuthService(usuarioDAO, encoderReal, loginAttemptService, auditoriaService,
+                avisoBloqueoService);
+
+        assertThrows(BadCredentialsException.class, () -> service.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+        assertThrows(BadCredentialsException.class, () -> service.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        ArgumentCaptor<String> hashes = ArgumentCaptor.forClass(String.class);
+        verify(encoderReal, times(2)).matches(eq(CONTRASENA), hashes.capture());
+        assertTrue(hashes.getAllValues().get(0).startsWith("{bcrypt-pepper-v1}"));
+        assertEquals(hashes.getAllValues().get(0), hashes.getAllValues().get(1));
+        verify(encoderReal, times(1)).encode(any());
     }
 
     @Test
@@ -105,7 +151,7 @@ class AuthServiceTests {
                 () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
 
         assertEquals("Correo o contraseña incorrectos.", error.getMessage());
-        verify(loginAttemptService).registrarFallo(CORREO);
+        verify(loginAttemptService).registrarFalloDetallado(CORREO);
         verify(auditoriaService).registrarIntentoLoginFallido();
     }
 
@@ -128,7 +174,8 @@ class AuthServiceTests {
         Cliente cliente = crearCliente(true, false);
         when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
         when(passwordEncoder.matches(CONTRASENA, HASH)).thenReturn(false);
-        when(loginAttemptService.registrarFallo(CORREO)).thenReturn(30);
+        when(loginAttemptService.registrarFalloDetallado(CORREO))
+                .thenReturn(new es.uclm.esibuy.backend.dao.ResultadoFalloLogin(30, true));
 
         assertEquals(30, assertThrows(
                 LoginRateLimitException.class,
@@ -136,6 +183,49 @@ class AuthServiceTests {
                 .getRetryAfterSeconds());
         verify(auditoriaService).registrarIntentoLoginFallido();
         verify(auditoriaService).registrarBloqueoLogin(30);
+        verify(avisoBloqueoService).avisar(cliente, 30);
+    }
+
+    @Test
+    void siLaCuentaYaEstabaBloqueadaNoSeVuelveAAvisar() {
+        Cliente cliente = crearCliente(true, false);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.matches(CONTRASENA, HASH)).thenReturn(false);
+        when(loginAttemptService.registrarFalloDetallado(CORREO))
+                .thenReturn(new es.uclm.esibuy.backend.dao.ResultadoFalloLogin(120, false));
+
+        assertEquals(120, assertThrows(
+                LoginRateLimitException.class,
+                () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"))
+                .getRetryAfterSeconds());
+
+        verifyNoInteractions(avisoBloqueoService);
+    }
+
+    @Test
+    void unCorreoInexistenteNuncaGeneraAvisoNiRespuestaDistinta() {
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.empty());
+        when(loginAttemptService.registrarFalloDetallado(CORREO))
+                .thenReturn(new es.uclm.esibuy.backend.dao.ResultadoFalloLogin(30, true));
+
+        assertEquals(30, assertThrows(
+                LoginRateLimitException.class,
+                () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"))
+                .getRetryAfterSeconds());
+
+        verifyNoInteractions(avisoBloqueoService);
+    }
+
+    @Test
+    void unaContrasenaIncorrectaSinBloqueoNoAvisa() {
+        Cliente cliente = crearCliente(true, false);
+        when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
+        when(passwordEncoder.matches(CONTRASENA, HASH)).thenReturn(false);
+
+        assertThrows(BadCredentialsException.class,
+                () -> authService.autenticar(CORREO, CONTRASENA, "127.0.0.1"));
+
+        verifyNoInteractions(avisoBloqueoService);
     }
 
     @Test
@@ -162,13 +252,23 @@ class AuthServiceTests {
                 "test-pepper-that-is-never-used-outside-tests-123456", 4);
             when(usuarioDAO.findByEmail(CORREO)).thenReturn(Optional.of(cliente));
 
-            AuthService service = new AuthService(usuarioDAO, pepperedEncoder, loginAttemptService, auditoriaService);
+            AuthService service = new AuthService(usuarioDAO, pepperedEncoder, loginAttemptService, auditoriaService,
+                avisoBloqueoService);
             service.autenticar(CORREO, CONTRASENA, "127.0.0.1");
 
             assertTrue(cliente.getContrasenaHash().startsWith("{bcrypt-pepper-v1}"));
             assertTrue(pepperedEncoder.matches(CONTRASENA, cliente.getContrasenaHash()));
             verify(usuarioDAO).save(cliente);
             }
+
+    @Test
+    void registraElLoginCompletadoConElCorreoYElIdDelUsuario() {
+        Cliente cliente = crearCliente(true, false);
+
+        authService.registrarLoginCompletado(cliente);
+
+        verify(auditoriaService).registrarLoginCorrecto(CORREO, cliente.getId());
+    }
 
     @Test
     void rechazaUsuarioBloqueadoConElMismoErrorGenerico() {
@@ -200,6 +300,7 @@ class AuthServiceTests {
         cliente.setContrasenaHash(HASH);
         cliente.setActivada(activado);
         cliente.setBloqueada(bloqueado);
+        cliente.setContrasenaCambiadaEn(java.time.Instant.now());
         return cliente;
     }
 }

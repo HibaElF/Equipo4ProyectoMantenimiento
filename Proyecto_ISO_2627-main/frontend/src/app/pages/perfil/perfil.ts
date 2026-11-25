@@ -5,6 +5,7 @@ import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, Validat
 import { Router, RouterLink } from '@angular/router';
 
 import { CategoriaPerfil, ModificarPerfilRequest, PerfilResponse, PerfilService } from './perfil.service';
+import { EstadoSegundoFactor } from '../../shared/aviso-segundo-factor/estado-segundo-factor';
 import { ConfirmacionService } from '../../shared/confirmacion/confirmacion.service';
 import { MetodoPagoResponse, PagosService } from '../pagos/pagos.service';
 
@@ -43,6 +44,7 @@ const NOMBRES_TIPO_USUARIO: Record<string, string> = {
 })
 export class Perfil {
   private readonly servicioPerfil = inject(PerfilService);
+  private readonly estadoSegundoFactor = inject(EstadoSegundoFactor);
   private readonly servicioPagos = inject(PagosService);
   private readonly confirmacion = inject(ConfirmacionService);
   private readonly enrutador = inject(Router);
@@ -65,6 +67,8 @@ export class Perfil {
   readonly pasoConfirmacionBaja = signal<0 | 1 | 2>(0);
   readonly bajaEnCurso = signal(false);
   readonly errorBaja = signal('');
+  readonly descargaEnCurso = signal(false);
+  readonly errorDescarga = signal('');
   readonly fechaMaximaNacimiento = this.calcularFechaMaximaNacimiento();
   readonly categorias = signal<CategoriaPerfil[]>([]);
   readonly configuracionTOTP = signal<{ otpauthUri: string | null; qrDataUrl: string | null } | null>(null);
@@ -85,6 +89,16 @@ export class Perfil {
     return (nombre ?? '').trim().charAt(0).toLocaleUpperCase('es-ES');
   }
   readonly cargandoTOTP = signal(false);
+
+  readonly cambiandoContrasena = signal(false);
+  readonly errorContrasena = signal('');
+  readonly mensajeContrasena = signal('');
+
+  readonly formularioContrasena = this.constructorFormularios.nonNullable.group({
+    contrasenaActual: ['', [Validators.required, Validators.maxLength(128)]],
+    nuevaContrasena: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128)]],
+    confirmarContrasena: ['', [Validators.required, Validators.maxLength(128)]]
+  });
 
   readonly formulario = this.constructorFormularios.nonNullable.group({
     nombre: ['', [Validators.required, Validators.maxLength(100)]],
@@ -109,6 +123,7 @@ export class Perfil {
     this.servicioPerfil.consultarPerfil().subscribe({
       next: (respuesta) => {
         this.perfil.set(respuesta);
+        this.estadoSegundoFactor.activado.set(respuesta.totpActivado);
         if (respuesta.tipoUsuario === 'VENDEDOR') {
           this.servicioPerfil.obtenerCategorias().subscribe({
             next: (categorias) => this.categorias.set(categorias),
@@ -301,6 +316,36 @@ export class Perfil {
     });
   }
 
+  // T-25: descarga de los datos personales del titular (blob + enlace temporal).
+  descargarMisDatos(): void {
+    if (this.descargaEnCurso()) {
+      return;
+    }
+    this.descargaEnCurso.set(true);
+    this.errorDescarga.set('');
+    this.servicioPerfil.descargarMisDatos().subscribe({
+      next: (contenido) => {
+        this.descargaEnCurso.set(false);
+        const direccion = URL.createObjectURL(contenido);
+        const enlace = document.createElement('a');
+        enlace.href = direccion;
+        enlace.download = 'mis-datos.json';
+        enlace.click();
+        URL.revokeObjectURL(direccion);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.descargaEnCurso.set(false);
+        if (error.status === 401) {
+          this.enrutador.navigate(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
+          return;
+        }
+        this.errorDescarga.set(error.status === 429
+          ? 'Solo puedes descargar tus datos una vez por minuto. Inténtalo de nuevo en unos segundos.'
+          : this.obtenerMensajeError(error, 'No se pudieron descargar tus datos. Inténtalo de nuevo.'));
+      }
+    });
+  }
+
   iniciarBaja(): void {
     const tipoUsuario = this.perfil()?.tipoUsuario;
     if ((tipoUsuario !== 'CLIENTE' && tipoUsuario !== 'VENDEDOR') || this.bajaEnCurso()) {
@@ -390,6 +435,7 @@ export class Perfil {
         this.codigoTOTP.set('');
         this.mensajeTOTP.set('TOTP activado. Guarda estos códigos de respaldo en un lugar seguro.');
         this.perfil.update((valor) => valor ? { ...valor, totpActivado: true } : valor);
+        this.estadoSegundoFactor.activado.set(true);
       },
       error: (error: HttpErrorResponse) => {
         this.cargandoTOTP.set(false);
@@ -475,6 +521,7 @@ export class Perfil {
       next: () => {
         this.cargandoTOTP.set(false);
         this.perfil.update((valor) => valor ? { ...valor, totpActivado: false } : valor);
+        this.estadoSegundoFactor.activado.set(false);
         this.codigoTOTP.set('');
         this.codigosRespaldo.set([]);
         this.configuracionTOTP.set(null);
@@ -483,6 +530,37 @@ export class Perfil {
       error: (error: HttpErrorResponse) => {
         this.cargandoTOTP.set(false);
         this.errorTOTP.set(this.obtenerMensajeError(error, 'No se pudo desactivar el segundo factor.'));
+      }
+    });
+  }
+
+  /** T-05: cambia la contraseña con la sesión iniciada; el servidor cierra las demás sesiones. */
+  cambiarContrasena(): void {
+    this.errorContrasena.set('');
+    this.mensajeContrasena.set('');
+
+    if (this.formularioContrasena.invalid) {
+      this.formularioContrasena.markAllAsTouched();
+      this.errorContrasena.set('Completa los tres campos. La contraseña nueva debe tener al menos 8 caracteres.');
+      return;
+    }
+
+    const { contrasenaActual, nuevaContrasena, confirmarContrasena } = this.formularioContrasena.getRawValue();
+    if (nuevaContrasena !== confirmarContrasena) {
+      this.errorContrasena.set('La contraseña nueva y su confirmación no coinciden.');
+      return;
+    }
+
+    this.cambiandoContrasena.set(true);
+    this.servicioPerfil.cambiarContrasena({ contrasenaActual, nuevaContrasena }).subscribe({
+      next: () => {
+        this.formularioContrasena.reset();
+        this.cambiandoContrasena.set(false);
+        this.mensajeContrasena.set('Contraseña actualizada. Se han cerrado tus otras sesiones.');
+      },
+      error: (error: HttpErrorResponse) => {
+        this.cambiandoContrasena.set(false);
+        this.errorContrasena.set(this.obtenerMensajeError(error, 'No se pudo cambiar la contraseña. Inténtalo de nuevo.'));
       }
     });
   }

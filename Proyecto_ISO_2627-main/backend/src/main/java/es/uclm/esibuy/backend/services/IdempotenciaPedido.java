@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.UUID;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /*
  * HU-26 - Clave de operación que hace idempotente la compra: los ids de la compra y de sus pedidos
@@ -18,7 +19,7 @@ final class IdempotenciaPedido {
     static String normalizarOperacion(String operacionId) {
         if (operacionId == null || !operacionId.matches(
                 "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
-            throw new IllegalArgumentException("La clave de operación debe ser un UUID.");
+            throw new DatosNoValidosException("La clave de operación debe ser un UUID.");
         }
         return UUID.fromString(operacionId).toString();
     }

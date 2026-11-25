@@ -67,9 +67,11 @@ class PerfilTotpIntegrationTests {
         when(securityStore.reservarIntento(eq("usuario-1"), any(Instant.class))).thenReturn(true);
         when(securityStore.consumirIntervalo(eq("usuario-1"), eq(SECRETO_RFC), org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(true);
-        totpService = spy(new TotpService(usuarioDAO, cryptoService, new BCryptPasswordEncoder(4), securityStore, mongoTemplate));
+        totpService = spy(new TotpService(usuarioDAO, cryptoService, new BCryptPasswordEncoder(4), securityStore, mongoTemplate,
+                mock(es.uclm.esibuy.backend.services.AuditoriaService.class)));
         when(totpService.generarSecreto()).thenReturn(SECRETO_RFC);
-        PerfilController controller = new PerfilController(mock(PerfilService.class), totpService);
+        PerfilController controller = new PerfilController(mock(PerfilService.class), totpService,
+                mock(es.uclm.esibuy.backend.services.SesionService.class));
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new RegistrationExceptionHandler()).build();
     }

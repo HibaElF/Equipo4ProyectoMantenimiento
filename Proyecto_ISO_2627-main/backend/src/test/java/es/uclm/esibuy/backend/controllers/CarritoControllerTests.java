@@ -24,6 +24,7 @@ import es.uclm.esibuy.backend.dto.CarritoResponse;
 import es.uclm.esibuy.backend.dto.LineaCarritoResponse;
 import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
 import es.uclm.esibuy.backend.services.CarritoService;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @WebMvcTest(CarritoController.class)
 @Import(SecurityConfiguration.class)
@@ -65,7 +66,7 @@ class CarritoControllerTests {
     @Test
     void devuelveMotivoDeErroresFuncionales() throws Exception {
         when(servicio.anadirProductoConImporte("p1", 3))
-                .thenThrow(new IllegalArgumentException("No hay stock suficiente."))
+                .thenThrow(new DatosNoValidosException("No hay stock suficiente."))
                 .thenThrow(new ProductoNoEncontradoException())
                 .thenThrow(new AccessDeniedException("Producto exclusivo Premium."));
         int[] estados = {400, 404, 403};

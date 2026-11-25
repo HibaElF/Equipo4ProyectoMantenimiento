@@ -21,6 +21,8 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class FavoritoService {
@@ -30,11 +32,23 @@ public class FavoritoService {
     private final ListaProductosDAO listaProductosDAO;
     private final UsuarioDAO usuarioDAO;
     private final ProductoDAO productoDAO;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public FavoritoService(
             ListaProductosDAO listaProductosDAO,
             UsuarioDAO usuarioDAO,
             ProductoDAO productoDAO) {
+        this(listaProductosDAO, usuarioDAO, productoDAO, FirmaImagenService.sinFirma());
+    }
+
+    @Autowired
+    public FavoritoService(
+            ListaProductosDAO listaProductosDAO,
+            UsuarioDAO usuarioDAO,
+            ProductoDAO productoDAO,
+            FirmaImagenService firmaImagenes) {
+        this.firmaImagenes = firmaImagenes;
 
         this.listaProductosDAO = listaProductosDAO;
         this.usuarioDAO = usuarioDAO;
@@ -165,7 +179,8 @@ public class FavoritoService {
                 .map(id -> presentarProducto(
                         id,
                         productos.get(id),
-                        premium
+                        premium,
+                        firmaImagenes
                 ))
                 .toList();
 
@@ -179,7 +194,8 @@ public class FavoritoService {
     static ProductoFavoritoResponse presentarProducto(
             String id,
             Producto producto,
-            boolean premium) {
+            boolean premium,
+            FirmaImagenService firmaImagenes) {
 
         if (producto == null) {
             return new ProductoFavoritoResponse(
@@ -214,7 +230,7 @@ public class FavoritoService {
         return new ProductoFavoritoResponse(
                 id,
                 producto.getNombre(),
-                producto.getImagen(),
+                firmaImagenes.firmar(producto.getImagen()),
                 precio,
                 producto.getStock(),
                 aviso == null,
@@ -225,7 +241,7 @@ public class FavoritoService {
     private void validarIdProducto(String productoId) {
 
         if (productoId == null || productoId.isBlank()) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El identificador del producto es obligatorio."
             );
         }

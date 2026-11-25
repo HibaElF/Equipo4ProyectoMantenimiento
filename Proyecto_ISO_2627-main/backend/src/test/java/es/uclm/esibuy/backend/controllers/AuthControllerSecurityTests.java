@@ -84,6 +84,18 @@ class AuthControllerSecurityTests {
     private SesionService sesionService;
 
     @Test
+    void lasRespuestasDevuelvenElCorrelationIdDeLaPeticionOUnoNuevo() throws Exception {
+        mockMvc.perform(get("/usuarios/csrf").header("X-Correlation-Id", "abc12345-def6"))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("X-Correlation-Id", "abc12345-def6"));
+
+        String generado = mockMvc.perform(get("/usuarios/csrf").header("X-Correlation-Id", "<script>alert(1)</script>"))
+                .andReturn().getResponse().getHeader("X-Correlation-Id");
+        assertNotNull(generado);
+        java.util.UUID.fromString(generado);
+    }
+
+    @Test
     void loginGuardaLaSesionYPermiteRecuperarla() throws Exception {
         Cliente cliente = crearCliente(true);
         when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
@@ -105,6 +117,7 @@ class AuthControllerSecurityTests {
         assertNotNull(sesion);
         assertEquals(30 * 60, sesion.getMaxInactiveInterval());
         assertTrue(sesion.getAttribute(SesionAbsolutaFilter.ATRIBUTO_SESION_AUTENTICADA_EN) instanceof Instant);
+        verify(authService).registrarLoginCompletado(cliente);
 
         mockMvc.perform(get("/usuarios/sesion-actual").session(sesion))
                 .andExpect(status().isOk())
@@ -407,6 +420,59 @@ class AuthControllerSecurityTests {
                         .string("Retry-After", "30"))
                 .andExpect(jsonPath("$.error").value(
                         "Demasiados intentos de inicio de sesión. Espera antes de volver a intentarlo."));
+    }
+
+    @Test
+    void elLoginRechazaContrasenasYCorreosDemasiadoLargosConUn400PorCampo() throws Exception {
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"cliente@example.com\",\"password\":\"" + "a".repeat(129) + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.password[0]").exists());
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + "a".repeat(250) + "@e.es\",\"password\":\"ClaveSegura9!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errores.email[0]").exists());
+
+        verifyNoInteractions(authService);
+    }
+
+    @Test
+    void unaCuentaConElCorreoSinVerificarDevuelve403ConUnMensajeClaro() throws Exception {
+        when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
+                org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new es.uclm.esibuy.backend.exceptions.CorreoNoVerificadoException());
+
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"cliente@example.com","password":"ClaveSegura9!"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value(
+                        "Confirma tu correo electrónico con el enlace que te hemos enviado antes de iniciar sesión."));
+    }
+
+    @Test
+    void unaContrasenaCaducadaDevuelve403ConUnCodigoReconocible() throws Exception {
+        when(authService.autenticar(org.mockito.ArgumentMatchers.eq("cliente@example.com"),
+                org.mockito.ArgumentMatchers.eq("ClaveSegura9!"), org.mockito.ArgumentMatchers.anyString()))
+                .thenThrow(new es.uclm.esibuy.backend.exceptions.ContrasenaCaducadaException());
+
+        mockMvc.perform(post("/usuarios/login")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"cliente@example.com","password":"ClaveSegura9!"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.errores.codigo[0]").value("CONTRASENA_CADUCADA"))
+                .andExpect(jsonPath("$.error").value(
+                        "Tu contraseña ha caducado. Restablécela desde «He olvidado mi contraseña»."));
     }
 
     @Test

@@ -1,6 +1,8 @@
 
 package es.uclm.esibuy.backend.services;
 
+import java.time.Instant;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import es.uclm.esibuy.backend.dao.VendedorDAO;
 import es.uclm.esibuy.backend.dto.RegistroUsuarioResponse;
 import es.uclm.esibuy.backend.dto.RegistroVendedorRequest;
 import es.uclm.esibuy.backend.exceptions.InvalidRegistrationException;
+import es.uclm.esibuy.backend.model.PoliticaPrivacidad;
 import es.uclm.esibuy.backend.model.Vendedor;
 
 @Service
@@ -104,6 +107,8 @@ public class VendedorService {
         vendedor.setImagenPerfil(request.imagenPerfil());
         vendedor.setBloqueada(false);
         vendedor.setActivada(false);
+        vendedor.setCorreoVerificado(false);
+        vendedor.registrarAceptacionPolitica(PoliticaPrivacidad.VERSION_ACTUAL, Instant.now());
         vendedor.registrarContrasenaHash(soporteRegistro.codificarContrasena(request.contrasena()));
 
                 Vendedor guardado = soporteRegistro.guardarRegistroPublico(
@@ -115,6 +120,8 @@ public class VendedorService {
                 guardado.getId()
             );
         }
+
+        soporteRegistro.iniciarVerificacionCorreo(guardado);
 
         return new RegistroUsuarioResponse(guardado.getId(), "vendedor");
     }

@@ -115,6 +115,11 @@
 				<configuration>
 					<systemPropertyVariables>
 						<app.security.password.pepper>test-pepper-that-is-never-used-outside-tests-123456</app.security.password.pepper>
+						<!-- Las pruebas leen la salida de los logs: texto plano en lugar de JSON. -->
+						<LOG_FORMAT></LOG_FORMAT>
+						<!-- Las pruebas hacen muchas peticiones seguidas con el mismo usuario o IP. -->
+						<app.security.rate-limit.api.max-requests>100000</app.security.rate-limit.api.max-requests>
+						<app.security.imagenes.firma.key>Y2xhdmUtZGUtcHJ1ZWJhLWZhbHNhLWltYWdlbmVzLTM=</app.security.imagenes.firma.key>
 					</systemPropertyVariables>
 				</configuration>
 			</plugin>

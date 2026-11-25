@@ -34,6 +34,15 @@ describe('Register', () => {
 
   afterEach(() => httpMock.verify());
 
+  // T-10: el alta pide primero el token CSRF y lo envía en la cabecera X-XSRF-TOKEN.
+  const peticionDeRegistro = (url: string) => {
+    httpMock.expectOne('https://localhost:8443/usuarios/csrf').flush({ token: 'csrf-prueba' });
+    const peticion = httpMock.expectOne(url);
+    expect(peticion.request.headers.get('X-XSRF-TOKEN')).toBe('csrf-prueba');
+    expect(peticion.request.withCredentials).toBe(true);
+    return peticion;
+  };
+
   it('should create', () => {
     expect(component).toBeTruthy();
   });
@@ -85,6 +94,110 @@ describe('Register', () => {
     expect(component.passwordMismatch(component.clienteForm)).toBe(true);
 
     httpMock.expectNone('https://localhost:8443/cliente/register');
+  });
+
+  describe('consentimiento de la política de privacidad (T-24)', () => {
+    it('la casilla no está premarcada y es obligatoria en cliente y vendedor', () => {
+      expect(component.clienteForm.controls.aceptaPolitica.value).toBe(false);
+      expect(component.vendedorForm.controls.aceptaPolitica.value).toBe(false);
+      expect(component.clienteForm.controls.aceptaPolitica.hasError('required')).toBe(true);
+      expect(component.vendedorForm.controls.aceptaPolitica.hasError('required')).toBe(true);
+    });
+
+    it('no envía el registro de cliente sin aceptar y muestra el aviso', () => {
+      component.clienteForm.patchValue({
+        nombre: 'Ada',
+        apellidos: 'Lovelace',
+        fechaNacimiento: '1990-12-10',
+        dniNif: '12345678A',
+        email: 'ada@example.com',
+        contrasena: 'Strong-pass-123!',
+        repetirContrasena: 'Strong-pass-123!',
+      });
+
+      component.register();
+      fixture.detectChanges();
+
+      expect(component.clienteForm.invalid).toBe(true);
+      expect(fixture.nativeElement.textContent).toContain('Debes aceptar la política de privacidad');
+      httpMock.expectNone('https://localhost:8443/cliente/register');
+    });
+
+    it('enlaza la política de privacidad y el aviso legal desde el registro', () => {
+      const enlaces = Array.from<HTMLAnchorElement>(
+        fixture.nativeElement.querySelectorAll('.consentimiento a')
+      ).map((enlace) => enlace.getAttribute('href'));
+
+      expect(enlaces).toEqual(['/politica-privacidad', '/aviso-legal']);
+    });
+  });
+
+  describe('validación de entrada igual que el servidor (T-11)', () => {
+    it('limita la longitud de nombre, apellidos, correo y contraseña', () => {
+      const f = component.clienteForm.controls;
+      f.nombre.setValue('a'.repeat(101));
+      f.apellidos.setValue('a'.repeat(151));
+      f.email.setValue('a'.repeat(250) + '@e.es');
+      f.contrasena.setValue('Aa1!' + 'a'.repeat(125));
+
+      expect(f.nombre.hasError('maxlength')).toBe(true);
+      expect(f.apellidos.hasError('maxlength')).toBe(true);
+      expect(f.email.hasError('maxlength')).toBe(true);
+      expect(f.contrasena.hasError('maxlength')).toBe(true);
+
+      f.nombre.setValue('a'.repeat(100));
+      f.apellidos.setValue('a'.repeat(150));
+      expect(f.nombre.valid).toBe(true);
+      expect(f.apellidos.valid).toBe(true);
+    });
+
+    it('solo admite imágenes de perfil con URL HTTPS de hasta 1000 caracteres', () => {
+      const imagen = component.clienteForm.controls.imagenPerfil;
+
+      for (const invalida of [
+        'perfil.png',
+        'http://cdn.example.com/a.png',
+        'javascript:alert(1)',
+        'https:///sin-host.png',
+        'https://cdn example.com/a.png',
+        'https://cdn.example.com/' + 'a'.repeat(1000),
+      ]) {
+        imagen.setValue(invalida);
+        expect(imagen.invalid, invalida).toBe(true);
+      }
+
+      for (const valida of ['', 'https://cdn.example.com/a.png', 'HTTPS://cdn.example.com/a/b.png?x=1']) {
+        imagen.setValue(valida);
+        expect(imagen.valid, valida).toBe(true);
+      }
+    });
+
+    it('muestra el aviso de HTTPS en la imagen de perfil', () => {
+      component.clienteForm.controls.imagenPerfil.setValue('http://cdn.example.com/a.png');
+      component.clienteForm.controls.imagenPerfil.markAsTouched();
+
+      expect(component.controlError(component.clienteForm, 'imagenPerfil')).toContain('https://');
+    });
+
+    it('rechaza teléfonos con tabuladores o saltos de línea', () => {
+      const telefono = component.clienteForm.controls.telefono;
+
+      telefono.setValue('600\t123123');
+      expect(telefono.invalid).toBe(true);
+      telefono.setValue('600 123 123');
+      expect(telefono.valid).toBe(true);
+    });
+
+    it('los campos del formulario llevan maxlength acorde con el servidor', () => {
+      const maximo = (campo: string) =>
+        fixture.nativeElement.querySelector(`[formControlName="${campo}"]`)?.getAttribute('maxlength');
+
+      expect(maximo('nombre')).toBe('100');
+      expect(maximo('apellidos')).toBe('150');
+      expect(maximo('email')).toBe('254');
+      expect(maximo('imagenPerfil')).toBe('1000');
+      expect(maximo('contrasena')).toBe('128');
+    });
   });
 
   it('validates all password requirements for customer and seller forms', () => {
@@ -266,13 +379,12 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'premium',
+      aceptaPolitica: true,
     });
 
     component.register();
 
-    const request = httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    );
+    const request = peticionDeRegistro('https://localhost:8443/cliente/register');
 
     expect(request.request.method).toBe('POST');
 
@@ -284,6 +396,7 @@ describe('Register', () => {
       email: 'ada@example.com',
       contrasena: 'Strong-pass-123!',
       esPremium: true,
+      aceptaPolitica: true,
     });
 
     request.flush({
@@ -309,13 +422,12 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'normal',
+      aceptaPolitica: true,
     });
 
     component.register();
 
-    httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    ).flush(
+    peticionDeRegistro('https://localhost:8443/cliente/register').flush(
       {
         mensaje: 'Si la solicitud puede tramitarse, el equipo administrador revisará los datos antes de activar la cuenta.'
       },
@@ -345,13 +457,12 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       repetirContrasena: 'Strong-pass-123!',
       tipoCliente: 'normal',
+      aceptaPolitica: true,
     });
 
     component.register();
 
-    httpMock.expectOne(
-      'https://localhost:8443/cliente/register'
-    ).flush(
+    peticionDeRegistro('https://localhost:8443/cliente/register').flush(
       {
         error: 'Revisa los campos del formulario.',
         errores: {
@@ -425,13 +536,12 @@ describe('Register', () => {
       contrasena: 'Strong-pass-123!',
       categoriaId: '6abe34098deff53da8a2c052',
       nombreComercial: 'Grace Shop',
+      aceptaPolitica: true,
     };
 
     registrationService.registerVendedor(requestBody).subscribe();
 
-    const request = httpMock.expectOne(
-      'https://localhost:8443/vendedor/register'
-    );
+    const request = peticionDeRegistro('https://localhost:8443/vendedor/register');
 
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual(requestBody);

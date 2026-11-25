@@ -1,10 +1,12 @@
 package es.uclm.esibuy.backend.security;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,12 +23,15 @@ public final class ContextoAutenticacion {
     private ContextoAutenticacion() {
     }
 
+    // La sesión guarda el rol y los permisos finos de ese rol (CatalogoPermisos). Un cambio del catálogo no
+    // alcanza a las sesiones ya abiertas hasta que caducan (como máximo, el límite absoluto de la sesión).
     public static SecurityContext crear(String email, String rol) {
+        List<GrantedAuthority> autoridades = new ArrayList<>();
+        autoridades.add(new SimpleGrantedAuthority(PREFIJO_ROL + rol));
+        CatalogoPermisos.permisosDe(rol).forEach(permiso -> autoridades.add(new SimpleGrantedAuthority(permiso)));
+
         SecurityContext contexto = SecurityContextHolder.createEmptyContext();
-        contexto.setAuthentication(new UsernamePasswordAuthenticationToken(
-                email,
-                null,
-                List.of(new SimpleGrantedAuthority(PREFIJO_ROL + rol))));
+        contexto.setAuthentication(new UsernamePasswordAuthenticationToken(email, null, autoridades));
         return contexto;
     }
 

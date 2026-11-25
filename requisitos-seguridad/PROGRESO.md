@@ -1,0 +1,114 @@
+# Progreso de la implementación
+
+> Actualiza este fichero al empezar y al cerrar cada tarea (skill `cerrar-tarea-seguridad`). Estados: `Pendiente`, `En curso`, `Hecha`, `Bloqueada`.
+
+## Línea base (Fase 0)
+
+| Dato | Valor |
+|---|---|
+| Fecha | 2026-11-20 |
+| Rama | `refactor/arreglo_seguridad` |
+| Commit de partida | `5c16a3b` |
+| Backend: pruebas / fallos / omitidas | 1238 / 0 / 15 (`BackendApplicationTests` excluida) |
+| Backend: cobertura de líneas (JaCoCo) | 89,88 % (3934 cubiertas, 443 sin cubrir) |
+| Frontend: pruebas / cobertura | 530 pruebas en 39 ficheros, 0 fallos / líneas 78,69 %, sentencias 77,86 %, ramas 71,14 %, funciones 68,54 % |
+| Versiones (Java, Node, Docker) | Java 23 (compila a 21), Node 26.13.1 (npm 11.20.0), Docker 29.8.2 |
+
+## Tareas
+
+| Fase | Tarea | Título | Prioridad | Estado | Rama / commit | Fecha | Notas |
+|---|---|---|---|---|---|---|---|
+| 0 | — | Preparación y línea base | — | Pendiente | | | |
+| 1 | T-08 | Respuesta de login en tiempo constante | Media | Hecha | `73fa664` | 2026-11-20 | Suite: 1240 pruebas, 0 fallos, 89,91 %. Pendiente medir a mano 100 intentos (criterio de tiempos). |
+| 1 | T-07 | Comprobar datos personales en la contraseña nueva de la recuperación | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1262 pruebas, 0 fallos, 89,96 %. `PasswordPolicy.datosPersonalesDe(Usuario)` reutilizable en T-05. |
+| 2 | T-18 | Logs estructurados (JSON) con contexto y correlationId | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1281 pruebas, 0 fallos, 90,05 %. `Seudonimizador` (bean) reutilizable en T-19/T-09/T-25. Variable opcional `LOG_FORMAT`. Pendiente verificar a mano el JSON y `X-Correlation-Id` con la app arrancada. |
+| 2 | T-20 | Gestión genérica de errores sin detalles internos | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1288 pruebas, 0 fallos, 90,05 %. 67 `IllegalArgumentException` migradas a `DatosNoValidosException`; 10 se quedan como error interno. 500 genérico con correlationId vía `ManejadorErroresInesperados` (resolver de último recurso). |
+| 2 | T-19 | Auditoría de seguridad ampliada y protegida | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Suite: 1309 pruebas, 0 fallos, 90,34 %. Colección `auditoria` solo inserción con TTL 365d; `GET /administrador/auditoria` (ADMIN). `AuditoriaService.registrarEvento(...)` listo para T-05 y T-09. Limitación: el usuario de MongoDB puede borrar (T-28, de otro miembro). |
+| 3 | T-05 | Cambio de contraseña del usuario autenticado | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1327 pruebas, 0 fallos, 90,42 %. Frontend: 539 pruebas, 78,8 %. Controlador y servicio nuevos (`CambioContrasena*`) para no tocar `PerfilController`/`PerfilService` (T-04). Sin código de 2º factor. `SesionService.cerrarOtrasSesiones` reutilizable en T-13. |
+| 3 | T-13 | Rotar el identificador de sesión al cambiar los factores de autenticación | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1335 pruebas, 0 fallos, 90,45 %. `SesionService.rotarSesion` (reutilizado por T-05). `PerfilController` recibe `SesionService` (3 sitios de prueba adaptados). Sin frontend. |
+| 3 | T-06 | Caducidad de contraseñas a los 30 días | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1346 pruebas, 0 fallos, 90,49 %. Frontend: 543 pruebas, 78,84 %. Campo `contrasenaCambiadaEn`; `app.security.password.max-age=30d`; cuentas existentes empiezan a contar en su primer login tras el despliegue; 403 con código `CONTRASENA_CADUCADA` y enlace de recuperación en el login. |
+| 3 | T-09 | Alertas de intentos fallidos y bloqueos de cuenta | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-20 | Backend: 1357 pruebas, 0 fallos, 90,21 %. Frontend sin cambios: 543 pruebas, 78,84 %. `registrarFalloDetallado` (bloqueo nuevo) + `AvisoBloqueoService` + correo de aviso (máx. 1/hora y cuenta) + evento `bloqueo_cuenta`. Sin aviso a administradores. |
+| 4 | T-22 | Rate limiting general de la API y del envío de códigos OTP | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1375 pruebas, 0 fallos, 90,3 %. Sin frontend. `LimiteApiFilter`/`LimiteApiService` (60/min, en memoria, por instancia); OTP 3/h y 10/día en MongoDB; `LoginAttemptStore.reservar(...)` genérico para T-10; límites por propiedades `app.security.rate-limit.*`. Pendiente comprobar la IP real en Render. |
+| 4 | T-11 | Completar la validación de entrada del registro y del login | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1410 pruebas, 0 fallos, 90,28 %. Frontend: 550 pruebas, 78,88 %, build correcto. Máximos y formatos en los DTO de alta y login; `@ImagenPerfilHttps`/`PatronesEntrada`; alta de administrador con errores por campo; teléfono solo con espacio normal; frontend de registro solo HTTPS y `maxlength`. |
+| 4 | T-10 | Proteger el registro público frente al abuso (límite por IP y CSRF) | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1420 pruebas, 0 fallos, 90,33 %. Frontend: 554 pruebas, 78,89 %, build correcto. `LimiteRegistroFilter` (5 altas/IP cada 15 min, persistente, 429 + Retry-After); registro ya no excluido de CSRF; `registration.service.ts` pide el token. Pendiente prueba manual del formulario. |
+| 4 | T-12 | Verificación de la propiedad del correo en el alta | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1439 pruebas, 0 fallos, 90,0 %. Frontend: 563 pruebas, 79,05 %, build correcto. `Usuario.correoVerificado` (null = verificado), `TokenVerificacionCorreo` (24 h, solo hash), `VerificacionCorreoService`, `POST /usuarios/verificar-correo`, página `/verificar-correo`; login 403 si no verificado; la recuperación de contraseña también verifica. Complementa la activación por administrador. |
+| 5 | T-21 | Añadir Content-Security-Policy y cabeceras de seguridad | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1448 pruebas, 0 fallos, 90,02 %. Frontend: 563 pruebas, 79,05 %, build correcto. CSP obligatoria (propiedad `app.security.csp.report-only` para solo informe), Referrer-Policy y Permissions-Policy; `angular.json` con `inlineCritical:false` (sin script en línea en `index.html`). Verificada en el navegador: inyección bloqueada y pantallas sin violaciones. Pendiente QR e imágenes de perfil con la app completa. |
+| 5 | T-23 | Permisos finos (authorities) además de los roles | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1500 pruebas, 0 fallos, 90,08 %. Frontend sin cambios: 563 pruebas, 79,05 %. `CatalogoPermisos` (rol → permisos), bean `RoleHierarchy`, sesión con rol y permisos (opción B), reglas HTTP con rol y permiso; `AdministradorController` sin tocar (T-03). Las 297 pruebas con `roles(...)` siguen pasando. |
+| 6 | T-33 | Recodificar las imágenes subidas y eliminar metadatos | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1508 pruebas, 0 fallos, 89,97 %. Frontend sin cambios. `ProductoImagenService` recodifica con `ImageIO` antes de VirusTotal y del almacenamiento (disco y Mongo); límites 4000 px por lado y 10 s; GIF animado rechazado. Pruebas con imágenes reales generadas con `BufferedImage`. |
+| 6 | T-35 | Activar el antivirus y reforzar las cabeceras de entrega de imágenes (opcional) | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Cabeceras (`nosniff`, CSP `default-src 'none'; sandbox`, `Content-Disposition`) en modo local y `mongo` (`CabecerasEntregaImagen`); la CSP de la imagen prevalece sobre la global. VirusTotal documentado (cuota, 60 s, fail-closed) y sin activar: pendiente manual. |
+| 6 | T-34 | URLs firmadas con caducidad para las imágenes (opcional) | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1527 pruebas, 0 fallos, 90,05 %. `FirmaImagenService` (HMAC-SHA256, clave `IMAGENES_FIRMA_KEY` obligatoria, 2 h redondeadas a la hora), `FiltroImagenFirmada` (403 sin firma o inválida, 410 caducada) y URL firmada en catálogo, vendedor, carrito, favoritos y listas. Frontend sin cambios. |
+| 7 | T-24 | RGPD: política de privacidad, aviso legal y consentimiento | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1531 pruebas, 0 fallos, 90,07 %. Frontend: 569 pruebas, 79,51 %, build OK. Documentos en `documents/rgpd/` (plantillas con `[COMPLETAR]`), páginas `/politica-privacidad` y `/aviso-legal`, casilla obligatoria en el registro y `aceptaPolitica` en los DTO con versión y fecha guardadas. |
+| 7 | T-25 | RGPD: exportación de los datos personales del usuario | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Backend: 1545 pruebas, 0 fallos, 90,28 %. Frontend: 576 pruebas, 79,61 %, build OK. `GET /usuarios/mis-datos` (`ExportacionDatosController`/`Service`, DTO explícito), límite de 1 por minuto, evento `exportacion_datos` y botón «Descargar mis datos» en el perfil. |
+| 7 | T-27 | Incentivar la activación del segundo factor en los clientes | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Solo frontend: 588 pruebas, 79,73 %, build OK (backend sin cambios: 1545 pruebas, 90,28 %). Componente `shared/aviso-segundo-factor` bajo la cabecera, `EstadoSegundoFactor` actualizado desde el perfil, descarte en `sessionStorage` que se borra al cerrar sesión. |
+| 8 | T-26 | Documentar la correspondencia con CCN-CERT BP/28 | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Solo documentación: `documents/Correspondencia_BP28.md` (7 bloques; principio, medida, evidencia, estado y tarea). Adaptación propia: no hay BP/28 oficial y el aviso de cabecera lo deja explícito. Huecos: T-28 y copias de seguridad (sin tarea). |
+
+## Decisiones tomadas con el usuario
+
+| Fecha | Tarea | Decisión |
+|---|---|---|
+| 2026-11-20 | General | Son 22 tareas (se omitió una). `debugsonar.txt` lo elimina el usuario. |
+| 2026-11-20 | Secretos | El token de Sonar se queda de momento en el `.properties`. |
+| 2026-11-20 | T-20 | Se migran 67 `IllegalArgumentException` a `DatosNoValidosException` (10 se quedan como error interno); el 500 genérico va en un `HandlerExceptionResolver` de último recurso. |
+| 2026-11-20 | T-05 | El cambio de contraseña no pide código del segundo factor; se implementa en `CambioContrasenaController`/`Service` nuevos en lugar de `PerfilController`. |
+| 2026-11-20 | T-06 | Cuentas existentes: la fecha se fija en su primer login correcto tras el despliegue. Se renueva por recuperación por correo (sin sesión «pendiente de cambio»). |
+| 2026-11-23 | T-23 | Catálogo de 10 permisos aprobado (ADMIN, VENDEDOR; CLIENTE sin permisos finos); la sesión guarda rol y permisos (opción B), con el aviso de que un cambio del catálogo no alcanza a sesiones abiertas hasta que caducan; los permisos se exigen en `SecurityConfiguration`, no en `AdministradorController`. |
+| 2026-11-23 | T-21 | CSP obligatoria por defecto (con propiedad para pasar a solo informe); se permite `https://fonts.gstatic.com` en `font-src` en lugar de alojar las fuentes. |
+| 2026-11-23 | T-12 | La verificación del correo complementa la activación por administrador (hace falta ambas); enlace de 24 horas; completar una recuperación de contraseña también verifica el correo; sin endpoint de reenvío. |
+| 2026-11-23 | T-10 | Altas públicas: 5 por IP cada 15 minutos (configurable), después de la comprobación CSRF; `/cliente/register` y `/vendedor/register` dejan de estar excluidos de CSRF. |
+| 2026-11-23 | T-11 | Máximos: nombre 100, apellidos 150, nombre comercial 100, sede 150, correo 254, contraseña 128 (también en el alta), imagen 1000 y solo HTTPS; teléfono solo con espacio normal. El alta de administrador devuelve errores por campo. |
+| 2026-11-23 | T-22 | Límite general de 60 peticiones por minuto (usuario o IP si es anónimo), excluyendo `/usuarios/csrf`, `/usuarios/sesion-actual` y `/product-images/**`. |
+| 2026-11-23 | T-33 | GIF animado: se rechaza («El GIF no puede ser animado.»); el GIF estático se recodifica. Límites fijos en el servicio (4000 px por lado, 16 Mpx, 10 s); JPEG a RGB con calidad 0,85 (un JPEG CMYK se rechaza). |
+| 2026-11-23 | T-35 | VirusTotal solo se documenta (cuota, tiempos y compromiso del `fail-closed`); su activación en Render queda como pendiente manual y el valor por defecto sigue en `false`. |
+| 2026-11-23 | T-34 | Se implementa (opcional); caducidad de 2 h redondeada a la hora; se conservan los constructores antiguos de `ProductoService`, `CarritoService`, `FavoritoService` y `ListaProductosService` (con servicio sin firma) y se añade el nuevo con la firma, que es el que usa Spring. |
+| 2026-11-23 | T-24 | Datos del responsable y del contacto como `[COMPLETAR]` (no se inventan); versión inicial 1.0, como constante `PoliticaPrivacidad.VERSION_ACTUAL` (no como propiedad, para no cambiar constructores); `aceptaPolitica` es `Boolean` con `@NotNull @AssertTrue` para que su ausencia dé un error por campo y no un 400 vacío. |
+| 2026-11-24 | T-25 | DNI y teléfono completos (solo para su titular); los pedidos recibidos por el vendedor solo llevan sus líneas, sin datos de los compradores; la exportación vive en un controlador nuevo para no chocar con T-04 en `PerfilController`. |
+| 2026-11-24 | T-27 | Aviso global bajo la cabecera (no solo en el panel del cliente), sin ventaja asociada al activar el 2FA (sería una funcionalidad de negocio nueva; anotado como posible mejora). |
+| 2026-11-24 | T-26 | Sin el BP/28 oficial, se aprueba una correspondencia adaptada y redactada por el equipo, marcada como «no contrastada con el oficial»; vive en `documents/Correspondencia_BP28.md` y no se enlaza desde ningún README (no existe). |
+| 2026-11-20 | T-09 | No se avisa a los administradores; solo al titular de la cuenta, como máximo un correo por hora. |
+| 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
+
+El token de sonar se tiene que quedar en el propierties por orden del profesor
+
+## Verificación final (2026-11-24)
+
+| Comprobación | Resultado |
+|---|---|
+| Backend (`clean verify`, sin `BackendApplicationTests`) | 1545 pruebas, 0 fallos, 15 omitidas, JaCoCo 90,28 % (4774/5288 líneas); línea base: 1238 / 0 / 15 / 89,88 % |
+| Frontend (`npm test`, `npm run build`) | 588 pruebas en 46 ficheros, 0 fallos; build correcto con avisos de presupuesto de tamaño (bundle inicial, `acceso.css`, `cliente.css`) |
+| Secretos en el diff desde `5c16a3b` (patrones) | Sin hallazgos; `debugsonar.txt` figura como borrado |
+| Gitleaks (v8.24.3, 55 commits) | 2 hallazgos `generic-api-key`: el token de Sonar en `backend/sonar-project.properties` (conocido y aceptado por orden del profesor) y un ejemplo en un `.md` de `.claude/skills/security-skills-main/…/owasp-proactive-controls.md` (documentación de una skill, probable falso positivo). Ninguno en código nuevo |
+| Semgrep (`p/java`, `p/typescript`, `p/owasp-top-ten`, 378 ficheros de `src/main` y frontend) | 0 hallazgos |
+| Sonar: 10 issues críticos (2026-11-24, fuera del plan T-xx) | Corregidos sin cambiar comportamiento: `register.ts` (`controlError` dividido en helpers), `SecurityConfiguration` (constante de ruta), `AuthService.autenticar` (extraídos `rechazarCredencialesInvalidas` y `comprobarEstadoCuenta`), `BrevoEmailService` (constantes y método `enviar` común), `ExportacionDatosService` (usa `TIPO_LIMITE`). Además, `ConfiguracionLogsTests` ya no depende del orden con `BackendApplicationTests`. Backend 1545 pruebas, 90,28 %; frontend 588 pruebas. Pendiente: que Sonar lo confirme tras el análisis |
+| Plan: 22 tareas (T-08 … T-26) | Todas implementadas; quedan abiertos los criterios que dependen del usuario o de otros (ver pendientes manuales, T-28 y T-26) |
+
+## Pendientes manuales del usuario
+
+| Tarea | Acción | Hecha |
+|---|---|---|
+| T-26 | Que el equipo revise `documents/Correspondencia_BP28.md`, la incluya en el apartado del RQ-15 de la memoria y, si se consigue, la contraste con el BP/28 oficial | No |
+| T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
+| T-27 | Con la aplicación arrancada, entrar como cliente sin TOTP: debe verse la franja bajo la cabecera, descartarse con «Ahora no» y desaparecer al activar el segundo factor | No |
+| T-24 | Completar los `[COMPLETAR]` de `documents/rgpd/` y de las páginas `politica-privacidad.html` y `aviso-legal.html`, y que el equipo revise los textos (criterio «el equipo ha revisado los textos») | No |
+| T-34 | **Obligatorio:** crear `IMAGENES_FIRMA_KEY` (Base64 de 32 bytes, p. ej. `openssl rand -base64 32`) en Render y en el `.env` local; sin ella el backend no arranca. Comprobar que las imágenes se ven en catálogo, vendedor, carrito y favoritos | No |
+| T-18 | Opcional: definir `LOG_FORMAT` en Render (por defecto `ecs`, JSON) y comprobar `X-Correlation-Id` y la línea JSON con la app arrancada | No |
+| T-21 | Con la app completa (Docker/Render): abrir la consola del navegador y navegar por login, catálogo, imágenes de producto, perfil con imagen externa y activación del QR del TOTP; no debe haber violaciones de la CSP. Si las hay, poner `APP_SECURITY_CSP_REPORT_ONLY=true` | No |
+| T-12 | Con Brevo configurado: registrar una cuenta nueva, abrir el enlace del correo y comprobar «Correo confirmado»; probar que el login da 403 antes de verificar y que, tras verificar y activar, entra | No |
+| T-10 | Con la app arrancada, registrar un cliente (y un vendedor) desde el formulario de Angular y comprobar que se acepta con CSRF; repetir 6 altas desde la misma IP en 15 minutos y comprobar el aviso de límite | No |
+| T-22 | En el despliegue de Render, comprobar con `curl -i` que el campo `ip` del log JSON es la IP real del cliente (no una interna de Render) | No |
+| T-09 | Comprobar con Brevo configurado que el titular recibe un único correo al bloquearse su cuenta (5 fallos seguidos) y que un correo inexistente no genera nada | No |
+| T-19 | Comprobar con MongoDB real que se crea el índice TTL `ttl_auditoria_fecha` y que `GET /administrador/auditoria` lista eventos | No |
+
+
+## Notas para el chat de auditoría
+
+Al terminar cada fase, anota aquí qué requisitos (RQ) quedan afectados para que se vuelvan a auditar.
+
+| Fase | Requisitos afectados | Nota |
+|---|---|---|
+| 8 | RQ-15 | T-26 añade la correspondencia con los principios de seguridad (adaptada, no contrastada con el BP/28 oficial) en `documents/Correspondencia_BP28.md`. Hueco sin tarea: copias de seguridad y recuperación. |
+| 7 | RQ-15, RQ-16 | T-24 (política de privacidad, aviso legal y consentimiento en el registro), T-25 (exportación de datos personales) y T-27 (aviso para activar el segundo factor en clientes) afectan a «Cumplimiento RGPD» y a «Política por rol». Los textos legales llevan `[COMPLETAR]` pendientes de revisión del equipo. Suite: backend 1545 pruebas, 0 fallos, 90,28 %; frontend 588 pruebas, 79,73 %. |
+| 5 | RQ-15 | T-21 (Content-Security-Policy y cabeceras) y T-23 (permisos finos además de los roles) afectan a «Endurecimiento del frontend» y a «Roles y permisos finos». Suite completa: backend 1500 pruebas, 0 fallos, 90,08 %; frontend 563 pruebas, 79,05 %. |
+| 4 | RQ-06, RQ-15 | T-22 (rate limiting general y OTP), T-11 (validación de entrada), T-10 (límite por IP y CSRF en el alta pública) y T-12 (verificación del correo) afectan a «Rate limiting en peticiones», «Validación de entrada en servidor» y «Registro de usuario seguro». Suite completa: backend 1439 pruebas, 0 fallos, 90,0 %; frontend 563 pruebas, 79,05 %. |
+| 3 | RQ-05, RQ-07 | T-05 (cambio de contraseña), T-13 (rotación de sesión al cambiar factores), T-06 (caducidad a 30 días) y T-09 (alertas de bloqueo) afectan a «política de contraseñas», «caducidad», «alertas de intentos fallidos» y «rotación del ID de sesión al cambiar credenciales». Suite completa: backend 1357 pruebas, 0 fallos, 90,21 %; frontend 543 pruebas, 78,84 %. |
+| 2 | RQ-15 | T-18 (logs JSON con correlationId), T-20 (errores genéricos sin detalles internos) y T-19 (auditoría persistida y protegida) afectan a «Logs estructurados», «Errores genéricos al cliente» y «Registros de auditoría securizados». Suite completa: backend 1309 pruebas, 0 fallos, 90,34 %; frontend 530 pruebas, 78,69 %. |
+| 1 | RQ-05 | T-08 (tiempo constante del login) y T-07 (datos personales al restablecer) afectan a los criterios «Comparación en tiempo constante» y «La contraseña no contiene datos personales». Suite completa: 1262 pruebas, 0 fallos, 89,96 %. |

@@ -1,5 +1,23 @@
 /* La estructura, la tarjeta, los campos, los botones y los avisos vienen de ../acceso/acceso.css. */
 
+/* T-24: casilla de consentimiento, no premarcada. */
+.campo-consentimiento {
+  margin: 1rem 0;
+}
+
+.consentimiento {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.consentimiento input {
+  margin-top: 0.2rem;
+  flex: none;
+}
+
 /* El formulario de registro es largo: la tarjeta ocupa más que en el login. */
 .acceso-cuerpo {
   grid-template-columns: minmax(0, 4fr) minmax(0, 7fr);

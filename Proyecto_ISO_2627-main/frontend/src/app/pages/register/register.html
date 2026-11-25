@@ -76,6 +76,7 @@
                             <input
                                 type="text"
                                 formControlName="nombre"
+                                maxlength="100"
                                 autocomplete="given-name"
                             />
 
@@ -89,6 +90,7 @@
                             <input
                                 type="text"
                                 formControlName="apellidos"
+                                maxlength="150"
                                 autocomplete="family-name"
                             />
 
@@ -130,6 +132,7 @@
                             <input
                                 type="email"
                                 formControlName="email"
+                                maxlength="254"
                                 autocomplete="email"
                             />
 
@@ -156,6 +159,7 @@
                             <input
                                 type="url"
                                 formControlName="imagenPerfil"
+                                maxlength="1000"
                                 placeholder="https://..."
                                 (input)="resetAvatarError()"
                             />
@@ -198,6 +202,7 @@
                                     type="password"
                                     [type]="customerPasswordHidden ? 'password' : 'text'"
                                     formControlName="contrasena"
+                                    maxlength="128"
                                     autocomplete="new-password"
                                     (focus)="customerPasswordFocused = true"
                                     (blur)="customerPasswordFocused = !!clienteForm.controls.contrasena.value"
@@ -237,6 +242,7 @@
                                     type="password"
                                     [type]="customerConfirmationHidden ? 'password' : 'text'"
                                     formControlName="repetirContrasena"
+                                    maxlength="128"
                                     autocomplete="off"
                                     (paste)="$event.preventDefault()"
                                     (copy)="$event.preventDefault()"
@@ -265,6 +271,21 @@
 
                     </div>
 
+                    <div class="campo-consentimiento">
+                        <label class="consentimiento">
+                            <input type="checkbox" formControlName="aceptaPolitica" />
+                            <span>
+                                He leído y acepto la
+                                <a class="enlace" routerLink="/politica-privacidad" target="_blank" rel="noopener">política de privacidad</a>
+                                y el
+                                <a class="enlace" routerLink="/aviso-legal" target="_blank" rel="noopener">aviso legal</a>.
+                            </span>
+                        </label>
+                        @if (clienteForm.controls.aceptaPolitica.touched && clienteForm.controls.aceptaPolitica.invalid) {
+                            <small class="campo-error">Debes aceptar la política de privacidad para registrarte.</small>
+                        }
+                    </div>
+
                     <button
                         class="boton-principal"
                         type="submit"
@@ -287,6 +308,7 @@
                             <input
                                 type="text"
                                 formControlName="nombre"
+                                maxlength="100"
                                 autocomplete="given-name"
                             />
 
@@ -300,6 +322,7 @@
                             <input
                                 type="text"
                                 formControlName="apellidos"
+                                maxlength="150"
                                 autocomplete="family-name"
                             />
 
@@ -350,6 +373,7 @@
                             <input
                                 type="text"
                                 formControlName="nombreComercial"
+                                maxlength="100"
                                 autocomplete="organization"
                             />
 
@@ -377,6 +401,7 @@
                             <input
                                 type="email"
                                 formControlName="email"
+                                maxlength="254"
                                 autocomplete="email"
                             />
 
@@ -403,6 +428,7 @@
                             <input
                                 type="url"
                                 formControlName="imagenPerfil"
+                                maxlength="1000"
                                 placeholder="https://..."
                                 (input)="resetAvatarError()"
                             />
@@ -419,6 +445,7 @@
                                     type="password"
                                     [type]="sellerPasswordHidden ? 'password' : 'text'"
                                     formControlName="contrasena"
+                                    maxlength="128"
                                     autocomplete="new-password"
                                     (focus)="sellerPasswordFocused = true"
                                     (blur)="sellerPasswordFocused = !!vendedorForm.controls.contrasena.value"
@@ -458,6 +485,7 @@
                                     type="password"
                                     [type]="sellerConfirmationHidden ? 'password' : 'text'"
                                     formControlName="repetirContrasena"
+                                    maxlength="128"
                                     autocomplete="off"
                                     (paste)="$event.preventDefault()"
                                     (copy)="$event.preventDefault()"
@@ -486,6 +514,21 @@
 
                     </div>
 
+                    <div class="campo-consentimiento">
+                        <label class="consentimiento">
+                            <input type="checkbox" formControlName="aceptaPolitica" />
+                            <span>
+                                He leído y acepto la
+                                <a class="enlace" routerLink="/politica-privacidad" target="_blank" rel="noopener">política de privacidad</a>
+                                y el
+                                <a class="enlace" routerLink="/aviso-legal" target="_blank" rel="noopener">aviso legal</a>.
+                            </span>
+                        </label>
+                        @if (vendedorForm.controls.aceptaPolitica.touched && vendedorForm.controls.aceptaPolitica.invalid) {
+                            <small class="campo-error">Debes aceptar la política de privacidad para registrarte.</small>
+                        }
+                    </div>
+
                     <button
                         class="boton-principal"
                         type="submit"
@@ -502,6 +545,10 @@
             <p class="acceso-pie">
                 ¿Ya tienes cuenta?
                 <a class="enlace" routerLink="/login">Inicia sesión</a>
+            </p>
+            <p class="acceso-pie">
+                <a class="enlace" routerLink="/politica-privacidad">Política de privacidad</a> ·
+                <a class="enlace" routerLink="/aviso-legal">Aviso legal</a>
             </p>
 
         </section>

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { App } from './app';
 import { AuthService } from './pages/login/auth.service';
+import { PerfilService } from './pages/perfil/perfil.service';
 
 @Component({ template: '' })
 class PaginaVacia {}
@@ -22,7 +23,9 @@ describe('App', () => {
         {
           provide: AuthService,
           useValue: { obtenerSesionActual: () => of({ email: 'c@example.com', role: 'CLIENTE' }) }
-        }
+        },
+        // T-27: el aviso del segundo factor consulta el perfil; aquí el cliente ya lo tiene activado.
+        { provide: PerfilService, useValue: { consultarPerfil: () => of({ tipoUsuario: 'CLIENTE', totpActivado: true }) } }
       ]
     });
     return TestBed.createComponent(App);

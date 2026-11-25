@@ -21,6 +21,8 @@ import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
 import es.uclm.esibuy.backend.model.Carrito;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class CarritoService {
@@ -31,8 +33,17 @@ public class CarritoService {
     private final CarritoDAO carritoDAO;
     private final ClienteDAO clienteDAO;
     private final ProductoDAO productoDAO;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public CarritoService(CarritoDAO carritoDAO, ClienteDAO clienteDAO, ProductoDAO productoDAO) {
+        this(carritoDAO, clienteDAO, productoDAO, FirmaImagenService.sinFirma());
+    }
+
+    @Autowired
+    public CarritoService(CarritoDAO carritoDAO, ClienteDAO clienteDAO, ProductoDAO productoDAO,
+            FirmaImagenService firmaImagenes) {
+        this.firmaImagenes = firmaImagenes;
         this.carritoDAO = carritoDAO;
         this.clienteDAO = clienteDAO;
         this.productoDAO = productoDAO;
@@ -81,7 +92,7 @@ public class CarritoService {
      */
     private void reservarStock(Producto producto, int cantidad) {
         if (cantidad > producto.getStock()) {
-            throw new IllegalArgumentException("No hay stock suficiente para la cantidad solicitada.");
+            throw new DatosNoValidosException("No hay stock suficiente para la cantidad solicitada.");
         }
         productoDAO.descontarStock(producto, cantidad);
     }
@@ -127,10 +138,10 @@ public class CarritoService {
     private CarritoResponse modificarLinea(String idProducto, Integer cantidad) {
         Cliente cliente = obtenerClienteAutenticado();
         if (idProducto == null || idProducto.isBlank()) {
-            throw new IllegalArgumentException("El producto es obligatorio.");
+            throw new DatosNoValidosException("El producto es obligatorio.");
         }
         if (cantidad != null && cantidad <= 0) {
-            throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+            throw new DatosNoValidosException("La cantidad debe ser mayor que cero.");
         }
         return reintentarSiHayConflicto(() -> {
             Carrito carrito = carritoDAO.findById(cliente.getId())
@@ -172,7 +183,7 @@ public class CarritoService {
         }
         String aviso = comprobarDisponibilidad(producto, cantidad, cliente);
         if (aviso != null) {
-            throw new IllegalArgumentException(aviso);
+            throw new DatosNoValidosException(aviso);
         }
         return producto;
     }
@@ -209,14 +220,14 @@ public class CarritoService {
         return new CarritoResponse(List.copyOf(lineas), importe);
     }
 
-    private static LineaCarritoResponse lineaNoDisponible(String idProducto, int cantidad, Producto producto,
+    private LineaCarritoResponse lineaNoDisponible(String idProducto, int cantidad, Producto producto,
             String aviso, Integer stockParaCliente) {
         if (producto == null) {
             return new LineaCarritoResponse(idProducto, cantidad, null, null, "Producto eliminado", null, null,
                     false, aviso, null);
         }
         return new LineaCarritoResponse(idProducto, cantidad, null, null, producto.getNombre(),
-                producto.getImagen(), stockParaCliente, false, aviso, producto.getVendedor());
+                firmaImagenes.firmar(producto.getImagen()), stockParaCliente, false, aviso, producto.getVendedor());
     }
 
     private String comprobarDisponibilidad(Producto producto, int cantidad, Cliente cliente) {
@@ -250,29 +261,29 @@ public class CarritoService {
             int stockParaCliente) {
         Double precio = PrecioProducto.paraCliente(producto, cliente.isEsPremium());
         if (precio == null || !Double.isFinite(precio) || precio < 0) {
-            throw new IllegalArgumentException(MENSAJE_PRECIO_NO_DISPONIBLE);
+            throw new DatosNoValidosException(MENSAJE_PRECIO_NO_DISPONIBLE);
         }
         BigDecimal precioUnitario = BigDecimal.valueOf(precio).setScale(2);
         BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
         return new LineaCarritoResponse(producto.getId(), cantidad, precioUnitario, subtotal,
-                producto.getNombre(), producto.getImagen(), stockParaCliente, true, null,
+                producto.getNombre(), firmaImagenes.firmar(producto.getImagen()), stockParaCliente, true, null,
                 producto.getVendedor());
     }
 
     private Resultado actualizarCarrito(String idProducto, int cantidad) {
         Cliente cliente = obtenerClienteAutenticado();
         if (cantidad <= 0) {
-            throw new IllegalArgumentException("La cantidad debe ser mayor que cero.");
+            throw new DatosNoValidosException("La cantidad debe ser mayor que cero.");
         }
         if (idProducto == null || idProducto.isBlank()) {
-            throw new IllegalArgumentException("El producto es obligatorio.");
+            throw new DatosNoValidosException("El producto es obligatorio.");
         }
 
         return reintentarSiHayConflicto(() -> {
             Producto producto = productoDAO.findById(idProducto)
                     .orElseThrow(ProductoNoEncontradoException::new);
             if (!producto.isEsVisible()) {
-                throw new IllegalArgumentException("El producto ya no está disponible.");
+                throw new DatosNoValidosException("El producto ya no está disponible.");
             }
             if (producto.isSoloPremium() && !cliente.isEsPremium()) {
                 throw new AccessDeniedException(MENSAJE_SOLO_PREMIUM);
@@ -282,7 +293,7 @@ public class CarritoService {
                     .orElseGet(() -> new Carrito(cliente.getId()));
             long cantidadFinal = (long) carrito.cantidadDe(idProducto) + cantidad;
             if (cantidad > producto.getStock() || cantidadFinal > Integer.MAX_VALUE) {
-                throw new IllegalArgumentException("No hay stock suficiente para la cantidad total solicitada.");
+                throw new DatosNoValidosException("No hay stock suficiente para la cantidad total solicitada.");
             }
 
             Carrito actualizado = carrito.conCantidad(idProducto, (int) cantidadFinal);
@@ -307,14 +318,15 @@ public class CarritoService {
                     ? productoAnadido
                     : productoDAO.findById(entrada.getKey()).orElseThrow(ProductoNoEncontradoException::new);
             if (!producto.isEsVisible()) {
-                throw new IllegalArgumentException("Un producto del carrito ya no está disponible.");
+                throw new DatosNoValidosException("Un producto del carrito ya no está disponible.");
             }
             if (producto.isSoloPremium() && !cliente.isEsPremium()) {
                 throw new AccessDeniedException("Un producto del carrito solo está disponible para clientes Premium.");
             }
-            if (entrada.getValue() <= 0) {
-                throw new IllegalArgumentException("La cantidad de un producto del carrito no es válida.");
+           if (entrada.getValue() <= 0) {
+                throw new DatosNoValidosException("La cantidad de un producto del carrito no es válida.");
             }
+           
             int maximo = producto == productoAnadido ? maximoAnadido
                     : stockParaCliente(producto.getStock(), entrada.getValue());
             LineaCarritoResponse linea = calcularLinea(producto, entrada.getValue(), cliente, maximo);
@@ -326,7 +338,7 @@ public class CarritoService {
 
     LineaCarritoResponse validarLineaParaCompra(Producto producto, int cantidad, Cliente cliente) {
         String aviso = comprobarDisponibilidad(producto, cantidad, cliente);
-        if (aviso != null) throw new IllegalArgumentException(aviso);
+        if (aviso != null) throw new DatosNoValidosException(aviso);
         return calcularLinea(producto, cantidad, cliente, stockParaCliente(producto.getStock(), cantidad));
     }
 

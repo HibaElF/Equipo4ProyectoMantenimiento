@@ -12,6 +12,8 @@ public interface ValoracionDAO extends MongoRepository<Valoracion, String> {
 
     List<Valoracion> findByProductoId(String productoId);
 
+    // T-25: valoraciones escritas por un cliente (exportación de sus datos).
+    List<Valoracion> findByClienteId(String clienteId);
     // Estadísticas: valoraciones de un conjunto de productos (por ejemplo, el catálogo de un vendedor)
     List<Valoracion> findByProductoIdIn(Collection<String> productoIds);
 }

@@ -4,6 +4,8 @@
  * No guarda datos personales; si el almacenamiento no está disponible, se trata como «sin sesión».
  */
 
+import { olvidarDescarte } from '../../shared/aviso-segundo-factor/descarte-aviso';
+
 const CLAVE = 'esibuy.sesionIniciada';
 
 export type MotivoLogin = 'sin-sesion' | 'sesion-expirada';
@@ -17,6 +19,8 @@ export function marcarSesionIniciada(): void {
 }
 
 export function olvidarSesion(): void {
+  // T-27: otro usuario en esta pestaña debe volver a ver el aviso del segundo factor.
+  olvidarDescarte();
   try {
     sessionStorage.removeItem(CLAVE);
   } catch {

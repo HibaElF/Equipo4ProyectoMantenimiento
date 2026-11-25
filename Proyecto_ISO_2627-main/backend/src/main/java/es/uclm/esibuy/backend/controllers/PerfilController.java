@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import es.uclm.esibuy.backend.dto.PerfilResponse;
 import es.uclm.esibuy.backend.dto.PreferenciaEmailOtpRequest;
 import es.uclm.esibuy.backend.dto.ModificarUsuarioRequest;
@@ -23,6 +25,7 @@ import es.uclm.esibuy.backend.dto.TwoFactorCodeRequest;
 import es.uclm.esibuy.backend.dto.TwoFactorConfirmationResponse;
 import es.uclm.esibuy.backend.dto.TwoFactorSetupResponse;
 import es.uclm.esibuy.backend.services.PerfilService;
+import es.uclm.esibuy.backend.services.SesionService;
 import es.uclm.esibuy.backend.services.TotpService;
 import es.uclm.esibuy.backend.model.Usuario;
 
@@ -32,18 +35,23 @@ public class PerfilController {
 
     private final PerfilService perfilService;
     private final TotpService totpService;
+    private final SesionService sesionService;
 
-    public PerfilController(PerfilService perfilService, TotpService totpService) {
+    public PerfilController(PerfilService perfilService, TotpService totpService, SesionService sesionService) {
         this.perfilService = perfilService;
         this.totpService = Objects.requireNonNull(totpService);
+        this.sesionService = Objects.requireNonNull(sesionService);
     }
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/3fa/preferencia")
     public ResponseEntity<Void> modificarPreferenciaTercerFactor(
             Authentication authentication,
+            HttpServletRequest peticion,
             @jakarta.validation.Valid @RequestBody PreferenciaEmailOtpRequest request) {
         perfilService.modificarPreferenciaTercerFactor(authentication.getName(), request.activado());
+        // Cambian los factores de autenticación: se rota la sesión y se cierran las demás.
+        sesionService.rotarSesion(peticion, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 
@@ -84,15 +92,19 @@ public class PerfilController {
     @PostMapping("/2fa/confirmar")
     public ResponseEntity<TwoFactorConfirmationResponse> confirmarSegundoFactor(
             Authentication authentication,
+            HttpServletRequest peticion,
             @jakarta.validation.Valid @RequestBody TwoFactorCodeRequest request) {
         Usuario usuario = totpService.buscarUsuario(authentication.getName());
-        return ResponseEntity.ok(totpService.confirmarConfiguracion(usuario, request.code()));
+        TwoFactorConfirmationResponse respuesta = totpService.confirmarConfiguracion(usuario, request.code());
+        sesionService.rotarSesion(peticion, authentication.getName());
+        return ResponseEntity.ok(respuesta);
     }
 
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/2fa")
     public ResponseEntity<Void> desactivarSegundoFactor(
             Authentication authentication,
+            HttpServletRequest peticion,
             @jakarta.validation.Valid @RequestBody TwoFactorCodeRequest request) {
 
         Usuario usuario = totpService.buscarUsuario(authentication.getName());
@@ -108,6 +120,7 @@ public class PerfilController {
                     "Desactiva primero la verificación por correo.");
         }
         totpService.desactivar(usuario, request.code());
+        sesionService.rotarSesion(peticion, authentication.getName());
 
         return ResponseEntity.noContent().build();
     }

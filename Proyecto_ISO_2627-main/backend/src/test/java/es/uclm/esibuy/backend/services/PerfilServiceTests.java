@@ -42,11 +42,14 @@ class PerfilServiceTests {
     @Mock
     private AdministradorService administradorService;
 
+    @Mock
+    private AuditoriaService auditoriaService;
+
     private PerfilService perfilService;
 
     @BeforeEach
     void prepararServicio() {
-        perfilService = new PerfilService(usuarioDAO, mongoTemplate, administradorService);
+        perfilService = new PerfilService(usuarioDAO, mongoTemplate, administradorService, auditoriaService);
     }
 
     @Test
@@ -78,6 +81,35 @@ class PerfilServiceTests {
             assertFalse(componente.getName().toLowerCase().contains("hash"));
         }
         verifyNoInteractions(mongoTemplate);
+    }
+
+    @Test
+    void registraElCambioDeLaVerificacionPorCorreoSoloCuandoSeGuarda() {
+        Cliente cliente = new Cliente();
+        cliente.setId("cliente-1");
+        cliente.setEmail("cliente@esibuy.com");
+        cliente.setTotpActivado(true);
+        when(usuarioDAO.findByEmail("cliente@esibuy.com")).thenReturn(Optional.of(cliente));
+
+        perfilService.modificarPreferenciaTercerFactor("cliente@esibuy.com", true);
+        perfilService.modificarPreferenciaTercerFactor("cliente@esibuy.com", false);
+
+        verify(auditoriaService).registrarCodigoPorCorreo("cliente-1", true);
+        verify(auditoriaService).registrarCodigoPorCorreo("cliente-1", false);
+    }
+
+    @Test
+    void noRegistraElCambioDeLaVerificacionSiSeRechaza() {
+        Cliente cliente = new Cliente();
+        cliente.setId("cliente-1");
+        cliente.setEmail("cliente@esibuy.com");
+        cliente.setTotpActivado(false);
+        when(usuarioDAO.findByEmail("cliente@esibuy.com")).thenReturn(Optional.of(cliente));
+
+        assertThrows(org.springframework.web.server.ResponseStatusException.class,
+                () -> perfilService.modificarPreferenciaTercerFactor("cliente@esibuy.com", true));
+
+        verifyNoInteractions(auditoriaService);
     }
 
     @Test

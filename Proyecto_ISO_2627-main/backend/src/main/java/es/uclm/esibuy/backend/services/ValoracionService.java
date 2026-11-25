@@ -17,6 +17,7 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 import es.uclm.esibuy.backend.model.Valoracion;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @Service
 public class ValoracionService {
@@ -50,9 +51,9 @@ public class ValoracionService {
         validarIdentificador(productoId, MENSAJE_PRODUCTO_OBLIGATORIO);
 
         Cliente cliente = clienteDAO.findByEmail(normalizarEmail(emailCliente))
-                .orElseThrow(() -> new IllegalArgumentException("El cliente no existe."));
+                .orElseThrow(() -> new DatosNoValidosException("El cliente no existe."));
         Pedido pedido = pedidoDAO.findByIdAndClienteId(pedidoId, cliente.getId())
-                .orElseThrow(() -> new IllegalArgumentException("El pedido no pertenece al cliente."));
+                .orElseThrow(() -> new DatosNoValidosException("El pedido no pertenece al cliente."));
         validarPedidoContieneProducto(pedido, productoId);
         if (valoracionDAO.existsByClienteIdAndProductoId(cliente.getId(), productoId)) {
             throw new IllegalStateException("El cliente ya ha valorado este producto.");
@@ -68,13 +69,13 @@ public class ValoracionService {
 
     private static void validarPuntuacion(int puntuacion) {
         if (puntuacion < PUNTUACION_MINIMA || puntuacion > PUNTUACION_MAXIMA) {
-            throw new IllegalArgumentException("La puntuación debe estar entre 1 y 5.");
+            throw new DatosNoValidosException("La puntuación debe estar entre 1 y 5.");
         }
     }
 
     private static void validarComentario(String comentario) {
         if (comentario != null && comentario.length() > LONGITUD_MAXIMA_COMENTARIO) {
-            throw new IllegalArgumentException("El comentario no puede superar los 500 caracteres.");
+            throw new DatosNoValidosException("El comentario no puede superar los 500 caracteres.");
         }
     }
 
@@ -85,7 +86,7 @@ public class ValoracionService {
         boolean productoIncluido = pedido.getLineas().stream()
                 .anyMatch(linea -> Objects.equals(linea.productoId(), productoId));
         if (!productoIncluido) {
-            throw new IllegalArgumentException("El producto no pertenece al pedido.");
+            throw new DatosNoValidosException("El producto no pertenece al pedido.");
         }
     }
 
@@ -129,13 +130,13 @@ public class ValoracionService {
 
     private static void validarIdentificador(String identificador, String mensaje) {
         if (identificador == null || identificador.isBlank()) {
-            throw new IllegalArgumentException(mensaje);
+            throw new DatosNoValidosException(mensaje);
         }
     }
 
     private static String normalizarEmail(String email) {
         if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("El cliente es obligatorio.");
+            throw new DatosNoValidosException("El cliente es obligatorio.");
         }
         return email.trim().toLowerCase(Locale.ROOT);
     }

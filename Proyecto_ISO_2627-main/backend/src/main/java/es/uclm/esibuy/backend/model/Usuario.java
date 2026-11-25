@@ -36,6 +36,18 @@ public abstract class Usuario {
 
 	private List<String> historialContrasenasHash = new ArrayList<>();
 
+	// Correo confirmado por el titular. Las cuentas anteriores a esta medida no tienen el valor (null) y se
+	// consideran verificadas; solo los registros públicos nuevos parten de false.
+	private Boolean correoVerificado;
+
+	// T-24: política de privacidad aceptada en el registro público (null en las cuentas anteriores).
+	private String versionPoliticaAceptada;
+
+	private Instant fechaAceptacionPolitica;
+
+	// Fecha del último cambio de contraseña (null en las cuentas anteriores a la caducidad).
+	private Instant contrasenaCambiadaEn;
+
 	private String telefono;
 
 	private String imagenPerfil;
@@ -108,8 +120,30 @@ public abstract class Usuario {
 		return historialContrasenasHash == null ? List.of() : List.copyOf(historialContrasenasHash);
 	}
 
+	public String getVersionPoliticaAceptada() {
+		return versionPoliticaAceptada;
+	}
+
+	public Instant getFechaAceptacionPolitica() {
+		return fechaAceptacionPolitica;
+	}
+
+	public void registrarAceptacionPolitica(String version, Instant fecha) {
+		this.versionPoliticaAceptada = version;
+		this.fechaAceptacionPolitica = fecha;
+	}
+
+	public Instant getContrasenaCambiadaEn() {
+		return contrasenaCambiadaEn;
+	}
+
+	public void setContrasenaCambiadaEn(Instant contrasenaCambiadaEn) {
+		this.contrasenaCambiadaEn = contrasenaCambiadaEn;
+	}
+
 	public void registrarContrasenaHash(String contrasenaHash) {
 		this.contrasenaHash = contrasenaHash;
+		this.contrasenaCambiadaEn = Instant.now();
 		if (historialContrasenasHash == null) {
 			historialContrasenasHash = new ArrayList<>();
 		}
@@ -150,6 +184,14 @@ public abstract class Usuario {
 
 	public void setBloqueada(boolean bloqueada) {
 		this.bloqueada = bloqueada;
+	}
+
+	public boolean isCorreoVerificado() {
+		return correoVerificado == null || correoVerificado;
+	}
+
+	public void setCorreoVerificado(boolean correoVerificado) {
+		this.correoVerificado = correoVerificado;
 	}
 
 	public boolean isActivada() {

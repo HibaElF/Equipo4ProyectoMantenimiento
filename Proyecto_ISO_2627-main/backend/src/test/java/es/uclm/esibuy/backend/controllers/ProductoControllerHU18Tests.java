@@ -37,6 +37,7 @@ import es.uclm.esibuy.backend.exceptions.StockModificadoException;
 import es.uclm.esibuy.backend.services.ProductoService;
 import es.uclm.esibuy.backend.services.SesionService;
 import es.uclm.esibuy.backend.services.VendedorService;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 @WebMvcTest(controllers = VendedorController.class)
 @Import(SecurityConfiguration.class)
@@ -123,7 +124,7 @@ class ProductoControllerHU18Tests {
         MockMultipartFile imagen = new MockMultipartFile(
                 "imagen", "falsa.png", MediaType.IMAGE_PNG_VALUE, new byte[] { 1, 2, 3 });
         when(productoService.modificarProducto(eq(EMAIL_VENDEDOR), eq("producto-1"), any(), notNull()))
-                .thenThrow(new IllegalArgumentException("La imagen debe ser PNG, JPG o GIF y no superar 5 MB."));
+                .thenThrow(new DatosNoValidosException("La imagen debe ser PNG, JPG o GIF y no superar 5 MB."));
 
         mockMvc.perform(peticionModificar(JSON_VALIDO)
                         .file(imagen)

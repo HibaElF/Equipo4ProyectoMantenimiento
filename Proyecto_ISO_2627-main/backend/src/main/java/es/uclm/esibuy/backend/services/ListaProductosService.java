@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Producto;
 import es.uclm.esibuy.backend.model.Usuario;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 
 /**
  * HU-39: listas de productos del usuario autenticado. Los favoritos (HU-31) son
@@ -42,13 +44,26 @@ public class ListaProductosService {
     private final UsuarioDAO usuarioDAO;
     private final ProductoDAO productoDAO;
     private final FavoritosRegistroService favoritosRegistroService;
+    private final FirmaImagenService firmaImagenes;
 
+    // Constructor sin firma de URLs, conservado para las pruebas que construyen el servicio con «new».
     public ListaProductosService(
             ListaProductosDAO listaProductosDAO,
             UsuarioDAO usuarioDAO,
             ProductoDAO productoDAO,
             FavoritosRegistroService favoritosRegistroService) {
+        this(listaProductosDAO, usuarioDAO, productoDAO, favoritosRegistroService, FirmaImagenService.sinFirma());
+    }
 
+    @Autowired
+    public ListaProductosService(
+            ListaProductosDAO listaProductosDAO,
+            UsuarioDAO usuarioDAO,
+            ProductoDAO productoDAO,
+            FavoritosRegistroService favoritosRegistroService,
+            FirmaImagenService firmaImagenes) {
+
+        this.firmaImagenes = firmaImagenes;
         this.listaProductosDAO = listaProductosDAO;
         this.usuarioDAO = usuarioDAO;
         this.productoDAO = productoDAO;
@@ -187,7 +202,7 @@ public class ListaProductosService {
 
     private void validarIdProducto(String productoId) {
         if (productoId == null || productoId.isBlank()) {
-            throw new IllegalArgumentException("El identificador del producto es obligatorio.");
+            throw new DatosNoValidosException("El identificador del producto es obligatorio.");
         }
     }
 
@@ -217,11 +232,11 @@ public class ListaProductosService {
         String recortado = nombre == null ? "" : nombre.trim();
 
         if (recortado.isEmpty()) {
-            throw new IllegalArgumentException("El nombre de la lista es obligatorio.");
+            throw new DatosNoValidosException("El nombre de la lista es obligatorio.");
         }
 
         if (recortado.length() > MAX_NOMBRE) {
-            throw new IllegalArgumentException(
+            throw new DatosNoValidosException(
                     "El nombre de la lista no puede superar " + MAX_NOMBRE + " caracteres.");
         }
 
@@ -256,7 +271,7 @@ public class ListaProductosService {
         boolean premium = usuario instanceof Cliente cliente && cliente.isEsPremium();
 
         List<ProductoFavoritoResponse> detalles = ids.stream()
-                .map(id -> FavoritoService.presentarProducto(id, productos.get(id), premium))
+                .map(id -> FavoritoService.presentarProducto(id, productos.get(id), premium, firmaImagenes))
                 .toList();
 
         return new ListaProductosResponse(

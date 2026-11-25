@@ -1,7 +1,8 @@
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, switchMap } from 'rxjs';
+import type { RespuestaTokenCsrf } from '../../shared/models/respuesta-token-csrf';
 import { environment } from '../../../environments/environment';
 
 export interface ClienteRegistrationRequest {
@@ -14,6 +15,7 @@ export interface ClienteRegistrationRequest {
   telefono?: string;
   imagenPerfil?: string;
   esPremium: boolean;
+  aceptaPolitica: boolean;
 }
 
 export interface VendedorRegistrationRequest {
@@ -26,6 +28,7 @@ export interface VendedorRegistrationRequest {
   nombreComercial: string;
   telefono?: string;
   imagenPerfil?: string;
+  aceptaPolitica: boolean;
 }
 
 export interface CategoriaRegistro {
@@ -50,18 +53,29 @@ export class RegistrationService {
   registerCliente(
     request: ClienteRegistrationRequest
   ): Observable<RegistrationResponse> {
-    return this.http.post<RegistrationResponse>(
-      `${environment.apiUrl}/cliente/register`,
-      request
-    );
+    return this.publicarConCsrf('/cliente/register', request);
   }
 
   registerVendedor(
     request: VendedorRegistrationRequest
   ): Observable<RegistrationResponse> {
-    return this.http.post<RegistrationResponse>(
-      `${environment.apiUrl}/vendedor/register`,
-      request
-    );
+    return this.publicarConCsrf('/vendedor/register', request);
+  }
+
+  // El alta pública también exige el token CSRF (T-10): se pide antes de enviar el formulario.
+  private publicarConCsrf(
+    ruta: string,
+    cuerpo: ClienteRegistrationRequest | VendedorRegistrationRequest
+  ): Observable<RegistrationResponse> {
+    return this.http
+      .get<RespuestaTokenCsrf>(`${environment.apiUrl}/usuarios/csrf`, { withCredentials: true })
+      .pipe(
+        switchMap((respuestaCsrf) =>
+          this.http.post<RegistrationResponse>(`${environment.apiUrl}${ruta}`, cuerpo, {
+            withCredentials: true,
+            headers: new HttpHeaders({ 'X-XSRF-TOKEN': respuestaCsrf.token })
+          })
+        )
+      );
   }
 }

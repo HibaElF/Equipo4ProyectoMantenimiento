@@ -39,6 +39,7 @@ class ClienteEmailOtpSecurityTests {
     @MockitoBean UsuarioDAO usuarios;
     @MockitoBean MongoTemplate mongo;
     @MockitoBean AdministradorService administradores;
+    @MockitoBean AuditoriaService auditoria;
     private Cliente cliente;
 
     @BeforeEach
