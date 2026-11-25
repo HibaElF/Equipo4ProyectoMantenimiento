@@ -1,0 +1,54 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/perfil" text="Perfil"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Mis direcciones</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    <ion-button expand="block" color="secondary" (click)="abrirFormulario()">
+      <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+      Añadir dirección
+    </ion-button>
+
+    @if (cargando()) {
+      @for (e of [1, 2]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      }
+    } @else if (error()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (direcciones().length === 0) {
+      <div class="estado">
+        <ion-icon name="home-outline" aria-hidden="true"></ion-icon>
+        <p>Todavía no tienes direcciones. Añade una para poder recibir tus pedidos.</p>
+      </div>
+    } @else {
+      <ion-list lines="none" class="lista">
+        @for (d of direcciones(); track d.id) {
+          <ion-item class="tarjeta-item">
+            <ion-icon name="home-outline" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>{{ d.nombre }}</h2>
+              <p>{{ d.calle }}, {{ d.numero }}{{ d.portal ? ', portal ' + d.portal : '' }}{{ d.piso ? ', ' + d.piso : '' }}</p>
+              <p>{{ d.codigoPostal }} {{ d.ciudad }} ({{ d.provincia }})</p>
+            </ion-label>
+            <ion-buttons slot="end">
+              <ion-button (click)="abrirFormulario(d)" [attr.aria-label]="'Modificar ' + d.nombre">
+                <ion-icon slot="icon-only" name="create-outline" aria-hidden="true"></ion-icon>
+              </ion-button>
+              <ion-button color="danger" (click)="confirmarEliminar(d)" [attr.aria-label]="'Eliminar ' + d.nombre">
+                <ion-icon slot="icon-only" name="trash-outline" aria-hidden="true"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  </div>
+</ion-content>

@@ -1,0 +1,13 @@
+<ion-tabs (ionTabsDidChange)="cambio($event)">
+  <ion-tab-bar slot="bottom" aria-label="Navegación principal">
+    @for (p of pestanas; track p.tab) {
+      <ion-tab-button [tab]="p.tab" [attr.aria-label]="etiqueta(p)">
+        <ion-icon [name]="activa() === p.tab ? p.icono : p.icono + '-outline'" aria-hidden="true"></ion-icon>
+        <ion-label>{{ p.texto }}</ion-label>
+        @if (p.tab === 'carrito' && unidadesCarrito() > 0) {
+          <ion-badge color="secondary" aria-hidden="true">{{ unidadesCarrito() > 99 ? '99+' : unidadesCarrito() }}</ion-badge>
+        }
+      </ion-tab-button>
+    }
+  </ion-tab-bar>
+</ion-tabs>

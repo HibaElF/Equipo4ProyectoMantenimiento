@@ -1,0 +1,223 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tienda" text="Catálogo"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Producto</ion-title>
+    @if (producto()) {
+      <ion-buttons slot="end">
+        <ion-button
+          [disabled]="!favoritosDisponibles() || cambiandoFavorito()"
+          [attr.aria-pressed]="esFavorito()"
+          [attr.aria-label]="esFavorito() ? 'Quitar de favoritos' : 'Guardar en favoritos'"
+          (click)="alternarFavorito()"
+        >
+          <ion-icon slot="icon-only" [name]="esFavorito() ? 'heart' : 'heart-outline'" aria-hidden="true"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    }
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  @if (cargando()) {
+    <div aria-busy="true" aria-label="Cargando producto">
+      <ion-skeleton-text [animated]="true" class="esqueleto-imagen"></ion-skeleton-text>
+      <div class="ion-padding">
+        <ion-skeleton-text [animated]="true" style="width: 80%; height: 24px"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 40%; height: 28px"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 100%"></ion-skeleton-text>
+        <ion-skeleton-text [animated]="true" style="width: 90%"></ion-skeleton-text>
+      </div>
+    </div>
+  } @else if (error()) {
+    <div class="estado" role="alert">
+      <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+      <p>{{ error() }}</p>
+      <ion-button fill="outline" (click)="cargarProducto()">Reintentar</ion-button>
+    </div>
+  } @else if (producto(); as p) {
+    <!-- Imagen -->
+    <div class="marco-imagen">
+      @if (imagen(); as src) {
+        <img [src]="src" [alt]="p.nombre" (error)="imagenFallida.set(true)" />
+      } @else {
+        <ion-icon name="image-outline" aria-hidden="true"></ion-icon>
+        <span class="lector">Producto sin imagen</span>
+      }
+      @if (p.soloPremium) {
+        <span class="distintivo premium">Premium</span>
+      }
+    </div>
+
+    <div class="ion-padding cuerpo">
+      <!-- Nombre, precio y descripción -->
+      <h1 class="nombre">{{ p.nombre }}</h1>
+      <div class="precios">
+        @if (p.precio !== null) {
+          <span class="precio">{{ p.precio | number: '1.2-2' }} €</span>
+          @if (hayRebaja()) {
+            <span class="precio-anterior"><span class="lector">Antes:</span>{{ p.precioOriginal | number: '1.2-2' }} €</span>
+          }
+          @if (p.descuentoAplicado > 0) {
+            <span class="distintivo oferta">-{{ p.descuentoAplicado }} % aplicado</span>
+          }
+        } @else {
+          <span class="sin-precio">Precio no disponible</span>
+        }
+      </div>
+      @if (p.descripcion) {
+        <p class="descripcion">{{ p.descripcion }}</p>
+      }
+
+      <!-- Datos (los mismos que la web) -->
+      <dl class="datos">
+        <div>
+          <dt>Categoría</dt>
+          <dd>{{ p.categoria }}</dd>
+        </div>
+        <div>
+          <dt>Vendedor</dt>
+          <dd>{{ p.vendedor || '—' }}</dd>
+        </div>
+        @if (p.descuento > 0) {
+          <div>
+            <dt>Descuento</dt>
+            <dd>{{ p.descuento }} %</dd>
+          </div>
+        }
+        @if (p.descuentoPremium > 0) {
+          <div>
+            <dt>Descuento Premium adicional</dt>
+            <dd>{{ p.descuentoPremium }} %</dd>
+          </div>
+        }
+        <div>
+          <dt>Stock disponible</dt>
+          <dd>{{ p.stock }} {{ p.stock === 1 ? 'unidad' : 'unidades' }}</dd>
+        </div>
+      </dl>
+
+      @if (p.stock > 0 && p.stock < 5) {
+        <p class="aviso-stock" role="status">Aviso: quedan pocas unidades ({{ p.stock }}).</p>
+      }
+
+      <!-- Listas -->
+      <ion-button expand="block" fill="outline" class="boton-listas" (click)="panelListas.set(true)">
+        <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
+        {{ listasConProducto() > 0 ? 'En ' + listasConProducto() + (listasConProducto() === 1 ? ' lista' : ' listas') : 'Añadir a una lista' }}
+      </ion-button>
+
+      <!-- Valoraciones -->
+      <section class="valoraciones" aria-labelledby="titulo-valoraciones" aria-live="polite">
+        <h2 id="titulo-valoraciones">Valoraciones</h2>
+        @if (cargandoValoraciones()) {
+          <p>Cargando valoraciones…</p>
+        } @else if (errorValoraciones()) {
+          <ion-text color="danger"><p role="alert">{{ errorValoraciones() }}</p></ion-text>
+          <ion-button size="small" fill="outline" (click)="cargarValoraciones()">Reintentar</ion-button>
+        } @else if (valoraciones(); as v) {
+          @if (v.total === 0) {
+            <p class="sin-valoraciones">Aún no hay valoraciones para este producto.</p>
+          } @else {
+            <div class="resumen-valoraciones">
+              <span class="media">{{ v.media | number: '1.1-1' }}</span>
+              <div>
+                <app-estrellas [valor]="v.media"></app-estrellas>
+                <p>{{ v.total }} {{ v.total === 1 ? 'valoración' : 'valoraciones' }}</p>
+              </div>
+            </div>
+            <ul class="lista-valoraciones">
+              @for (val of v.valoraciones; track $index) {
+                <li>
+                  <div class="cabecera-valoracion">
+                    <app-estrellas [valor]="val.puntuacion"></app-estrellas>
+                    <span>Cliente verificado</span>
+                  </div>
+                  <p>{{ val.comentario || 'Sin comentario.' }}</p>
+                </li>
+              }
+            </ul>
+          }
+        }
+      </section>
+    </div>
+
+    <!-- Panel de listas -->
+    <ion-modal [isOpen]="panelListas()" (didDismiss)="panelListas.set(false)" [initialBreakpoint]="0.6" [breakpoints]="[0, 0.6, 1]">
+      <ng-template>
+        <ion-header>
+          <ion-toolbar>
+            <ion-title>Mis listas</ion-title>
+            <ion-buttons slot="end">
+              <ion-button (click)="panelListas.set(false)" aria-label="Cerrar listas">
+                <ion-icon name="close-outline" slot="icon-only" aria-hidden="true"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content class="ion-padding">
+          @if (cargandoListas()) {
+            <p>Cargando tus listas…</p>
+          } @else if (errorListas()) {
+            <ion-text color="danger"><p role="alert">{{ errorListas() }}</p></ion-text>
+            <ion-button fill="outline" (click)="cargarListas()">Reintentar</ion-button>
+          } @else if (listasPersonales().length === 0) {
+            <p>No tienes listas propias.</p>
+            <ion-button expand="block" fill="outline" (click)="irAMisListas()">Crea una en Mis listas</ion-button>
+          } @else {
+            <p class="ayuda-listas">Marca las listas en las que quieres guardar este producto.</p>
+            <ion-list lines="full">
+              @for (lista of listasPersonales(); track lista.id) {
+                <ion-item>
+                  <ion-checkbox
+                    justify="space-between"
+                    [checked]="estaEnLista(lista)"
+                    [disabled]="modificandoLista() !== null"
+                    (ionChange)="alternarEnLista(lista)"
+                  >
+                    {{ lista.nombre }}
+                  </ion-checkbox>
+                  @if (modificandoLista() === lista.id) {
+                    <ion-spinner slot="end" name="crescent" aria-label="Guardando"></ion-spinner>
+                  }
+                </ion-item>
+              }
+            </ion-list>
+          }
+        </ion-content>
+      </ng-template>
+    </ion-modal>
+  }
+</ion-content>
+
+<!-- Zona de compra fija abajo -->
+@if (producto(); as p) {
+  <ion-footer class="zona-compra">
+    <ion-toolbar>
+      @if (p.stock > 0) {
+        <div class="compra">
+          <div class="selector-cantidad" role="group" aria-label="Cantidad">
+            <ion-button fill="clear" color="primary" [disabled]="cantidad() <= 1 || anadiendo()" (click)="reducir()" aria-label="Reducir cantidad">
+              <ion-icon slot="icon-only" name="remove-outline" aria-hidden="true"></ion-icon>
+            </ion-button>
+            <output aria-live="polite" [attr.aria-label]="'Cantidad seleccionada: ' + cantidad()">{{ cantidad() }}</output>
+            <ion-button fill="clear" color="primary" [disabled]="cantidad() >= p.stock || anadiendo()" (click)="aumentar()" aria-label="Aumentar cantidad">
+              <ion-icon slot="icon-only" name="add-outline" aria-hidden="true"></ion-icon>
+            </ion-button>
+          </div>
+          <ion-button class="boton-anadir" color="secondary" [disabled]="!puedeComprar() || anadiendo()" (click)="anadirAlCarrito()">
+            @if (anadiendo()) {
+              <ion-spinner name="crescent" aria-label="Añadiendo"></ion-spinner>
+            } @else {
+              <ion-icon name="cart-outline" slot="start" aria-hidden="true"></ion-icon>
+              Añadir al carrito
+            }
+          </ion-button>
+        </div>
+      } @else {
+        <p class="agotado" role="status">Producto agotado</p>
+      }
+    </ion-toolbar>
+  </ion-footer>
+}

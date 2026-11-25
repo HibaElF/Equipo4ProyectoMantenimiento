@@ -1,0 +1,68 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Mis pedidos</ion-title>
+    <ion-buttons slot="end"><app-boton-alertas></app-boton-alertas></ion-buttons>
+  </ion-toolbar>
+  <ion-toolbar class="barra-segmento">
+    <ion-segment [value]="vista()" (ionChange)="cambiarVista($event.detail.value)" aria-label="Tipo de pedidos">
+      <ion-segment-button value="activos">
+        <ion-label>Activos{{ !cargandoActivos() && activos().length ? ' (' + activos().length + ')' : '' }}</ion-label>
+      </ion-segment-button>
+      <ion-segment-button value="historico">
+        <ion-label>Historial</ion-label>
+      </ion-segment-button>
+    </ion-segment>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="contenido" aria-live="polite">
+    @if (cargando() && pedidos().length === 0) {
+      @for (e of [1, 2, 3]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      }
+    } @else if (error()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (pedidos().length === 0) {
+      <div class="estado">
+        <ion-icon name="receipt-outline" aria-hidden="true"></ion-icon>
+        @if (vista() === 'activos') {
+          <h2>No tienes pedidos activos</h2>
+          <p>Cuando completes una compra, aparecerá aquí.</p>
+        } @else {
+          <h2>Tu historial está vacío</h2>
+          <p>Aquí verás los pedidos finalizados y cancelados.</p>
+        }
+      </div>
+    } @else {
+      <ul class="lista" [attr.aria-label]="vista() === 'activos' ? 'Pedidos activos' : 'Historial de pedidos'">
+        @for (pedido of pedidos(); track pedido.id) {
+          <li>
+            <button type="button" class="tarjeta" (click)="abrir(pedido)" [attr.aria-label]="'Ver pedido ' + referencia(pedido.id)">
+              <div class="fila">
+                <span class="referencia">Pedido #{{ referencia(pedido.id) }}</span>
+                <app-estado-pedido [estado]="pedido.estado"></app-estado-pedido>
+              </div>
+              <p class="fecha">{{ pedido.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</p>
+              @if (vendedores(pedido)) {
+                <p class="vendedor">Vendedor: <strong>{{ vendedores(pedido) }}</strong></p>
+              }
+              <div class="fila pie">
+                <span>{{ unidades(pedido) }} {{ unidades(pedido) === 1 ? 'producto' : 'productos' }}</span>
+                <span class="total">{{ pedido.importe | number: '1.2-2' }} €</span>
+                <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+              </div>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</ion-content>

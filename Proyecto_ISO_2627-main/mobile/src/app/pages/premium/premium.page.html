@@ -1,0 +1,129 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/perfil" text="Perfil"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Cliente Premium</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    @if (cargando() && !perfil()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+    } @else if (error() && !perfil()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (perfil(); as p) {
+      <section class="tipo-cuenta" [class.premium]="p.esPremium" aria-labelledby="tipo-cuenta">
+        <div class="icono" aria-hidden="true">★</div>
+        <p class="antetitulo">Tipo de cuenta</p>
+        <h1 id="tipo-cuenta">Cliente {{ p.esPremium ? 'Premium' : 'Normal' }}</h1>
+        @if (p.esPremium) {
+          <p>Disfrutas de las ventajas Premium y del acceso que corresponda a este tipo de cuenta.</p>
+          <ion-button expand="block" fill="outline" class="boton-claro" [disabled]="guardando()" (click)="cambiarTipo()">
+            @if (guardando()) {
+              <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+            } @else {
+              Volver a cliente normal
+            }
+          </ion-button>
+        } @else {
+          <p>Hazte Premium para acceder a sus ventajas y a los productos que te correspondan.</p>
+          <ion-button expand="block" color="secondary" [disabled]="guardando()" (click)="cambiarTipo()">
+            Hacerme cliente Premium
+          </ion-button>
+        }
+      </section>
+
+      <section class="ventajas" aria-labelledby="informacion-premium">
+        <p class="antetitulo">Información de la cuenta</p>
+        <h2 id="informacion-premium">¿Qué cambia con Premium?</h2>
+        <p class="ayuda">Consulta las consecuencias antes de cambiar tu tipo de cliente.</p>
+        <article class="ventaja positiva">
+          <ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon>
+          <div>
+            <h3>Ventajas Premium</h3>
+            <p>Acceso a los productos disponibles exclusivamente para clientes Premium.</p>
+            <p>Aplicación de las ventajas y descuentos Premium definidos en el catálogo.</p>
+          </div>
+        </article>
+        <article class="ventaja aviso">
+          <ion-icon name="alert-circle" aria-hidden="true"></ion-icon>
+          <div>
+            <h3>Si vuelves a Normal</h3>
+            <p>Perderás las ventajas asociadas a Premium.</p>
+            <p>No podrás comprar productos exclusivos para clientes Premium.</p>
+          </div>
+        </article>
+      </section>
+    }
+  </div>
+
+  <ion-modal [isOpen]="ventanaPago()" (didDismiss)="cerrarPago()" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Hacerme Premium</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarPago()" aria-label="Cancelar">
+              <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <div class="icono-modal" aria-hidden="true">★</div>
+        <h2 class="titulo-modal">¿Quieres hacerte cliente Premium?</h2>
+        <p class="texto-modal">Disfrutarás de las ventajas Premium y del acceso a los productos que te correspondan.</p>
+
+        <h3 class="etiqueta" id="metodo-pago-premium">Método de pago</h3>
+        @if (cargandoMetodos()) {
+          <p class="ayuda">Cargando tus métodos de pago…</p>
+        } @else if (metodos().length === 0 && !errorPago()) {
+          <p class="ayuda">No tienes ningún método de pago. Añade uno para hacerte Premium.</p>
+          <ion-button expand="block" fill="outline" (click)="irAMetodosPago()">
+            <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+            Añadir método de pago
+          </ion-button>
+        } @else if (metodos().length > 0) {
+          <ion-list lines="full" class="metodos">
+            <ion-radio-group [value]="metodoSeleccionado()" (ionChange)="seleccionarMetodo($event.detail.value)" aria-labelledby="metodo-pago-premium">
+              @for (m of metodos(); track m.id) {
+                <ion-item>
+                  <ion-radio [value]="m.id" justify="space-between">
+                    <ion-label>
+                      <strong>{{ m.nombre }}</strong>
+                      <p>{{ m.datosEnmascarados }}</p>
+                    </ion-label>
+                  </ion-radio>
+                </ion-item>
+              }
+            </ion-radio-group>
+          </ion-list>
+        }
+        <ion-note class="nota-pago">Pago simulado: no se realiza ningún cargo real.</ion-note>
+
+        @if (errorPago()) {
+          <ion-text color="danger"><p class="mensaje" role="alert">{{ errorPago() }}</p></ion-text>
+        }
+
+        <ion-button
+          expand="block"
+          color="secondary"
+          class="pagar"
+          [disabled]="guardando() || !metodoSeleccionado()"
+          (click)="pagarYHacersePremium()"
+        >
+          @if (guardando()) {
+            <ion-spinner name="crescent" aria-label="Procesando el pago"></ion-spinner>
+          } @else {
+            Pagar y hacerme Premium
+          }
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>

@@ -1,0 +1,121 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/login" text="Volver"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Crear cuenta</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="contenedor-formulario">
+    @if (exito()) {
+      <h1>¡Cuenta creada!</h1>
+      <ion-text role="status"><p>{{ exito() }}</p></ion-text>
+      <ion-button expand="block" color="secondary" routerLink="/login">Ir a iniciar sesión</ion-button>
+    } @else {
+      <h1>Regístrate como cliente</h1>
+
+      <div class="foto-perfil">
+        <ion-avatar>
+          <img [src]="fotoPerfil()" alt="Vista previa de la foto de perfil" (error)="fotoFallida.set(true)" />
+        </ion-avatar>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="registrar()" novalidate>
+        <ion-list lines="full">
+          <ion-list-header><ion-label>Datos personales</ion-label></ion-list-header>
+          <ion-item>
+            <ion-input label="Nombre" labelPlacement="stacked" formControlName="nombre" autocomplete="given-name"
+              [errorText]="errorDe('nombre')" [class.ion-invalid]="!!errorDe('nombre')" [class.ion-touched]="!!errorDe('nombre')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Apellidos" labelPlacement="stacked" formControlName="apellidos" autocomplete="family-name"
+              [errorText]="errorDe('apellidos')" [class.ion-invalid]="!!errorDe('apellidos')" [class.ion-touched]="!!errorDe('apellidos')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Fecha de nacimiento" labelPlacement="stacked" type="date" [max]="fechaMaxima"
+              formControlName="fechaNacimiento" autocomplete="bday"
+              [errorText]="errorDe('fechaNacimiento')" [class.ion-invalid]="!!errorDe('fechaNacimiento')" [class.ion-touched]="!!errorDe('fechaNacimiento')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="DNI/NIF" labelPlacement="stacked" formControlName="dniNif" maxlength="9" autocapitalize="characters"
+              helperText="8 números y una letra" [errorText]="errorDe('dniNif')"
+              [class.ion-invalid]="!!errorDe('dniNif')" [class.ion-touched]="!!errorDe('dniNif')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Teléfono (opcional)" labelPlacement="stacked" type="tel" inputmode="tel" formControlName="telefono"
+              autocomplete="tel" [errorText]="errorDe('telefono')"
+              [class.ion-invalid]="!!errorDe('telefono')" [class.ion-touched]="!!errorDe('telefono')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="URL de la foto de perfil (opcional)" labelPlacement="stacked" type="url" inputmode="url"
+              formControlName="imagenPerfil" placeholder="https://…" (ionInput)="fotoFallida.set(false)"
+              [errorText]="errorDe('imagenPerfil')"
+              [class.ion-invalid]="!!errorDe('imagenPerfil')" [class.ion-touched]="!!errorDe('imagenPerfil')"></ion-input>
+          </ion-item>
+        </ion-list>
+
+        <ion-list lines="full">
+          <ion-list-header><ion-label>Tipo de cliente</ion-label></ion-list-header>
+          <ion-radio-group formControlName="tipoCliente">
+            <ion-item>
+              <ion-radio value="normal" justify="space-between">Estándar</ion-radio>
+            </ion-item>
+            <ion-item>
+              <ion-radio value="premium" justify="space-between">Premium</ion-radio>
+            </ion-item>
+          </ion-radio-group>
+        </ion-list>
+
+        <ion-list lines="full">
+          <ion-list-header><ion-label>Acceso</ion-label></ion-list-header>
+          <ion-item>
+            <ion-input label="Correo electrónico" labelPlacement="stacked" type="email" inputmode="email"
+              formControlName="email" autocomplete="email" [errorText]="errorDe('email')"
+              [class.ion-invalid]="!!errorDe('email')" [class.ion-touched]="!!errorDe('email')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Contraseña" labelPlacement="stacked" type="password" formControlName="contrasena"
+              autocomplete="new-password" [errorText]="errorDe('contrasena')"
+              [class.ion-invalid]="!!errorDe('contrasena')" [class.ion-touched]="!!errorDe('contrasena')">
+              <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+            </ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Repite la contraseña" labelPlacement="stacked" type="password" formControlName="repetirContrasena"
+              autocomplete="new-password" [errorText]="errorDe('repetirContrasena')"
+              [class.ion-invalid]="!!errorDe('repetirContrasena')" [class.ion-touched]="!!errorDe('repetirContrasena')">
+              <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+            </ion-input>
+          </ion-item>
+        </ion-list>
+
+        <ul class="requisitos" aria-label="Requisitos de la contraseña">
+          @for (r of requisitos(); track r.texto) {
+            <li [class.cumplido]="r.cumplido">
+              <ion-icon [name]="r.cumplido ? 'checkmark-circle' : 'ellipse-outline'" aria-hidden="true"></ion-icon>
+              <span>{{ r.texto }}</span>
+              <span class="lector">{{ r.cumplido ? '(cumplido)' : '(pendiente)' }}</span>
+            </li>
+          }
+        </ul>
+
+        @if (error()) {
+          <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+        }
+
+        <ion-button type="submit" expand="block" color="secondary" [disabled]="enviando()">
+          @if (enviando()) {
+            <ion-spinner name="crescent" aria-label="Enviando"></ion-spinner>
+          } @else {
+            Crear cuenta
+          }
+        </ion-button>
+        <ion-note class="ayuda ion-text-center">
+          Un administrador revisará y activará tu cuenta antes de que puedas iniciar sesión.
+        </ion-note>
+      </form>
+    }
+  </div>
+</ion-content>

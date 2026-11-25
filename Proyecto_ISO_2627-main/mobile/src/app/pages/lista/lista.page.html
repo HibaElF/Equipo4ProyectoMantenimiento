@@ -1,0 +1,116 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/listas" text="Listas"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ lista()?.nombre ?? 'Lista' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido" aria-live="polite">
+    @if (cargando() && !lista()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto alto"></ion-skeleton-text>
+      @for (e of [1, 2, 3]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      }
+    } @else if (error() && !lista()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (lista(); as l) {
+      <section class="cabecera">
+        @if (renombrando()) {
+          <form (submit)="$event.preventDefault(); renombrar()">
+            <ion-input
+              label="Nuevo nombre"
+              labelPlacement="stacked"
+              fill="outline"
+              [maxlength]="maxNombre"
+              [counter]="true"
+              [formControl]="nombreRenombrar"
+              enterkeyhint="done"
+              [errorText]="nombreRenombrar.hasError('maxlength') ? 'El nombre no puede superar ' + maxNombre + ' caracteres.' : 'El nombre de la lista es obligatorio.'"
+            ></ion-input>
+            <div class="acciones-lista">
+              <ion-button type="submit" [disabled]="operacion()">
+                @if (operacion()) {
+                  <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+                } @else {
+                  Guardar
+                }
+              </ion-button>
+              <ion-button type="button" fill="outline" (click)="cancelarRenombrar()">Cancelar</ion-button>
+            </div>
+          </form>
+        } @else {
+          <h1>
+            @if (l.predeterminada) {
+              <ion-icon name="heart" class="corazon" aria-hidden="true"></ion-icon>
+            }
+            {{ l.nombre }}
+          </h1>
+          <p class="cuenta">{{ l.productos.length }} {{ l.productos.length === 1 ? 'producto' : 'productos' }}</p>
+          @if (l.predeterminada) {
+            <p class="nota">Es tu lista de favoritos: no se puede renombrar ni eliminar.</p>
+          } @else {
+            <div class="acciones-lista">
+              <ion-button fill="outline" [disabled]="operacion()" (click)="iniciarRenombrar()">
+                <ion-icon name="create-outline" slot="start" aria-hidden="true"></ion-icon>
+                Renombrar
+              </ion-button>
+              <ion-button fill="outline" color="danger" [disabled]="operacion()" (click)="confirmarEliminar()">
+                <ion-icon name="trash-outline" slot="start" aria-hidden="true"></ion-icon>
+                Eliminar lista
+              </ion-button>
+            </div>
+          }
+        }
+      </section>
+
+      @if (l.productos.length === 0) {
+        <p class="vacia">Esta lista no tiene productos.</p>
+      } @else {
+        <ul class="productos" aria-label="Productos de la lista">
+          @for (producto of l.productos; track producto.id) {
+            <li [class.no-disponible]="!producto.disponible">
+              <button type="button" class="zona-producto" (click)="verProducto(producto)" [attr.aria-label]="'Ver ' + producto.nombre">
+                <div class="miniatura">
+                  @if (producto.imagen) {
+                    <img [src]="urlImagen(producto.imagen)" alt="" loading="lazy" />
+                  } @else {
+                    <ion-icon name="image-outline" aria-hidden="true"></ion-icon>
+                  }
+                </div>
+                <div class="info">
+                  <strong>{{ producto.nombre }}</strong>
+                  @if (producto.precio !== null) {
+                    <span class="precio">{{ producto.precio | number: '1.2-2' }} €</span>
+                  }
+                  @if (!producto.disponible) {
+                    <span class="aviso-no-disponible">{{ producto.aviso || 'Producto no disponible' }}: no se puede comprar</span>
+                  }
+                </div>
+              </button>
+              <ion-button
+                fill="outline"
+                size="small"
+                class="quitar"
+                [disabled]="operacion()"
+                [attr.aria-label]="'Quitar ' + producto.nombre + ' de la lista'"
+                (click)="quitarProducto(producto)"
+              >
+                @if (quitando() === producto.id) {
+                  <ion-spinner name="crescent" aria-label="Quitando"></ion-spinner>
+                } @else {
+                  Quitar de la lista
+                }
+              </ion-button>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</ion-content>

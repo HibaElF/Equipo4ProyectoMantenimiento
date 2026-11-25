@@ -1,0 +1,91 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Nuevo método de pago</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="cerrar()" aria-label="Cerrar sin guardar">
+        <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <form [formGroup]="form" (ngSubmit)="guardar()" novalidate class="contenedor-formulario">
+    <p class="nota-pago">
+      <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+      El pago es simulado: no se hará ningún cargo real.
+    </p>
+
+    <ion-segment [value]="tipo()" (ionChange)="cambiarTipo($event.detail.value)" aria-label="Tipo de pago" [disabled]="cargandoTipos()">
+      @for (t of tiposVisibles(); track t.codigo) {
+        <ion-segment-button [value]="t.codigo"><ion-label>{{ t.nombre }}</ion-label></ion-segment-button>
+      }
+    </ion-segment>
+
+    <ion-list lines="full">
+      <ion-item>
+        <ion-input label="Nombre del método" labelPlacement="stacked" name="nombre" formControlName="nombre" maxlength="50"
+          helperText="Por ejemplo: Tarjeta personal" [errorText]="errorDe('nombre')"
+          [class.ion-invalid]="!!errorDe('nombre')" [class.ion-touched]="!!errorDe('nombre')"></ion-input>
+      </ion-item>
+
+      @switch (tipo()) {
+        @case ('TARJETA') {
+          <ion-item>
+            <ion-input label="Número de tarjeta" labelPlacement="stacked" name="numeroTarjeta" inputmode="numeric"
+              autocomplete="cc-number" placeholder="XXXX XXXX XXXX XXXX" maxlength="23"
+              formControlName="numeroTarjeta" (ionInput)="escribirNumero($event.detail.value)" [errorText]="errorDe('numeroTarjeta')"
+              [class.ion-invalid]="!!errorDe('numeroTarjeta')" [class.ion-touched]="!!errorDe('numeroTarjeta')"></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input label="Titular" labelPlacement="stacked" name="titular" autocomplete="cc-name" maxlength="80"
+              formControlName="titular" [errorText]="errorDe('titular')"
+              [class.ion-invalid]="!!errorDe('titular')" [class.ion-touched]="!!errorDe('titular')"></ion-input>
+          </ion-item>
+          <div class="fila-campos dos">
+            <ion-item>
+              <ion-input label="Caducidad (MM/AA)" labelPlacement="stacked" name="caducidad" inputmode="numeric"
+                autocomplete="cc-exp" placeholder="12/28" maxlength="5"
+                formControlName="caducidad" (ionInput)="escribirCaducidad($event.detail.value)" [errorText]="errorDe('caducidad')"
+                [class.ion-invalid]="!!errorDe('caducidad')" [class.ion-touched]="!!errorDe('caducidad')"></ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-input label="CVV" labelPlacement="stacked" name="cvv" inputmode="numeric" autocomplete="cc-csc"
+                maxlength="4" type="password" formControlName="cvv" [errorText]="errorDe('cvv')"
+                [class.ion-invalid]="!!errorDe('cvv')" [class.ion-touched]="!!errorDe('cvv')"></ion-input>
+            </ion-item>
+          </div>
+        }
+        @case ('PAYPAL') {
+          <ion-item>
+            <ion-input label="Correo de PayPal" labelPlacement="stacked" name="correoPaypal" type="email" inputmode="email"
+              autocomplete="email" formControlName="correoPaypal" [errorText]="errorDe('correoPaypal')"
+              [class.ion-invalid]="!!errorDe('correoPaypal')" [class.ion-touched]="!!errorDe('correoPaypal')"></ion-input>
+          </ion-item>
+        }
+        @case ('BIZUM') {
+          <ion-item>
+            <ion-input label="Teléfono de Bizum" labelPlacement="stacked" name="telefonoBizum" type="tel" inputmode="tel"
+              autocomplete="tel" maxlength="12" helperText="Móvil español (empieza por 6 o 7)"
+              formControlName="telefonoBizum" [errorText]="errorDe('telefonoBizum')"
+              [class.ion-invalid]="!!errorDe('telefonoBizum')" [class.ion-touched]="!!errorDe('telefonoBizum')"></ion-input>
+          </ion-item>
+        }
+      }
+    </ion-list>
+
+    @if (error()) {
+      <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+    }
+
+    <ion-button type="submit" expand="block" color="secondary" [disabled]="guardando()">
+      @if (guardando()) {
+        <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+      } @else {
+        Guardar método de pago
+      }
+    </ion-button>
+    <ion-button expand="block" fill="clear" type="button" (click)="cerrar()">Cancelar</ion-button>
+    <ion-note class="ayuda ion-text-center">Solo se guardan los datos necesarios; la tarjeta se muestra enmascarada.</ion-note>
+  </form>
+</ion-content>

@@ -1,0 +1,92 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/tienda" text="Atrás"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Mis alertas</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="contenido">
+    <p class="descripcion">
+      Avisos de bajadas de precio y de disponibilidad de tus favoritos, y productos nuevos que te pueden interesar.
+    </p>
+
+    @if (cargando() && alertas().length === 0) {
+      @for (e of [1, 2, 3]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      }
+    } @else if (error() && alertas().length === 0) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (alertas().length === 0) {
+      <div class="estado">
+        <ion-icon name="notifications-off-outline" aria-hidden="true"></ion-icon>
+        <h2>No tienes alertas</h2>
+        <p>Te avisaremos cuando baje el precio de un favorito, vuelva a estar disponible o haya novedades para ti.</p>
+        <ion-button routerLink="/listas/favoritos">Ver mis favoritos</ion-button>
+      </div>
+    } @else {
+      <div class="barra-acciones">
+        <p class="resumen" aria-live="polite">
+          {{ noLeidas() }} {{ noLeidas() === 1 ? 'alerta sin leer' : 'alertas sin leer' }}
+        </p>
+        <div class="acciones-generales">
+          @if (noLeidas() > 0) {
+            <ion-button size="small" fill="outline" [disabled]="operacion() !== null" (click)="marcarTodasLeidas()">
+              <ion-icon name="checkmark-done-outline" slot="start" aria-hidden="true"></ion-icon>
+              Marcar todas como leídas
+            </ion-button>
+          }
+          <ion-button size="small" fill="outline" color="danger" [disabled]="operacion() !== null" (click)="confirmarBorrarTodas()">
+            <ion-icon name="trash-outline" slot="start" aria-hidden="true"></ion-icon>
+            Borrar todas
+          </ion-button>
+        </div>
+      </div>
+
+      <ul class="lista" aria-label="Tus alertas">
+        @for (alerta of alertas(); track alerta.id) {
+          <li class="alerta" [class.leida]="alerta.leida">
+            <button type="button" class="zona-principal" (click)="abrir(alerta)"
+              [attr.aria-label]="(alerta.leida ? '' : 'Nueva. ') + etiquetaTipo(alerta.tipo) + '. ' + alerta.mensaje + '. Ver el producto'">
+              <div class="etiquetas">
+                <span class="chip chip-tipo">{{ etiquetaTipo(alerta.tipo) }}</span>
+                @if (!alerta.leida) {
+                  <span class="chip chip-nueva">Nueva</span>
+                }
+              </div>
+              <p class="mensaje">{{ alerta.mensaje }}</p>
+              <div class="pie">
+                <time [attr.datetime]="alerta.fecha">{{ alerta.fecha | date: 'dd/MM/yyyy HH:mm' }}</time>
+                <span class="ver">Ver producto <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon></span>
+              </div>
+            </button>
+            <div class="acciones">
+              @if (!alerta.leida) {
+                <ion-button size="small" fill="clear" [disabled]="operacion() !== null" (click)="marcarLeida(alerta)">
+                  @if (operacion() === alerta.id) {
+                    <ion-spinner name="crescent" aria-label="Procesando"></ion-spinner>
+                  } @else {
+                    Marcar como leída
+                  }
+                </ion-button>
+              }
+              <ion-button size="small" fill="clear" color="danger" [disabled]="operacion() !== null"
+                [attr.aria-label]="'Borrar la alerta: ' + alerta.mensaje" (click)="borrar(alerta)">
+                Borrar
+              </ion-button>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</ion-content>
