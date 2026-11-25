@@ -1,0 +1,147 @@
+.barra-busqueda {
+  --background: var(--ion-color-primary);
+  padding: 0 4px 4px;
+}
+
+.barra-busqueda ion-searchbar {
+  --background: #ffffff;
+  --border-radius: 10px;
+  --box-shadow: none;
+  padding-top: 0;
+  padding-bottom: 4px;
+}
+
+.barra-filtros {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 8px 10px 2px;
+  scrollbar-width: none;
+}
+
+.barra-filtros::-webkit-scrollbar {
+  display: none;
+}
+
+.barra-filtros ion-chip {
+  flex-shrink: 0;
+  min-height: 36px;
+  font-weight: 600;
+}
+
+/* Estrella de categoría favorita (como en el filtro de categoría de la web). */
+.icono-favorita {
+  color: var(--ion-color-warning-shade, #e0ac08);
+  margin-inline: 0 4px;
+}
+
+.categoria-favorita {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 10px 0;
+}
+
+.categoria-favorita ion-button {
+  min-height: 40px;
+  margin: 0;
+}
+
+.categoria-favorita .mensaje {
+  margin: 0;
+}
+
+.contenido {
+  padding: 4px 10px 16px;
+}
+
+.rejilla {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Tablet: más columnas. */
+@media (min-width: 600px) {
+  .rejilla {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .rejilla {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.rejilla li {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rejilla li > * {
+  flex: 1;
+}
+
+.resumen {
+  margin: 4px 2px 10px;
+  font-size: 0.85rem;
+  color: var(--ion-color-medium);
+}
+
+.enlace {
+  border: 0;
+  background: none;
+  padding: 4px 0;
+  color: var(--ion-color-primary);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.estado {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.estado-titulo {
+  font-weight: 700;
+}
+
+.esqueleto {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--ion-border-color);
+  padding-bottom: 10px;
+  overflow: hidden;
+}
+
+.esqueleto ion-skeleton-text {
+  margin: 8px 10px 0;
+}
+
+.esqueleto .esqueleto-imagen {
+  margin: 0;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 0;
+}
+
+ion-modal ion-segment {
+  width: 100%;
+}
+
+ion-modal ion-segment-button {
+  --padding-start: 4px;
+  --padding-end: 4px;
+  min-width: 0;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+}

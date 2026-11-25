@@ -41,6 +41,12 @@ import { RouterLink } from '@angular/router';
           <p>Gestión interna</p>
           <a class="boton-secundario" routerLink="/admin/administradores">Abrir administradores</a>
         </article>
+
+        <article class="tarjeta">
+          <h2>Estadísticas</h2>
+          <p>Ventas y valoraciones de todas las tiendas</p>
+          <a class="boton-secundario" routerLink="/admin/estadisticas">Abrir estadísticas</a>
+        </article>
       </div>
     </main>
   `

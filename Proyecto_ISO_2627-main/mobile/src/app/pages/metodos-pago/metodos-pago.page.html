@@ -1,0 +1,53 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/perfil" text="Perfil"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Métodos de pago</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    <ion-button expand="block" color="secondary" (click)="abrirFormulario()">
+      <ion-icon name="add-outline" slot="start" aria-hidden="true"></ion-icon>
+      Añadir método de pago
+    </ion-button>
+
+    @if (cargando()) {
+      @for (e of [1, 2]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+      }
+    } @else if (error()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (metodos().length === 0) {
+      <div class="estado">
+        <ion-icon name="card-outline" aria-hidden="true"></ion-icon>
+        <p>Todavía no tienes métodos de pago. Añade uno para poder comprar.</p>
+      </div>
+    } @else {
+      <ion-list lines="none" class="lista">
+        @for (m of metodos(); track m.id) {
+          <ion-item class="tarjeta-item">
+            <ion-icon [name]="icono(m.tipo)" slot="start" aria-hidden="true"></ion-icon>
+            <ion-label class="ion-text-wrap">
+              <h2>{{ m.nombre }}</h2>
+              <p>{{ nombreTipo(m.tipo) }} · {{ m.datosEnmascarados }}</p>
+              @if (m.titular || m.caducidad) {
+                <p>{{ m.titular }}{{ m.titular && m.caducidad ? ' · ' : '' }}{{ m.caducidad ? 'Caduca ' + m.caducidad : '' }}</p>
+              }
+            </ion-label>
+            <ion-buttons slot="end">
+              <ion-button color="danger" (click)="confirmarEliminar(m)" [attr.aria-label]="'Eliminar ' + m.nombre">
+                <ion-icon slot="icon-only" name="trash-outline" aria-hidden="true"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-item>
+        }
+      </ion-list>
+    }
+  </div>
+</ion-content>

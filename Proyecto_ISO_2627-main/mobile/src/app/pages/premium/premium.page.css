@@ -1,0 +1,183 @@
+.contenido {
+  padding: 10px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.antetitulo {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ion-color-secondary);
+}
+
+.tipo-cuenta {
+  position: relative;
+  padding: 18px 16px 6px;
+  border-radius: 16px;
+  background: var(--ion-color-tertiary);
+  color: #ffffff;
+  margin-bottom: 14px;
+}
+
+.tipo-cuenta .antetitulo {
+  color: #f3c98b;
+}
+
+.tipo-cuenta.premium {
+  background: linear-gradient(135deg, #255b4d, #173042);
+}
+
+.tipo-cuenta h1 {
+  color: #ffffff;
+  margin: 4px 0 6px;
+  font-size: 1.5rem;
+}
+
+.tipo-cuenta p {
+  margin: 0 0 12px;
+  color: #ffffff;
+  opacity: 0.92;
+}
+
+.icono {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f3c98b;
+  font-size: 24px;
+}
+
+.boton-claro {
+  --color: #ffffff;
+  --border-color: #ffffff;
+}
+
+.ventajas {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.ventajas h2 {
+  margin: 4px 0 2px;
+  font-size: 1.15rem;
+}
+
+.ayuda {
+  margin: 0 0 10px;
+  font-size: 0.88rem;
+  color: var(--ion-color-medium);
+}
+
+.ventaja {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  margin-top: 10px;
+}
+
+.ventaja ion-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.ventaja h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.ventaja p {
+  margin: 2px 0;
+  font-size: 0.88rem;
+}
+
+.ventaja.positiva {
+  background: #e8f2ed;
+}
+
+.ventaja.positiva ion-icon {
+  color: var(--ion-color-primary);
+}
+
+.ventaja.aviso {
+  background: #fdf0d5;
+}
+
+.ventaja.aviso ion-icon {
+  color: #b26a00;
+}
+
+/* Ventana de pago */
+.icono-modal {
+  margin: 0 auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fdf0d5;
+  color: #b26a00;
+  font-size: 28px;
+}
+
+.titulo-modal {
+  margin: 10px 0 4px;
+  text-align: center;
+  font-size: 1.2rem;
+}
+
+.texto-modal {
+  margin: 0 0 14px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+.etiqueta {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.metodos {
+  border: 1px solid var(--ion-border-color);
+  border-radius: 12px;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.nota-pago {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+
+.mensaje {
+  margin: 10px 0 0;
+}
+
+.pagar {
+  margin-top: 16px;
+  min-height: 48px;
+}
+
+.estado {
+  text-align: center;
+  padding: 48px 16px;
+}
+
+.esqueleto {
+  height: 220px;
+  border-radius: 16px;
+}

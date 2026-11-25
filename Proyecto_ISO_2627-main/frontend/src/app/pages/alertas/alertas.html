@@ -1,0 +1,94 @@
+<main class="pagina">
+  <div class="pagina-cabecera">
+    <div>
+      <h1 class="pagina-titulo">Mis alertas</h1>
+      <p class="pagina-descripcion">
+        Avisos de bajadas de precio y de disponibilidad de tus favoritos, y productos nuevos que te pueden interesar.
+      </p>
+    </div>
+    <div class="alertas-acciones-generales">
+      @if (noLeidas() > 0) {
+        <button
+          type="button"
+          class="boton-secundario"
+          [disabled]="operacion() !== null"
+          (click)="marcarTodasLeidas()">
+          Marcar todas como leídas
+        </button>
+      }
+      @if (alertas().length > 0) {
+        <button
+          type="button"
+          class="boton-peligro"
+          [disabled]="operacion() !== null"
+          (click)="borrarTodas()">
+          Borrar todas
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (exito()) {
+    <output class="aviso aviso-exito">{{ exito() }}</output>
+  }
+
+  @if (cargando()) {
+    <output class="estado">Cargando alertas...</output>
+  } @else if (error() && alertas().length === 0) {
+    <section class="estado" role="alert">
+      <p class="estado-titulo">{{ error() }}</p>
+      <button type="button" class="boton-secundario" (click)="cargarAlertas()">Reintentar</button>
+    </section>
+  } @else if (alertas().length === 0) {
+    <section class="estado">
+      <h2 class="estado-titulo">No tienes alertas</h2>
+      <p>Te avisaremos cuando baje el precio de un favorito, vuelva a estar disponible o haya novedades para ti.</p>
+      <a routerLink="/cliente/favoritos" class="boton-principal">Ver mis favoritos</a>
+    </section>
+  } @else {
+    @if (error()) {
+      <p class="aviso aviso-error" role="alert">{{ error() }}</p>
+    }
+
+    <p class="alertas-resumen">
+      {{ noLeidas() }} {{ noLeidas() === 1 ? 'alerta sin leer' : 'alertas sin leer' }}
+    </p>
+
+    <ul class="alertas-lista">
+      @for (alerta of alertas(); track alerta.id) {
+        <li class="alerta tarjeta" [class.alerta-leida]="alerta.leida">
+          <div class="alerta-contenido">
+            <div class="alerta-etiquetas">
+              <span class="chip chip-neutro">{{ etiquetaTipo(alerta.tipo) }}</span>
+              @if (!alerta.leida) {
+                <span class="chip chip-aviso">Nueva</span>
+              }
+            </div>
+            <p class="alerta-mensaje">{{ alerta.mensaje }}</p>
+            <time class="alerta-fecha" [attr.datetime]="alerta.fecha">{{ alerta.fecha | date: 'dd/MM/yyyy HH:mm' }}</time>
+          </div>
+
+          <div class="alerta-acciones">
+            @if (!alerta.leida) {
+              <button
+                type="button"
+                class="boton-secundario"
+                [disabled]="operacion() !== null"
+                (click)="marcarLeida(alerta)">
+                {{ operacion() === alerta.id ? 'Procesando...' : 'Marcar como leída' }}
+              </button>
+            }
+            <button
+              type="button"
+              class="boton-peligro"
+              [disabled]="operacion() !== null"
+              [attr.aria-label]="'Borrar la alerta: ' + alerta.mensaje"
+              (click)="borrar(alerta)">
+              Borrar
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</main>

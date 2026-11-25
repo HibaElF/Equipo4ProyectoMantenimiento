@@ -136,6 +136,28 @@
   gap: 1rem;
 }
 
+/* Desplegable de categoría con la estrella de categoría favorita al lado. */
+.filtro-categoria {
+  display: flex;
+  align-items: flex-end;
+  gap: .5rem;
+}
+
+.filtro-categoria label {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-favorite-button {
+  flex-shrink: 0;
+  color: var(--color-brand);
+}
+
+.category-favorite-button.favorite-selected {
+  border-color: var(--color-brand);
+  background: var(--color-surface);
+}
+
 /* La etiqueta con casilla va en línea, no en rejilla. */
 .catalog-filters .favorites-filter {
   display: flex;

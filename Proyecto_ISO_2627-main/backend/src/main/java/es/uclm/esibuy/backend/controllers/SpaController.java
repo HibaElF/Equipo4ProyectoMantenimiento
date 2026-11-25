@@ -16,6 +16,7 @@ public class SpaController {
             "/aviso-legal",
             "/perfil",
             "/listas",
+            "/alertas",
             "/perfil/direcciones",
             "/perfil/pagos",
             "/admin",

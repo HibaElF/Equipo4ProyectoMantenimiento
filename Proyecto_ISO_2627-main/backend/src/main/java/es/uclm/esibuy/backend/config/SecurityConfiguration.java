@@ -266,6 +266,7 @@ public class SecurityConfiguration {
                                                                 "/aviso-legal",
                                                                 "/perfil",
                                                                 "/listas",
+                                                                "/alertas",
                                                                 "/perfil/direcciones",
                                                                 "/perfil/pagos",
                                                                 "/admin",

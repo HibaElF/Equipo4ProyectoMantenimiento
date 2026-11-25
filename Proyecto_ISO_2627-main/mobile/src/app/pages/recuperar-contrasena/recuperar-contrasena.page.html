@@ -1,0 +1,96 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/login" text="Volver"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Recuperar contraseña</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="contenedor-formulario">
+    @if (!modoNuevaContrasena) {
+      @if (solicitudEnviada()) {
+        <h1>Revisa tu correo</h1>
+        <ion-text role="status">
+          <p>
+            Si existe una cuenta con ese correo, te hemos enviado un enlace para cambiar la contraseña.
+            Ábrelo y sigue los pasos.
+          </p>
+        </ion-text>
+        <ion-button expand="block" color="secondary" routerLink="/login">Volver a iniciar sesión</ion-button>
+      } @else {
+        <h1>¿Has olvidado tu contraseña?</h1>
+        <p>Escribe tu correo y te enviaremos un enlace para crear una nueva.</p>
+        <form [formGroup]="solicitudForm" (ngSubmit)="solicitar()" novalidate>
+          <ion-list lines="full">
+            <ion-item>
+              <ion-input label="Correo electrónico" labelPlacement="stacked" type="email" inputmode="email"
+                autocomplete="email" formControlName="email"
+                errorText="Introduce un correo electrónico válido."
+                [class.ion-invalid]="emailInvalido()" [class.ion-touched]="emailInvalido()"></ion-input>
+            </ion-item>
+          </ion-list>
+          @if (error()) {
+            <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+          }
+          <ion-button type="submit" expand="block" color="secondary" [disabled]="cargando()">
+            @if (cargando()) {
+              <ion-spinner name="crescent" aria-label="Enviando"></ion-spinner>
+            } @else {
+              Enviar enlace
+            }
+          </ion-button>
+        </form>
+      }
+    } @else {
+      @if (contrasenaCambiada()) {
+        <h1>Contraseña cambiada</h1>
+        <ion-text role="status"><p>Ya puedes iniciar sesión con tu nueva contraseña.</p></ion-text>
+        <ion-button expand="block" color="secondary" routerLink="/login">Iniciar sesión</ion-button>
+      } @else {
+        <h1>Nueva contraseña</h1>
+        <form [formGroup]="nuevaForm" (ngSubmit)="cambiarContrasena()" novalidate>
+          <ion-list lines="full">
+            <ion-item>
+              <ion-input label="Nueva contraseña" labelPlacement="stacked" type="password"
+                autocomplete="new-password" formControlName="nuevaContrasena">
+                <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+              </ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-input label="Repite la contraseña" labelPlacement="stacked" type="password"
+                autocomplete="new-password" formControlName="confirmarContrasena"
+                errorText="Las contraseñas no coinciden."
+                [class.ion-invalid]="noCoinciden()" [class.ion-touched]="noCoinciden()">
+                <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+              </ion-input>
+            </ion-item>
+          </ion-list>
+
+          <ul class="requisitos" aria-label="Requisitos de la contraseña">
+            @for (r of requisitos(); track r.texto) {
+              <li [class.cumplido]="r.cumplido">
+                <ion-icon [name]="r.cumplido ? 'checkmark-circle' : 'ellipse-outline'" aria-hidden="true"></ion-icon>
+                <span>{{ r.texto }}</span>
+                <span class="lector">{{ r.cumplido ? '(cumplido)' : '(pendiente)' }}</span>
+              </li>
+            }
+          </ul>
+
+          @if (error()) {
+            <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+          }
+          <ion-button type="submit" expand="block" color="secondary" [disabled]="cargando()">
+            @if (cargando()) {
+              <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+            } @else {
+              Cambiar contraseña
+            }
+          </ion-button>
+          <ion-note class="ayuda ion-text-center">El enlace caduca pasado un tiempo. Si falla, solicita uno nuevo.</ion-note>
+        </form>
+      }
+    }
+  </div>
+</ion-content>

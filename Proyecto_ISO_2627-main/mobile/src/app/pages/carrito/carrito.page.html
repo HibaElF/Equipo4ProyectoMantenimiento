@@ -1,0 +1,168 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Mi carrito</ion-title>
+    <ion-buttons slot="end">
+      @if (carrito()?.productos?.length) {
+        <ion-button (click)="confirmarDescarte()" [disabled]="operacion() !== null" aria-label="Descartar el carrito">
+          <ion-icon slot="start" name="trash-outline" aria-hidden="true"></ion-icon>
+          Vaciar
+        </ion-button>
+      }
+      <app-boton-alertas></app-boton-alertas>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [attr.aria-busy]="cargando() || operacion() !== null">
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="contenido">
+    @if (cargando() && !carrito()) {
+      @for (e of [1, 2, 3]; track e) {
+        <div class="linea esqueleto">
+          <ion-skeleton-text [animated]="true" class="foto"></ion-skeleton-text>
+          <div class="info">
+            <ion-skeleton-text [animated]="true" style="width: 80%"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 50%"></ion-skeleton-text>
+            <ion-skeleton-text [animated]="true" style="width: 40%"></ion-skeleton-text>
+          </div>
+        </div>
+      }
+    } @else if (error() && !carrito()) {
+      <div class="estado" role="alert">
+        <ion-icon name="alert-circle-outline" aria-hidden="true"></ion-icon>
+        <p>{{ error() }}</p>
+        <ion-button fill="outline" (click)="cargarCarrito()">Reintentar</ion-button>
+      </div>
+    } @else if (carrito(); as datos) {
+      @if (datos.productos.length === 0) {
+        <section class="estado" aria-label="Carrito vacío">
+          <ion-icon name="cart-outline" aria-hidden="true"></ion-icon>
+          <h2>Tu carrito está vacío</h2>
+          <p>Encuentra productos en el catálogo para preparar tu compra.</p>
+          <ion-button color="secondary" routerLink="/tienda">Explorar productos</ion-button>
+        </section>
+      } @else {
+        @if (hayAvisos()) {
+          <p class="aviso-general" role="status">
+            <ion-icon name="warning-outline" aria-hidden="true"></ion-icon>
+            Hay productos no disponibles o cantidades que debes revisar.
+          </p>
+        }
+
+        <ul class="lineas" aria-label="Productos del carrito">
+          @for (linea of datos.productos; track linea.productoId) {
+            <li class="linea" [class.no-disponible]="!linea.disponible">
+              <div class="foto">
+                @if (urlImagen(linea); as src) {
+                  <img [src]="src" [alt]="linea.nombre || 'Producto sin nombre'" (error)="marcarImagenFallida(linea.productoId)" />
+                } @else {
+                  <ion-icon name="image-outline" aria-hidden="true"></ion-icon>
+                }
+              </div>
+
+              <div class="info">
+                <div class="fila-titulo">
+                  <h2>{{ linea.nombre || 'Producto sin nombre' }}</h2>
+                  <ion-button
+                    fill="clear"
+                    color="danger"
+                    class="eliminar"
+                    [disabled]="operacion() !== null"
+                    [attr.aria-label]="'Eliminar ' + (linea.nombre || 'producto') + ' del carrito'"
+                    (click)="eliminar(linea)"
+                  >
+                    <ion-icon slot="icon-only" name="trash-outline" aria-hidden="true"></ion-icon>
+                  </ion-button>
+                </div>
+                @if (linea.vendedor) {
+                  <p class="vendedor">Vendedor: <strong>{{ linea.vendedor }}</strong></p>
+                }
+                <p class="disponibilidad">
+                  <span class="chip" [class.ok]="linea.disponible" [class.mal]="!linea.disponible">
+                    {{ linea.disponible ? 'Disponible' : 'No disponible' }}
+                  </span>
+                  @if (linea.stock !== null) {
+                    <span>Stock: {{ linea.stock }}</span>
+                  }
+                </p>
+                @if (!linea.disponible) {
+                  <p class="aviso-linea">{{ linea.aviso || 'Producto no disponible.' }}</p>
+                }
+
+                <div class="fila-compra">
+                  <div class="selector-cantidad" role="group" [attr.aria-label]="'Cantidad de ' + (linea.nombre || 'producto')">
+                    <ion-button
+                      fill="clear"
+                      color="primary"
+                      [disabled]="operacion() !== null || !puedeModificar(linea) || linea.cantidad <= 1"
+                      [attr.aria-label]="'Reducir cantidad de ' + (linea.nombre || 'producto')"
+                      (click)="ajustarCantidad(linea, -1)"
+                    >
+                      <ion-icon slot="icon-only" name="remove-outline" aria-hidden="true"></ion-icon>
+                    </ion-button>
+                    @if (operacion() === linea.productoId) {
+                      <ion-spinner name="crescent" aria-label="Actualizando"></ion-spinner>
+                    } @else {
+                      <output [attr.aria-label]="'Cantidad: ' + linea.cantidad">{{ linea.cantidad }}</output>
+                    }
+                    <ion-button
+                      fill="clear"
+                      color="primary"
+                      [disabled]="operacion() !== null || !puedeModificar(linea) || linea.cantidad >= (linea.stock ?? 0)"
+                      [attr.aria-label]="'Aumentar cantidad de ' + (linea.nombre || 'producto')"
+                      (click)="ajustarCantidad(linea, 1)"
+                    >
+                      <ion-icon slot="icon-only" name="add-outline" aria-hidden="true"></ion-icon>
+                    </ion-button>
+                  </div>
+                  <div class="importes">
+                    <span class="unidad">
+                      @if (linea.precioUnitario !== null) {
+                        {{ linea.precioUnitario | number: '1.2-2' }} € / ud.
+                      } @else {
+                        Precio no disponible
+                      }
+                    </span>
+                    <strong class="subtotal">
+                      <span class="lector">Subtotal:</span>
+                      {{ linea.subtotal !== null ? (linea.subtotal | number: '1.2-2') + ' €' : '—' }}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    }
+  </div>
+</ion-content>
+
+<!-- Resumen y Comprar, fijos abajo -->
+@if (carrito()?.productos?.length) {
+  <ion-footer class="resumen">
+    <ion-toolbar>
+      <div class="fila-total">
+        <span>Total ({{ unidades() }} {{ unidades() === 1 ? 'unidad' : 'unidades' }})</span>
+        <strong>{{ carrito()!.importe | number: '1.2-2' }} €</strong>
+      </div>
+      <ion-button
+        expand="block"
+        color="secondary"
+        [disabled]="operacion() !== null || hayAvisos()"
+        [attr.aria-describedby]="hayAvisos() ? 'motivo-comprar' : null"
+        (click)="comprar()"
+      >
+        Comprar
+      </ion-button>
+      @if (hayAvisos()) {
+        <ion-text color="danger">
+          <p id="motivo-comprar" class="motivo">Elimina o ajusta los productos marcados para poder comprar.</p>
+        </ion-text>
+      }
+    </ion-toolbar>
+  </ion-footer>
+}

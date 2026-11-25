@@ -1,0 +1,91 @@
+<ion-header>
+  <ion-toolbar color="primary">
+    <ion-title>ESIBuy</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="contenedor-formulario">
+    <h1>Iniciar sesión</h1>
+
+    <form (ngSubmit)="enviar()" novalidate>
+      @if (paso() === 'credenciales') {
+        <ion-list lines="full">
+          <ion-item>
+            <ion-input
+              label="Correo electrónico"
+              labelPlacement="stacked"
+              type="email"
+              name="email"
+              autocomplete="email"
+              inputmode="email"
+              [(ngModel)]="email"
+              required
+            ></ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-input
+              label="Contraseña"
+              labelPlacement="stacked"
+              type="password"
+              name="contrasena"
+              autocomplete="current-password"
+              [(ngModel)]="contrasena"
+              required
+            >
+              <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+            </ion-input>
+          </ion-item>
+        </ion-list>
+      } @else {
+        <ion-list lines="full">
+          <ion-item>
+            <ion-input
+              [label]="paso() === 'segundo-factor' ? 'Código de autenticación' : 'Código del correo'"
+              labelPlacement="stacked"
+              name="codigo"
+              autocomplete="one-time-code"
+              [inputmode]="paso() === 'segundo-factor' ? 'text' : 'numeric'"
+              [(ngModel)]="codigo"
+              required
+            ></ion-input>
+          </ion-item>
+        </ion-list>
+      }
+
+      @if (info()) {
+        <ion-note class="mensaje" color="medium" role="status">{{ info() }}</ion-note>
+      }
+      @if (error()) {
+        <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
+      }
+
+      <ion-button type="submit" expand="block" color="secondary" [disabled]="cargando()">
+        @if (cargando()) {
+          <ion-spinner name="crescent" aria-label="Cargando"></ion-spinner>
+        } @else {
+          {{ paso() === 'credenciales' ? 'Entrar' : 'Verificar' }}
+        }
+      </ion-button>
+
+      @if (paso() === 'tercer-factor') {
+        <ion-button fill="clear" expand="block" type="button" (click)="reenviarCodigoCorreo()" [disabled]="cargando()">
+          Reenviar código
+        </ion-button>
+      }
+      @if (paso() !== 'credenciales') {
+        <ion-button fill="clear" expand="block" type="button" (click)="volverAlInicio()">
+          Volver
+        </ion-button>
+      }
+    </form>
+
+    @if (paso() === 'credenciales') {
+      <div class="enlaces-acceso">
+        <ion-button fill="clear" routerLink="/recuperar-contrasena">¿Has olvidado tu contraseña?</ion-button>
+        <p>¿No tienes cuenta?</p>
+        <ion-button fill="outline" expand="block" routerLink="/registro">Crear una cuenta</ion-button>
+      </div>
+    }
+  </div>
+</ion-content>

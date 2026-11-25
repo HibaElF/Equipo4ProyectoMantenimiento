@@ -80,8 +80,42 @@ public class CarritoService {
             }
             Carrito vacio = carrito.vacio();
             carritoDAO.save(vacio);
+            // PBI 291: al vaciar el carrito se devuelve el stock reservado
+            carrito.getProductos().forEach(this::liberarStock);
             return presentarCarrito(vacio, cliente);
         });
+    }
+
+    /*
+     * PBI 291 - Reserva de stock: el stock se descuenta al añadir al carrito y se devuelve
+     * al quitar productos, bajar la cantidad o vaciar el carrito. Al pagar ya no se descuenta.
+     */
+    private void reservarStock(Producto producto, int cantidad) {
+        if (cantidad > producto.getStock()) {
+            throw new DatosNoValidosException("No hay stock suficiente para la cantidad solicitada.");
+        }
+        productoDAO.descontarStock(producto, cantidad);
+    }
+
+    private void liberarStock(String idProducto, int cantidad) {
+        if (cantidad <= 0) {
+            return;
+        }
+        try {
+            productoDAO.reponerStock(idProducto, cantidad);
+        } catch (OptimisticLockingFailureException productoEliminado) {
+            // El producto ya no existe: no hay stock que devolver.
+        }
+    }
+
+    // Si el carrito no se puede guardar (conflicto u otro fallo), se deshace la reserva.
+    private Carrito guardarConReserva(Carrito carrito, String idProducto, int reservado) {
+        try {
+            return carritoDAO.save(carrito);
+        } catch (RuntimeException exception) {
+            liberarStock(idProducto, reservado);
+            throw exception;
+        }
     }
 
     /*
@@ -115,13 +149,29 @@ public class CarritoService {
             if (!carrito.getProductos().containsKey(idProducto)) {
                 throw new ProductoNoEncontradoException();
             }
-            Producto productoModificado = cantidad == null ? null
-                    : obtenerProductoModificable(idProducto, cantidad, cliente);
-            Carrito actualizado = cantidad == null ? carrito.sinProducto(idProducto)
-                    : carrito.conCantidad(idProducto, cantidad);
-            CarritoResponse respuesta = presentarCarrito(actualizado, cliente, productoModificado);
-            carritoDAO.save(actualizado);
-            return respuesta;
+            int cantidadActual = carrito.cantidadDe(idProducto);
+            if (cantidad == null) {
+                // Eliminar la línea: se guarda el carrito y se devuelve todo lo reservado.
+                Carrito actualizado = carrito.sinProducto(idProducto);
+                carritoDAO.save(actualizado);
+                liberarStock(idProducto, cantidadActual);
+                return presentarCarrito(actualizado, cliente);
+            }
+            Producto producto = obtenerProductoModificable(idProducto, cantidad, cliente);
+            // Se calcula antes de reservar o liberar: el objeto «producto» no se actualiza tras cambiar el stock.
+            int maximo = stockParaCliente(producto.getStock(), cantidadActual);
+            int diferencia = cantidad - cantidadActual;
+            Carrito actualizado = carrito.conCantidad(idProducto, cantidad);
+            if (diferencia > 0) {
+                // Sube la cantidad: se reserva solo la diferencia.
+                reservarStock(producto, diferencia);
+                guardarConReserva(actualizado, idProducto, diferencia);
+            } else {
+                // Baja la cantidad: se guarda y se devuelve la diferencia.
+                carritoDAO.save(actualizado);
+                liberarStock(idProducto, -diferencia);
+            }
+            return presentarCarrito(actualizado, cliente, producto, maximo);
         });
     }
 
@@ -139,35 +189,45 @@ public class CarritoService {
     }
 
     private CarritoResponse presentarCarrito(Carrito carrito, Cliente cliente) {
-        return presentarCarrito(carrito, cliente, null);
+        return presentarCarrito(carrito, cliente, null, 0);
     }
 
-    private CarritoResponse presentarCarrito(Carrito carrito, Cliente cliente, Producto productoModificado) {
+    /*
+     * PBI 291 - Con la reserva, el stock guardado del producto es el que queda libre: las unidades del carrito
+     * ya están descontadas. En cada línea se devuelve el stock que el cliente puede llegar a tener en su
+     * carrito (libre + reservado por él), que es el máximo que admite al cambiar la cantidad.
+     * «maximoModificado» es ese valor para el producto que se acaba de modificar, calculado antes del cambio.
+     */
+    private CarritoResponse presentarCarrito(Carrito carrito, Cliente cliente, Producto productoModificado,
+            int maximoModificado) {
         List<LineaCarritoResponse> lineas = new ArrayList<>();
         BigDecimal importe = BigDecimal.ZERO.setScale(2);
         for (var entrada : carrito.getProductos().entrySet()) {
             Producto producto = productoModificado != null && entrada.getKey().equals(productoModificado.getId())
                     ? productoModificado : productoDAO.findById(entrada.getKey()).orElse(null);
+            boolean esModificado = productoModificado != null && producto == productoModificado;
+            Integer maximo = producto == null ? null
+                    : esModificado ? maximoModificado : stockParaCliente(producto.getStock(), entrada.getValue());
             String aviso = comprobarDisponibilidad(producto, entrada.getValue(), cliente);
             if (aviso == null) {
-                LineaCarritoResponse linea = calcularLinea(producto, entrada.getValue(), cliente);
+                LineaCarritoResponse linea = calcularLinea(producto, entrada.getValue(), cliente, maximo);
                 importe = importe.add(linea.subtotal());
                 lineas.add(linea);
             } else {
-                lineas.add(lineaNoDisponible(entrada.getKey(), entrada.getValue(), producto, aviso));
+                lineas.add(lineaNoDisponible(entrada.getKey(), entrada.getValue(), producto, aviso, maximo));
             }
         }
         return new CarritoResponse(List.copyOf(lineas), importe);
     }
 
     private LineaCarritoResponse lineaNoDisponible(String idProducto, int cantidad, Producto producto,
-            String aviso) {
+            String aviso, Integer stockParaCliente) {
         if (producto == null) {
             return new LineaCarritoResponse(idProducto, cantidad, null, null, "Producto eliminado", null, null,
                     false, aviso, null);
         }
         return new LineaCarritoResponse(idProducto, cantidad, null, null, producto.getNombre(),
-                firmaImagenes.firmar(producto.getImagen()), producto.getStock(), false, aviso, producto.getVendedor());
+                firmaImagenes.firmar(producto.getImagen()), stockParaCliente, false, aviso, producto.getVendedor());
     }
 
     private String comprobarDisponibilidad(Producto producto, int cantidad, Cliente cliente) {
@@ -176,9 +236,10 @@ public class CarritoService {
         if (producto.isSoloPremium() && !cliente.isEsPremium()) {
             return MENSAJE_SOLO_PREMIUM;
         }
-        if (producto.getStock() <= 0) return "El producto está agotado.";
-        if (cantidad <= 0 || cantidad > producto.getStock()) {
-            return "No hay stock suficiente para la cantidad solicitada.";
+        // PBI 291: las unidades del carrito ya están reservadas (descontadas del stock),
+        // así que aquí no se compara con el stock restante.
+        if (cantidad <= 0) {
+            return "La cantidad debe ser mayor que cero.";
         }
         Double precio = producto.getPrecio();
         if (precio == null || !Double.isFinite(precio) || precio < 0) {
@@ -191,7 +252,13 @@ public class CarritoService {
         return null;
     }
 
-    private LineaCarritoResponse calcularLinea(Producto producto, int cantidad, Cliente cliente) {
+    // Stock que el cliente puede tener en su carrito: el libre más lo que ya tiene reservado.
+    private static int stockParaCliente(int stockLibre, int enCarrito) {
+        return (int) Math.min(Integer.MAX_VALUE, (long) Math.max(0, stockLibre) + Math.max(0, enCarrito));
+    }
+
+    private LineaCarritoResponse calcularLinea(Producto producto, int cantidad, Cliente cliente,
+            int stockParaCliente) {
         Double precio = PrecioProducto.paraCliente(producto, cliente.isEsPremium());
         if (precio == null || !Double.isFinite(precio) || precio < 0) {
             throw new DatosNoValidosException(MENSAJE_PRECIO_NO_DISPONIBLE);
@@ -199,7 +266,7 @@ public class CarritoService {
         BigDecimal precioUnitario = BigDecimal.valueOf(precio).setScale(2);
         BigDecimal subtotal = precioUnitario.multiply(BigDecimal.valueOf(cantidad));
         return new LineaCarritoResponse(producto.getId(), cantidad, precioUnitario, subtotal,
-                producto.getNombre(), firmaImagenes.firmar(producto.getImagen()), producto.getStock(), true, null,
+                producto.getNombre(), firmaImagenes.firmar(producto.getImagen()), stockParaCliente, true, null,
                 producto.getVendedor());
     }
 
@@ -225,20 +292,25 @@ public class CarritoService {
             Carrito carrito = carritoDAO.findById(cliente.getId())
                     .orElseGet(() -> new Carrito(cliente.getId()));
             long cantidadFinal = (long) carrito.cantidadDe(idProducto) + cantidad;
-            if (cantidadFinal > producto.getStock()) {
+            if (cantidad > producto.getStock() || cantidadFinal > Integer.MAX_VALUE) {
                 throw new DatosNoValidosException("No hay stock suficiente para la cantidad total solicitada.");
             }
 
             Carrito actualizado = carrito.conCantidad(idProducto, (int) cantidadFinal);
-            CarritoResponse respuesta = calcularImporte(actualizado, cliente, producto);
-            return new Resultado(carritoDAO.save(actualizado), respuesta);
+            // Antes de reservar: el objeto «producto» no se actualiza tras descontar el stock.
+            int maximo = stockParaCliente(producto.getStock(), carrito.cantidadDe(idProducto));
+            CarritoResponse respuesta = calcularImporte(actualizado, cliente, producto, maximo);
+            // PBI 291: se reserva (descuenta) la cantidad añadida.
+            reservarStock(producto, cantidad);
+            return new Resultado(guardarConReserva(actualizado, idProducto, cantidad), respuesta);
         });
     }
 
     private record Resultado(Carrito carrito, CarritoResponse respuesta) {
     }
 
-    private CarritoResponse calcularImporte(Carrito carrito, Cliente cliente, Producto productoAnadido) {
+    private CarritoResponse calcularImporte(Carrito carrito, Cliente cliente, Producto productoAnadido,
+            int maximoAnadido) {
         List<LineaCarritoResponse> lineas = new ArrayList<>();
         BigDecimal importe = BigDecimal.ZERO.setScale(2);
         for (var entrada : carrito.getProductos().entrySet()) {
@@ -251,10 +323,13 @@ public class CarritoService {
             if (producto.isSoloPremium() && !cliente.isEsPremium()) {
                 throw new AccessDeniedException("Un producto del carrito solo está disponible para clientes Premium.");
             }
-            if (entrada.getValue() <= 0 || entrada.getValue() > producto.getStock()) {
-                throw new DatosNoValidosException("No hay stock suficiente para un producto del carrito.");
+           if (entrada.getValue() <= 0) {
+                throw new DatosNoValidosException("La cantidad de un producto del carrito no es válida.");
             }
-            LineaCarritoResponse linea = calcularLinea(producto, entrada.getValue(), cliente);
+           
+            int maximo = producto == productoAnadido ? maximoAnadido
+                    : stockParaCliente(producto.getStock(), entrada.getValue());
+            LineaCarritoResponse linea = calcularLinea(producto, entrada.getValue(), cliente, maximo);
             lineas.add(linea);
             importe = importe.add(linea.subtotal());
         }
@@ -264,7 +339,7 @@ public class CarritoService {
     LineaCarritoResponse validarLineaParaCompra(Producto producto, int cantidad, Cliente cliente) {
         String aviso = comprobarDisponibilidad(producto, cantidad, cliente);
         if (aviso != null) throw new DatosNoValidosException(aviso);
-        return calcularLinea(producto, cantidad, cliente);
+        return calcularLinea(producto, cantidad, cliente, stockParaCliente(producto.getStock(), cantidad));
     }
 
     Cliente obtenerClienteAutenticado() {

@@ -1,0 +1,101 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/perfil" text="Perfil"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ editando() ? 'Editar perfil' : 'Mis datos' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    @if (cargando() && !perfil()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+    } @else if (error() && !perfil()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (perfil(); as p) {
+      @if (!editando()) {
+        <section class="tarjeta" aria-labelledby="datos-personales">
+          <div class="cabecera">
+            <app-avatar-perfil [imagen]="p.imagenPerfil" [nombre]="p.nombre" [tamano]="72"></app-avatar-perfil>
+            <div>
+              <p class="tipo">Cliente</p>
+              <h1 id="datos-personales">{{ p.nombre }} {{ p.apellidos }}</h1>
+            </div>
+          </div>
+          <dl class="datos">
+            <div><dt>Correo electrónico</dt><dd>{{ p.email }}</dd></div>
+            @if (p.telefono) {
+              <div><dt>Teléfono</dt><dd>{{ p.telefono }}</dd></div>
+            }
+            @if (p.dniNif) {
+              <div><dt>DNI/NIF</dt><dd>{{ p.dniNif }}</dd></div>
+            }
+            @if (p.fechaNacimiento) {
+              <div><dt>Fecha de nacimiento</dt><dd>{{ p.fechaNacimiento | date: 'dd/MM/yyyy' }}</dd></div>
+            }
+            @if (p.esPremium !== null) {
+              <div><dt>Tipo de cliente</dt><dd>{{ p.esPremium ? 'Premium' : 'Normal' }}</dd></div>
+            }
+          </dl>
+          <ion-button expand="block" (click)="iniciarEdicion()">Editar perfil</ion-button>
+        </section>
+      } @else {
+        <form class="tarjeta" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+          <div class="foto">
+            <app-avatar-perfil [imagen]="fotoPrevia()" [nombre]="formulario.controls.nombre.value || p.nombre" [tamano]="80"></app-avatar-perfil>
+            <ion-note>Vista previa de la foto</ion-note>
+          </div>
+
+          <ion-input label="Nombre" labelPlacement="stacked" fill="outline" formControlName="nombre" autocomplete="given-name"
+            [errorText]="errorDe('nombre')"></ion-input>
+          <ion-input label="Apellidos" labelPlacement="stacked" fill="outline" formControlName="apellidos" autocomplete="family-name"
+            [errorText]="errorDe('apellidos')"></ion-input>
+
+          <ion-input label="Teléfono" labelPlacement="stacked" fill="outline" type="tel" inputmode="tel" autocomplete="tel"
+            formControlName="telefono" [placeholder]="p.telefono ?? ''"
+            helperText="Déjalo vacío para conservar el actual." [errorText]="errorDe('telefono')"></ion-input>
+          @if (p.telefono) {
+            <ion-checkbox formControlName="eliminarTelefono" labelPlacement="end" justify="start" class="casilla">
+              Eliminar el teléfono guardado
+            </ion-checkbox>
+          }
+
+          <ion-input label="Imagen de perfil (URL)" labelPlacement="stacked" fill="outline" type="url" inputmode="url"
+            formControlName="imagenPerfil" placeholder="https://ejemplo.com/imagen.jpg"
+            helperText="Déjalo vacío para quitar la foto." [errorText]="errorDe('imagenPerfil')"></ion-input>
+
+          <ion-input label="DNI/NIF" labelPlacement="stacked" fill="outline" formControlName="dniNif" autocapitalize="characters"
+            [placeholder]="p.dniNif ?? ''"
+            helperText="Déjalo vacío para conservar el actual, que se muestra protegido." [errorText]="errorDe('dniNif')"></ion-input>
+
+          <ion-input label="Fecha de nacimiento" labelPlacement="stacked" fill="outline" type="date" [max]="fechaMaxima"
+            formControlName="fechaNacimiento" [errorText]="errorDe('fechaNacimiento')"></ion-input>
+
+          <div class="protegidos">
+            <p><strong>Correo electrónico:</strong> {{ p.email }} (no modificable)</p>
+            <p>La contraseña, direcciones y pagos se gestionan fuera de esta pantalla.</p>
+          </div>
+
+          @if (errorFormulario()) {
+            <ion-text color="danger"><p class="mensaje" role="alert">{{ errorFormulario() }}</p></ion-text>
+          }
+
+          <div class="acciones">
+            <ion-button type="button" fill="outline" [disabled]="guardando()" (click)="cancelarEdicion()">Cancelar</ion-button>
+            <ion-button type="submit" [disabled]="guardando()">
+              @if (guardando()) {
+                <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+              } @else {
+                Guardar cambios
+              }
+            </ion-button>
+          </div>
+        </form>
+      }
+    }
+  </div>
+</ion-content>

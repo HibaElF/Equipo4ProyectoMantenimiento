@@ -1,0 +1,101 @@
+.contenido {
+  padding: 10px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.descripcion {
+  margin: 4px 2px 12px;
+  color: var(--ion-color-medium);
+  font-size: 0.9rem;
+}
+
+.listas {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+.fila-lista {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fila-lista.favoritos {
+  background: #fbf1ee;
+  border-color: #efd3cb;
+}
+
+.fila-lista:focus-visible {
+  outline: 3px solid var(--ion-color-primary);
+}
+
+.fila-lista ion-icon {
+  font-size: 22px;
+  color: var(--ion-color-primary);
+  flex-shrink: 0;
+}
+
+.fila-lista ion-icon.corazon {
+  color: var(--ion-color-secondary);
+}
+
+.fila-lista ion-icon:last-child {
+  font-size: 18px;
+  color: var(--ion-color-medium);
+}
+
+.nombre-lista {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cuenta {
+  color: var(--ion-color-medium);
+}
+
+.nueva-lista {
+  background: #ffffff;
+  border: 1px solid var(--ion-border-color);
+  border-radius: 14px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.nueva-lista ion-button {
+  margin: 10px 0 0;
+}
+
+.estado {
+  text-align: center;
+  padding: 40px 16px;
+}
+
+.esqueleto-fila {
+  height: 56px;
+  border-radius: 14px;
+  margin-bottom: 8px;
+}
+
+.lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

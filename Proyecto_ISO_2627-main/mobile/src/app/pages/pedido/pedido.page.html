@@ -1,0 +1,190 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/pedidos" text="Pedidos"></ion-back-button>
+    </ion-buttons>
+    <ion-title>{{ pedido() ? 'Pedido #' + referencia(pedido()!.id) : 'Pedido' }}</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="contenido">
+    @if (cargando() && !pedido()) {
+      <ion-skeleton-text [animated]="true" class="esqueleto alto"></ion-skeleton-text>
+      <ion-skeleton-text [animated]="true" class="esqueleto"></ion-skeleton-text>
+    } @else if (error() && !pedido()) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else if (pedido(); as p) {
+      <!-- Resumen -->
+      <section class="tarjeta resumen">
+        <div class="fila">
+          <app-estado-pedido [estado]="p.estado"></app-estado-pedido>
+          <span class="importe">{{ p.importe | number: '1.2-2' }} €</span>
+        </div>
+        <p class="dato">Realizado el {{ p.fechaCreacion | date: 'dd/MM/yyyy HH:mm' }}</p>
+        @if (p.fechaPago) {
+          <p class="dato">Pagado el {{ p.fechaPago | date: 'dd/MM/yyyy HH:mm' }}</p>
+        }
+        @if (vendedores(p)) {
+          <p class="dato">Vendedor: <strong>{{ vendedores(p) }}</strong></p>
+        }
+        <p class="dato ref">Referencia completa: {{ p.id }}</p>
+      </section>
+
+      <!-- Acciones según el estado -->
+      @if (puedeConfirmar()) {
+        <ion-button expand="block" color="secondary" [disabled]="operando() !== null" (click)="confirmarRecepcionPedido()">
+          @if (operando() === 'recepcion') {
+            <ion-spinner name="crescent" aria-label="Confirmando"></ion-spinner>
+          } @else {
+            He recibido el pedido
+          }
+        </ion-button>
+      }
+
+      <!-- Seguimiento -->
+      <section class="tarjeta" aria-labelledby="titulo-seguimiento">
+        <h2 id="titulo-seguimiento">Seguimiento</h2>
+        <ol class="seguimiento">
+          @for (paso of pasos(); track paso; let ultimo = $last) {
+            @let hecho = cambio(p.historialEstados, paso);
+            <li [class.hecho]="!!hecho" [class.cancelado]="paso === 'CANCELADO'" [class.actual]="paso === p.estado">
+              <ion-icon
+                [name]="paso === 'CANCELADO' ? 'close-circle' : hecho ? 'checkmark-circle' : 'ellipse-outline'"
+                aria-hidden="true"
+              ></ion-icon>
+              <div>
+                <span class="paso">{{ textoEstado(paso) }}</span>
+                <span class="lector">{{ hecho ? '(completado)' : '(pendiente)' }}</span>
+                @if (hecho) {
+                  <span class="fecha">{{ hecho.fecha | date: 'dd/MM/yyyy HH:mm' }}</span>
+                }
+              </div>
+            </li>
+          }
+        </ol>
+      </section>
+
+      <!-- Productos -->
+      <section class="tarjeta" aria-labelledby="titulo-productos">
+        <h2 id="titulo-productos">Productos</h2>
+        <ul class="productos">
+          @for (linea of p.lineas; track linea.productoId) {
+            <li>
+              <div class="fila">
+                <span class="nombre">{{ linea.nombreProducto }} × {{ linea.cantidad }}</span>
+                <strong>{{ linea.precioCompra * linea.cantidad | number: '1.2-2' }} €</strong>
+              </div>
+              <p class="dato">{{ linea.precioCompra | number: '1.2-2' }} € / ud.{{ linea.nombreVendedor ? ' · ' + linea.nombreVendedor : '' }}</p>
+
+              @if (p.estado === 'FINALIZADO') {
+                @let val = estadoValoracion(linea.productoId);
+                <div class="valoracion">
+                  @switch (val?.estado) {
+                    @case ('cargando') {
+                      <ion-note>Comprobando valoración…</ion-note>
+                    }
+                    @case ('valorada') {
+                      <span class="valorada"><ion-icon name="checkmark-circle" aria-hidden="true"></ion-icon> Valorado</span>
+                    }
+                    @case ('pendiente') {
+                      <ion-button size="small" fill="outline" (click)="abrirValoracion(linea)">
+                        <ion-icon name="star-outline" slot="start" aria-hidden="true"></ion-icon>
+                        Valorar
+                      </ion-button>
+                    }
+                    @case ('error') {
+                      <ion-text color="danger"><p class="dato">{{ val!.mensaje }}</p></ion-text>
+                      <ion-button size="small" fill="clear" (click)="consultarValoracion(linea.productoId)">Reintentar</ion-button>
+                    }
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+        <div class="fila total">
+          <span>Total</span>
+          <strong>{{ p.importe | number: '1.2-2' }} €</strong>
+        </div>
+      </section>
+
+      <!-- Envío -->
+      @if (p.direccionEnvio; as d) {
+        <section class="tarjeta" aria-labelledby="titulo-envio">
+          <h2 id="titulo-envio"><ion-icon name="location-outline" aria-hidden="true"></ion-icon> Dirección de envío</h2>
+          <p class="nombre-dir">{{ d.nombre }}</p>
+          <p class="dato">{{ d.calle }}, {{ d.numero }}{{ d.portal ? ', portal ' + d.portal : '' }}{{ d.piso ? ', ' + d.piso : '' }}</p>
+          <p class="dato">{{ d.codigoPostal }} {{ d.ciudad }} ({{ d.provincia }})</p>
+        </section>
+      }
+
+      @if (puedeCancelar()) {
+        <ion-button expand="block" fill="outline" color="danger" [disabled]="operando() !== null" (click)="confirmarCancelacion()">
+          @if (operando() === 'cancelar') {
+            <ion-spinner name="crescent" aria-label="Cancelando"></ion-spinner>
+          } @else {
+            Cancelar pedido
+          }
+        </ion-button>
+      }
+    }
+  </div>
+
+  <!-- Valorar un producto -->
+  <ion-modal [isOpen]="!!productoAValorar()" (didDismiss)="cerrarValoracion()" [initialBreakpoint]="0.75" [breakpoints]="[0, 0.75, 1]">
+    <ng-template>
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Valorar producto</ion-title>
+          <ion-buttons slot="end">
+            <ion-button (click)="cerrarValoracion()" aria-label="Cerrar sin valorar">
+              <ion-icon slot="icon-only" name="close-outline" aria-hidden="true"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">
+        <p class="producto-valorar">{{ productoAValorar()?.nombreProducto }}</p>
+        <div class="selector-estrellas" role="radiogroup" aria-label="Puntuación de 1 a 5">
+          @for (n of estrellas; track n) {
+            <button
+              type="button"
+              role="radio"
+              [attr.aria-checked]="puntuacion() === n"
+              [attr.aria-label]="n + (n === 1 ? ' estrella' : ' estrellas') + ': ' + textoPuntuacion(n)"
+              (click)="puntuacion.set(n)"
+            >
+              <ion-icon [name]="n <= puntuacion() ? 'star' : 'star-outline'" aria-hidden="true"></ion-icon>
+            </button>
+          }
+        </div>
+        <p class="texto-puntuacion" aria-live="polite">{{ textoPuntuacion(puntuacion()) }}</p>
+        <ion-item lines="full">
+          <ion-textarea
+            label="Comentario (opcional)"
+            labelPlacement="stacked"
+            [(ngModel)]="comentario"
+            [maxlength]="500"
+            [counter]="true"
+            [autoGrow]="true"
+            rows="3"
+          ></ion-textarea>
+        </ion-item>
+        @if (errorValoracion()) {
+          <ion-text color="danger" role="alert"><p class="mensaje">{{ errorValoracion() }}</p></ion-text>
+        }
+        <ion-button expand="block" color="secondary" class="enviar" [disabled]="enviandoValoracion()" (click)="enviarValoracion()">
+          @if (enviandoValoracion()) {
+            <ion-spinner name="crescent" aria-label="Enviando"></ion-spinner>
+          } @else {
+            Enviar valoración
+          }
+        </ion-button>
+      </ion-content>
+    </ng-template>
+  </ion-modal>
+</ion-content>

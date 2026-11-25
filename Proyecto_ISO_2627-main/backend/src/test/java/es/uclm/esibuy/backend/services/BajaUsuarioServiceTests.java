@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
+import es.uclm.esibuy.backend.dao.AlertaDAO;
 import es.uclm.esibuy.backend.dao.CarritoDAO;
 import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
@@ -52,6 +53,7 @@ class BajaUsuarioServiceTests {
     @Mock private VendedorDAO vendedores;
     @Mock private CarritoDAO carritos;
     @Mock private ListaProductosDAO listas;
+    @Mock private AlertaDAO alertas;
     @Mock private MetodoPagoDAO metodos;
     @Mock private PedidoDAO pedidos;
     @Mock private ProductoDAO productos;
@@ -65,7 +67,7 @@ class BajaUsuarioServiceTests {
     @BeforeEach
     void configurar() {
         when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
-        servicio = new BajaUsuarioService(clientes, vendedores, carritos, listas, metodos, pedidos, productos,
+        servicio = new BajaUsuarioService(clientes, vendedores, carritos, listas, alertas, metodos, pedidos, productos,
                 sesiones, imagenes, auditoria, transacciones);
     }
 
@@ -86,8 +88,9 @@ class BajaUsuarioServiceTests {
         assertNull(anonimizado.getDireccionEnvio());
         assertNull(anonimizado.getMetodoPagoId());
         assertEquals(pedido.getLineas(), anonimizado.getLineas());
-        InOrder orden = inOrder(listas, metodos, carritos, clientes, sesiones, auditoria);
+        InOrder orden = inOrder(listas, alertas, metodos, carritos, clientes, sesiones, auditoria);
         orden.verify(listas).deleteByUsuarioId("cliente-1");
+        orden.verify(alertas).deleteByClienteId("cliente-1");
         orden.verify(metodos).deleteByClienteId("cliente-1");
         orden.verify(carritos).deleteById("cliente-1");
         orden.verify(clientes).delete(cliente);
@@ -107,6 +110,7 @@ class BajaUsuarioServiceTests {
 
         verify(pedidos, never()).save(any(Pedido.class));
         verify(listas, never()).deleteByUsuarioId(any());
+        verify(alertas, never()).deleteByClienteId(any());
         verify(metodos, never()).deleteByClienteId(any());
         verify(carritos, never()).deleteById(any());
         verify(clientes, never()).delete(any(Cliente.class));

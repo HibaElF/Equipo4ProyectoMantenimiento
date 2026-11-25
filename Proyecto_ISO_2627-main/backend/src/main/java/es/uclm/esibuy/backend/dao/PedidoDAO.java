@@ -1,5 +1,6 @@
 package es.uclm.esibuy.backend.dao;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -8,6 +9,7 @@ import org.springframework.data.mongodb.repository.Query;
 import org.springframework.data.mongodb.repository.Update;
 
 import es.uclm.esibuy.backend.model.CambioEstadoPedido;
+import es.uclm.esibuy.backend.model.EstadoPedido;
 import es.uclm.esibuy.backend.model.Pedido;
 
 public interface PedidoDAO extends MongoRepository<Pedido, String> {
@@ -20,6 +22,12 @@ public interface PedidoDAO extends MongoRepository<Pedido, String> {
 
     // HU-50: los pedidos (uno por vendedor) que se crearon en la misma compra.
     List<Pedido> findByCompraIdAndClienteId(String compraId, String clienteId);
+
+    @Query("{ 'lineas.productoId': { '$in': ?0 } }")
+    List<Pedido> findConAlgunProducto(Collection<String> productoIds);
+
+    // Estadísticas del administrador: los pedidos de toda la plataforma en un estado (los finalizados)
+    List<Pedido> findByEstado(EstadoPedido estado);
 
     // Cambio atómico: solo se aplica si el pedido sigue en el estado esperado y contiene productos del vendedor.
     @Query("{ '_id': ?0, 'estado': ?1, 'lineas.vendedorId': ?2 }")
@@ -53,4 +61,3 @@ public interface PedidoDAO extends MongoRepository<Pedido, String> {
     @Query(value = "{ 'lineas.productoId': ?0, 'estado': { '$in': ?1 } }", exists = true)
     boolean existsByProductoIdAndEstadoIn(String productoId, List<String> estados);
 }
-

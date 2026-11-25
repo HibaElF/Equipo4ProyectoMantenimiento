@@ -1,0 +1,99 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/listas" text="Listas"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Favoritos</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="contenido">
+    <p class="descripcion">Guarda tus productos preferidos para encontrarlos fácilmente cuando los necesites.</p>
+
+    @if (cargandoFavoritos() && productos().length === 0) {
+      <div class="rejilla">
+        @for (e of [1, 2, 3, 4]; track e) {
+          <ion-skeleton-text [animated]="true" class="esqueleto-tarjeta"></ion-skeleton-text>
+        }
+      </div>
+    } @else if (errorFavoritos() && productos().length === 0) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ errorFavoritos() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargarFavoritos()">Reintentar</ion-button>
+      </div>
+    } @else if (productos().length === 0) {
+      <div class="estado">
+        <ion-icon name="heart-outline" aria-hidden="true"></ion-icon>
+        <h2>Todavía no tienes favoritos</h2>
+        <p>Explora el catálogo y guarda los productos que más te interesen.</p>
+        <ion-button routerLink="/tienda">Explorar productos</ion-button>
+      </div>
+    } @else {
+      @if (errorFavoritos()) {
+        <ion-text color="danger"><p role="alert">{{ errorFavoritos() }}</p></ion-text>
+      }
+      <p class="contador" aria-live="polite">
+        {{ productos().length }} {{ productos().length === 1 ? 'producto guardado' : 'productos guardados' }}
+      </p>
+      <ul class="rejilla" aria-label="Productos favoritos">
+        @for (producto of productos(); track producto.id) {
+          <li>
+            <article class="tarjeta-fav" [class.no-disponible]="!producto.disponible">
+              <button type="button" class="zona-principal" (click)="verProducto(producto)" [attr.aria-label]="'Ver ' + producto.nombre">
+                <div class="marco-imagen">
+                  @if (producto.imagen) {
+                    <img [src]="urlImagen(producto.imagen)" alt="" loading="lazy" />
+                  } @else {
+                    <ion-icon name="image-outline" class="sin-imagen" aria-hidden="true"></ion-icon>
+                  }
+                </div>
+                <div class="cuerpo">
+                  <h2 class="nombre">{{ producto.nombre }}</h2>
+                  @if (producto.precio !== null) {
+                    <p class="precio">{{ producto.precio | number: '1.2-2' }} €</p>
+                  } @else {
+                    <p class="sin-precio">Precio no disponible</p>
+                  }
+                  @if (producto.disponible) {
+                    <span class="chip chip-exito">Disponible</span>
+                  } @else {
+                    <span class="chip chip-aviso">{{ producto.aviso || 'Producto no disponible' }}</span>
+                  }
+                </div>
+              </button>
+              <div class="acciones">
+                <ion-button
+                  expand="block"
+                  size="small"
+                  [disabled]="!producto.disponible || operacion() !== null"
+                  (click)="anadirAlCarrito(producto)"
+                >
+                  @if (operacion() === producto.id) {
+                    <ion-spinner name="crescent" aria-label="Procesando"></ion-spinner>
+                  } @else {
+                    {{ producto.disponible ? 'Añadir al carrito' : 'No disponible' }}
+                  }
+                </ion-button>
+                <ion-button
+                  expand="block"
+                  size="small"
+                  fill="outline"
+                  [disabled]="operacion() !== null"
+                  [attr.aria-label]="'Quitar ' + producto.nombre + ' de favoritos'"
+                  (click)="quitarFavorito(producto)"
+                >
+                  Quitar de favoritos
+                </ion-button>
+              </div>
+            </article>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</ion-content>

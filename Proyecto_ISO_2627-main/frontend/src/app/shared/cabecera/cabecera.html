@@ -30,6 +30,9 @@
               ariaCurrentWhenActive="page"
               (click)="cerrarMenu()">
               {{ enlace.texto }}
+              @if (enlace.ruta === rutaAlertas && noLeidas() > 0) {
+                <span class="contador" [attr.aria-label]="noLeidas() + ' sin leer'">{{ noLeidas() }}</span>
+              }
             </a>
           </li>
         }

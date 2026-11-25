@@ -46,6 +46,15 @@ describe('PanelCliente - catálogo HU-19', () => {
       peticion.flush([]);
     }
 
+    // Categorías favoritas: el panel carga el catálogo de categorías y las favoritas.
+    for (const peticion of httpMock.match(`${environment.apiUrl}/categorias/registro`)) {
+      peticion.flush([]);
+    }
+
+    for (const peticion of httpMock.match(`${environment.apiUrl}/cliente/categorias-favoritas`)) {
+      peticion.flush([]);
+    }
+
     httpMock.verify();
     TestBed.resetTestingModule();
   });
@@ -574,6 +583,99 @@ describe('PanelCliente - catálogo HU-19', () => {
 
       const detalle: HTMLElement = fixture.nativeElement.querySelector('.product-detail');
       expect(detalle.textContent).not.toContain('Descuento');
+    });
+  });
+
+  describe('categorías favoritas', () => {
+    const urlFavoritas = `${environment.apiUrl}/cliente/categorias-favoritas`;
+    const informatica = { id: 'cat-1', nombre: 'Informática' };
+
+    function cargarPanel(favoritas: { id: string; nombre: string }[]) {
+      httpMock.expectOne(`${environment.apiUrl}/cliente/productos`)
+        .flush([crearProducto('p1', false, true, 5)]);
+      httpMock.expectOne(`${environment.apiUrl}/categorias/registro`)
+        .flush([informatica, { id: 'cat-2', nombre: 'Hogar' }]);
+      httpMock.expectOne(urlFavoritas).flush(favoritas);
+      fixture.detectChanges();
+    }
+
+    function seleccionarCategoria(nombre: string) {
+      const select: HTMLSelectElement = fixture.nativeElement.querySelector('.filtro-categoria select');
+      select.value = nombre;
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    }
+
+    function estrella(): HTMLButtonElement {
+      return fixture.nativeElement.querySelector('.category-favorite-button');
+    }
+
+    it('la estrella está desactivada hasta que se elige una categoría', () => {
+      cargarPanel([]);
+
+      expect(estrella().disabled).toBe(true);
+      expect(estrella().getAttribute('aria-label'))
+        .toBe('Selecciona una categoría para marcarla como favorita');
+
+      seleccionarCategoria('Informática');
+
+      expect(estrella().disabled).toBe(false);
+      expect(estrella().getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('marca la categoría seleccionada como favorita por su id', () => {
+      cargarPanel([]);
+      seleccionarCategoria('Informática');
+
+      estrella().click();
+      httpMock.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 'csrf' });
+      const peticion = httpMock.expectOne(`${urlFavoritas}/cat-1`);
+      expect(peticion.request.method).toBe('PUT');
+      expect(peticion.request.headers.get('X-XSRF-TOKEN')).toBe('csrf');
+      peticion.flush([informatica]);
+      fixture.detectChanges();
+
+      expect(estrella().getAttribute('aria-pressed')).toBe('true');
+      expect(estrella().getAttribute('aria-label')).toBe('Quitar Informática de categorías favoritas');
+      expect(fixture.nativeElement.textContent).toContain('Categoría «Informática» guardada en tus favoritas.');
+      expect(fixture.nativeElement.querySelector('.filtro-categoria select').textContent)
+        .toContain('★ Informática (favorita)');
+    });
+
+    it('elimina una categoría de la lista de favoritas', () => {
+      cargarPanel([informatica]);
+      seleccionarCategoria('Informática');
+      expect(estrella().getAttribute('aria-pressed')).toBe('true');
+
+      estrella().click();
+      httpMock.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 'csrf' });
+      const peticion = httpMock.expectOne(`${urlFavoritas}/cat-1`);
+      expect(peticion.request.method).toBe('DELETE');
+      peticion.flush([]);
+      fixture.detectChanges();
+
+      expect(estrella().getAttribute('aria-pressed')).toBe('false');
+      expect(fixture.nativeElement.textContent).toContain('Categoría «Informática» eliminada de tus favoritas.');
+    });
+
+    it('muestra las favoritas en el desplegable aunque no tengan productos', () => {
+      cargarPanel([{ id: 'cat-2', nombre: 'Hogar' }]);
+
+      const opciones = fixture.nativeElement.querySelector('.filtro-categoria select').textContent;
+      expect(opciones).toContain('★ Hogar (favorita)');
+    });
+
+    it('avisa si no se puede actualizar la categoría favorita', () => {
+      cargarPanel([]);
+      seleccionarCategoria('Informática');
+
+      estrella().click();
+      httpMock.expectOne(`${environment.apiUrl}/usuarios/csrf`).flush({ token: 'csrf' });
+      httpMock.expectOne(`${urlFavoritas}/cat-1`).flush({}, { status: 404, statusText: 'Not Found' });
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('La categoría ya no existe.');
+      expect(estrella().getAttribute('aria-pressed')).toBe('false');
     });
   });
 

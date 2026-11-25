@@ -43,6 +43,7 @@ class PedidoServiceTests {
     @Mock private VendedorDAO vendedores;
     @Mock private PedidoDAO pedidos;
     @Mock private MongoTransactionManager transacciones;
+    @Mock private AlertaService alertaService;
     private PedidoService servicio;
     private Cliente cliente;
     private Producto producto;
@@ -52,7 +53,7 @@ class PedidoServiceTests {
     @BeforeEach
     void configurar() {
         servicio = new PedidoService(new CarritoService(carritos, clientes, productos), carritos, productos,
-                metodos, vendedores, pedidos, transacciones);
+                metodos, vendedores, pedidos, transacciones, alertaService);
         lenient().when(transacciones.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         cliente = new Cliente();
         cliente.setId("cliente-a");
@@ -333,6 +334,27 @@ class PedidoServiceTests {
     }
 
     @Test
+    void cancelarUnPedidoPagadoAvisaSiElProductoAgotadoVuelveAEstarDisponible() {
+        cuenta();
+        Pedido pagado = pedidoConEstado("pedido-agotado", EstadoPedido.PAGADO_COMPLETADO);
+        when(pedidos.findByIdAndClienteId("pedido-agotado", "cliente-a")).thenReturn(Optional.of(pagado));
+        when(pedidos.cancelarPedido(
+                eq("pedido-agotado"),
+                eq("cliente-a"),
+                eq(EstadoPedido.PAGADO_COMPLETADO.name()),
+                eq(EstadoPedido.CANCELADO.name()),
+                anyList()))
+                .thenReturn(1L);
+        // Tras reponer la unidad del pedido el stock es 1: antes estaba agotado.
+        producto.setStock(1);
+        when(productos.findById("producto-1")).thenReturn(Optional.of(producto));
+
+        servicio.cancelarPedido("pedido-agotado");
+
+        verify(alertaService).avisarSiVuelveADisponible(producto, false);
+    }
+
+    @Test
     void conflictoConcurrenteNoReponeStock() {
         cuenta();
         Pedido pedido = pedidoConEstado("pedido-concurrente", EstadoPedido.PAGADO_COMPLETADO);
@@ -372,7 +394,8 @@ class PedidoServiceTests {
         assertEquals(new BigDecimal(premium ? "65.00" : "90.00"), pedido.getLineas().getFirst().precioCompra());
         assertEquals("vendedor-1", pedido.getLineas().getFirst().vendedorId());
         assertNotNull(pedido.getFechaPago());
-        verify(productos).descontarStock(producto, 2);
+        // PBI 291: el stock ya se reservó en el carrito.
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos).save(argThat(c -> c.getProductos().isEmpty() && c.getId().equals("cliente-a")));
         verify(pedidos).insert(argThat((Pedido p) -> p.getEstado() == EstadoPedido.EN_PROCESO));
         verify(pedidos).save(pedido);
@@ -385,7 +408,7 @@ class PedidoServiceTests {
     }
 
     @Test
-    void repeticionDevuelveElMismoPedidoSinDescontarOtraVez() {
+    void repeticionDevuelveElMismoPedidoSinEscribirOtraVez() {
         compra();
         List<Pedido> guardados = new ArrayList<>();
         when(pedidos.findByCompraIdAndClienteId(anyString(), eq("cliente-a")))
@@ -393,7 +416,7 @@ class PedidoServiceTests {
         doAnswer(i -> { guardados.add(i.getArgument(0)); return i.getArgument(0); }).when(pedidos).save(any());
         List<Pedido> primera = pagar();
         assertEquals(primera, pagar());
-        verify(productos, times(1)).descontarStock(any(), anyInt());
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos, times(1)).save(any());
         verify(pedidos, times(1)).insert(any(Pedido.class));
         assertThrows(es.uclm.esibuy.backend.exceptions.OperacionPedidoConflictivaException.class,
@@ -413,12 +436,10 @@ class PedidoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"eliminado", "oculto", "stock", "agotado", "premium", "precio", "cantidad"})
+    @ValueSource(strings = {"eliminado", "oculto", "premium", "precio", "cantidad"})
     void productoNoAdquiribleRechazaSinEscrituras(String motivo) {
         switch (motivo) {
             case "oculto" -> producto.setEsVisible(false);
-            case "stock" -> producto.setStock(1);
-            case "agotado" -> producto.setStock(0);
             case "premium" -> producto.setSoloPremium(true);
             case "precio" -> producto.setPrecio(Double.NaN);
             case "cantidad" -> carrito = carrito.conCantidad("producto-1", 0);
@@ -431,6 +452,20 @@ class PedidoServiceTests {
         verify(pedidos, never()).insert(any(Pedido.class));
         verify(carritos, never()).save(any());
         verify(transacciones).rollback(any());
+    }
+
+    // PBI 291: las unidades del carrito ya están reservadas, así que aunque el stock libre
+    // sea menor que la cantidad (o cero) la compra se puede pagar y no se descuenta otra vez.
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void compraLoReservadoAunqueNoQuedeStockLibre(int stockLibre) {
+        producto.setStock(stockLibre);
+        compra();
+        List<Pedido> compraRealizada = pagar();
+        assertEquals(1, compraRealizada.size());
+        assertEquals(EstadoPedido.PAGADO_COMPLETADO, compraRealizada.getFirst().getEstado());
+        verify(productos, never()).descontarStock(any(), anyInt());
+        verify(carritos).save(argThat(c -> c.getProductos().isEmpty()));
     }
 
     @Test
@@ -473,12 +508,11 @@ class PedidoServiceTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"stock", "pedido", "carrito"})
+    @ValueSource(strings = {"pedido", "carrito"})
     void falloDeEscrituraSolicitaRollbackSinCommit(String punto) {
         compra();
         RuntimeException error = new IllegalStateException("Persistencia no disponible");
         switch (punto) {
-            case "stock" -> doThrow(error).when(productos).descontarStock(any(), anyInt());
             case "pedido" -> doThrow(error).when(pedidos).save(any());
             case "carrito" -> doThrow(error).when(carritos).save(any());
             default -> throw new AssertionError();
@@ -495,7 +529,8 @@ class PedidoServiceTests {
         error.addLabel(MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL);
         doThrow(error).when(transacciones).commit(any());
         assertThrows(MongoException.class, this::pagar);
-        verify(productos, times(1)).descontarStock(any(), anyInt());
+        verify(pedidos, times(1)).insert(any(Pedido.class));
+        verify(productos, never()).descontarStock(any(), anyInt());
     }
 
     @Test
@@ -533,14 +568,14 @@ class PedidoServiceTests {
         Pedido pedido = compraRealizada.getFirst();
         assertEquals(new BigDecimal("210.00"), pedido.getImporte());
         assertEquals(2, pedido.getLineas().size());
-        verify(productos).descontarStock(segundo, 3);
+        verify(productos, never()).descontarStock(any(), anyInt());
     }
 
     @Test
     void compraConVariosVendedoresCreaUnPedidoPorVendedor() {
         carrito = carrito.conCantidad("producto-2", 3);
         compra();
-        Producto otro = productoDeOtraTienda();
+        productoDeOtraTienda();
 
         List<Pedido> compraRealizada = pagar();
 
@@ -556,8 +591,7 @@ class PedidoServiceTests {
         assertTrue(compraRealizada.stream().allMatch(p -> p.getEstado() == EstadoPedido.PAGADO_COMPLETADO));
         verify(pedidos, times(2)).insert(any(Pedido.class));
         verify(pedidos, times(2)).save(any(Pedido.class));
-        verify(productos).descontarStock(producto, 2);
-        verify(productos).descontarStock(otro, 3);
+        verify(productos, never()).descontarStock(any(), anyInt());
         verify(carritos, times(1)).save(argThat(c -> c.getProductos().isEmpty()));
         verify(transacciones).commit(any());
     }
@@ -576,7 +610,7 @@ class PedidoServiceTests {
 
         assertEquals(primera, pagar());
         verify(pedidos, times(2)).insert(any(Pedido.class));
-        verify(productos, times(2)).descontarStock(any(), anyInt());
+        verify(productos, never()).descontarStock(any(), anyInt());
     }
 
     @Test

@@ -1,0 +1,66 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Mis listas</ion-title>
+    <ion-buttons slot="end"><app-boton-alertas></app-boton-alertas></ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <ion-refresher slot="fixed" (ionRefresh)="recargar($event)">
+    <ion-refresher-content pullingText="Desliza para actualizar" refreshingSpinner="crescent"></ion-refresher-content>
+  </ion-refresher>
+
+  <div class="contenido">
+    <p class="descripcion">
+      Organiza los productos que te interesan. Puedes añadirlos desde el detalle de cada producto del catálogo.
+    </p>
+
+    @if (cargando() && listas().length === 0) {
+      @for (e of [1, 2, 3]; track e) {
+        <ion-skeleton-text [animated]="true" class="esqueleto-fila"></ion-skeleton-text>
+      }
+    } @else if (error() && listas().length === 0) {
+      <div class="estado" role="alert">
+        <ion-text color="danger"><p>{{ error() }}</p></ion-text>
+        <ion-button fill="outline" (click)="cargar()">Reintentar</ion-button>
+      </div>
+    } @else {
+      <ul class="listas" aria-label="Tus listas">
+        @for (lista of listas(); track lista.id) {
+          <li>
+            <button type="button" class="fila-lista" [class.favoritos]="lista.predeterminada" (click)="abrirLista(lista)">
+              <ion-icon [name]="lista.predeterminada ? 'heart' : 'list-outline'" [class.corazon]="lista.predeterminada" aria-hidden="true"></ion-icon>
+              <span class="nombre-lista">{{ lista.nombre }}</span>
+              <span class="cuenta">
+                ({{ lista.productoIds.length }})
+                <span class="lector">{{ lista.productoIds.length === 1 ? 'producto' : 'productos' }}</span>
+              </span>
+              <ion-icon name="chevron-forward-outline" aria-hidden="true"></ion-icon>
+            </button>
+          </li>
+        }
+      </ul>
+
+      <form class="nueva-lista" (submit)="$event.preventDefault(); crearLista()">
+        <ion-input
+          label="Nueva lista"
+          labelPlacement="stacked"
+          fill="outline"
+          placeholder="Por ejemplo: alimentación"
+          [maxlength]="maxNombre"
+          [formControl]="nombreNueva"
+          [counter]="true"
+          enterkeyhint="done"
+          [errorText]="nombreNueva.hasError('maxlength') ? 'El nombre no puede superar ' + maxNombre + ' caracteres.' : 'El nombre de la lista es obligatorio.'"
+        ></ion-input>
+        <ion-button type="submit" expand="block" [disabled]="creando()">
+          @if (creando()) {
+            <ion-spinner name="crescent" aria-label="Creando"></ion-spinner>
+          } @else {
+            Crear lista
+          }
+        </ion-button>
+      </form>
+    }
+  </div>
+</ion-content>
