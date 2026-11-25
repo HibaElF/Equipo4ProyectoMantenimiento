@@ -106,7 +106,7 @@ public class ExportacionDatosService {
         };
 
         // El detalle solo lleva el tipo de usuario y el número de pedidos, nunca datos personales.
-        auditoriaService.registrarEvento("exportacion_datos", "exito", usuario.getId(),
+        auditoriaService.registrarEvento(TIPO_LIMITE, "exito", usuario.getId(),
                 Map.of("tipoUsuario", respuesta.tipoUsuario()));
         return respuesta;
     }

@@ -101,19 +101,7 @@ public class AuthService {
         }
 
         if (!credencialesValidas) {
-            ResultadoFalloLogin fallo = loginAttemptService.registrarFalloDetallado(correoNormalizado);
-            int retryAfter = fallo.retryAfter();
-            auditoriaService.registrarIntentoLoginFallido();
-            if (retryAfter > 0) {
-                auditoriaService.registrarBloqueoLogin(retryAfter);
-                // Solo se avisa si la cuenta existe y este fallo ha creado el bloqueo; con un correo
-                // inexistente no ocurre nada distinto.
-                if (fallo.nuevoBloqueo() && usuario != null) {
-                    avisoBloqueoService.avisar(usuario, retryAfter);
-                }
-                throw new LoginRateLimitException(retryAfter);
-            }
-            throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);
+            rechazarCredencialesInvalidas(usuario, correoNormalizado);
         }
 
         if (passwordEncoder.upgradeEncoding(usuario.getContrasenaHash())) {
@@ -121,23 +109,43 @@ public class AuthService {
             usuarioDAO.save(usuario);
         }
 
-        if (usuario.isBloqueada()) {
-            throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);
-        }
-
-        // Solo tras acertar las credenciales: no se revela el estado de la cuenta a un tercero.
-        if (!usuario.isCorreoVerificado()) {
-            throw new CorreoNoVerificadoException();
-        }
-
-        if (!usuario.isActivada()) {
-            throw new AccountPendingException();
-        }
+        comprobarEstadoCuenta(usuario);
 
         comprobarCaducidadContrasena(usuario, correoNormalizado);
 
         loginAttemptService.registrarExito(correoNormalizado);
         return usuario;
+    }
+
+    // Registra el fallo y siempre lanza: LoginRateLimitException si ya hay bloqueo, o credenciales inválidas.
+    // El usuario puede ser null (correo inexistente): en ese caso no se avisa a nadie.
+    private void rechazarCredencialesInvalidas(Usuario usuario, String correoNormalizado) {
+        ResultadoFalloLogin fallo = loginAttemptService.registrarFalloDetallado(correoNormalizado);
+        int retryAfter = fallo.retryAfter();
+        auditoriaService.registrarIntentoLoginFallido();
+        if (retryAfter > 0) {
+            auditoriaService.registrarBloqueoLogin(retryAfter);
+            // Solo se avisa si la cuenta existe y este fallo ha creado el bloqueo; con un correo
+            // inexistente no ocurre nada distinto.
+            if (fallo.nuevoBloqueo() && usuario != null) {
+                avisoBloqueoService.avisar(usuario, retryAfter);
+            }
+            throw new LoginRateLimitException(retryAfter);
+        }
+        throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);
+    }
+
+    // Solo tras acertar las credenciales: no se revela el estado de la cuenta a un tercero.
+    private void comprobarEstadoCuenta(Usuario usuario) {
+        if (usuario.isBloqueada()) {
+            throw new BadCredentialsException(MENSAJE_ERROR_CREDENCIALES);
+        }
+        if (!usuario.isCorreoVerificado()) {
+            throw new CorreoNoVerificadoException();
+        }
+        if (!usuario.isActivada()) {
+            throw new AccountPendingException();
+        }
     }
 
     // Solo se evalúa con credenciales correctas y cuenta usable, para no revelar la caducidad a un tercero.

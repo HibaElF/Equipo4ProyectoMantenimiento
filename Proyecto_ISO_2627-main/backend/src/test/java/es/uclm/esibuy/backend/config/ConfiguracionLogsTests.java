@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -27,6 +28,7 @@ class ConfiguracionLogsTests {
     // las pruebas que leen la salida (por ejemplo AuditoriaServiceTests).
     @AfterEach
     void restaurarLogsEnTextoPlano() {
+        permitirReinicializarLogs();
         new SpringApplicationBuilder(ConfiguracionMinima.class)
                 .web(WebApplicationType.NONE)
                 .properties("spring.main.banner-mode=off")
@@ -46,6 +48,7 @@ class ConfiguracionLogsTests {
     // Arranca un contexto mínimo con la misma propiedad y comprueba la línea real que sale por consola.
     @Test
     void unaLineaDeLogPorConsolaEsJsonConElContexto() {
+        permitirReinicializarLogs();
         PrintStream original = System.out;
         ByteArrayOutputStream captura = new ByteArrayOutputStream();
         System.setOut(new PrintStream(captura, true, StandardCharsets.UTF_8));
@@ -82,6 +85,12 @@ class ConfiguracionLogsTests {
         assertTrue(linea.contains("\"endpoint\":\"/usuarios/login\""), linea);
         assertTrue(linea.contains("\"userAgent\":\"Navegador/1.0\""), linea);
         assertTrue(linea.contains("causa simulada"), linea);
+    }
+
+    // Si otra prueba dejó abierto un contexto de Spring (BackendApplicationTests, que el pipeline excluye
+    // pero `mvn test` ejecuta), Logback se considera ya inicializado e ignoraría el formato pedido.
+    private static void permitirReinicializarLogs() {
+        LoggingSystem.get(ConfiguracionLogsTests.class.getClassLoader()).cleanUp();
     }
 
     @Configuration

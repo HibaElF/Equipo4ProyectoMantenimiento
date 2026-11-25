@@ -40,7 +40,7 @@
 | 7 | T-24 | RGPD: política de privacidad, aviso legal y consentimiento | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-23 | Backend: 1531 pruebas, 0 fallos, 90,07 %. Frontend: 569 pruebas, 79,51 %, build OK. Documentos en `documents/rgpd/` (plantillas con `[COMPLETAR]`), páginas `/politica-privacidad` y `/aviso-legal`, casilla obligatoria en el registro y `aceptaPolitica` en los DTO con versión y fecha guardadas. |
 | 7 | T-25 | RGPD: exportación de los datos personales del usuario | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Backend: 1545 pruebas, 0 fallos, 90,28 %. Frontend: 576 pruebas, 79,61 %, build OK. `GET /usuarios/mis-datos` (`ExportacionDatosController`/`Service`, DTO explícito), límite de 1 por minuto, evento `exportacion_datos` y botón «Descargar mis datos» en el perfil. |
 | 7 | T-27 | Incentivar la activación del segundo factor en los clientes | Baja | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Solo frontend: 588 pruebas, 79,73 %, build OK (backend sin cambios: 1545 pruebas, 90,28 %). Componente `shared/aviso-segundo-factor` bajo la cabecera, `EstadoSegundoFactor` actualizado desde el perfil, descarte en `sessionStorage` que se borra al cerrar sesión. |
-| 8 | T-26 | Documentar la correspondencia con CCN-CERT BP/28 | Media | Pendiente | | | |
+| 8 | T-26 | Documentar la correspondencia con CCN-CERT BP/28 | Media | Hecha | sin commit (rama `refactor/arreglo_seguridad`) | 2026-11-24 | Solo documentación: `documents/Correspondencia_BP28.md` (7 bloques; principio, medida, evidencia, estado y tarea). Adaptación propia: no hay BP/28 oficial y el aviso de cabecera lo deja explícito. Huecos: T-28 y copias de seguridad (sin tarea). |
 
 ## Decisiones tomadas con el usuario
 
@@ -63,15 +63,29 @@
 | 2026-11-23 | T-24 | Datos del responsable y del contacto como `[COMPLETAR]` (no se inventan); versión inicial 1.0, como constante `PoliticaPrivacidad.VERSION_ACTUAL` (no como propiedad, para no cambiar constructores); `aceptaPolitica` es `Boolean` con `@NotNull @AssertTrue` para que su ausencia dé un error por campo y no un 400 vacío. |
 | 2026-11-24 | T-25 | DNI y teléfono completos (solo para su titular); los pedidos recibidos por el vendedor solo llevan sus líneas, sin datos de los compradores; la exportación vive en un controlador nuevo para no chocar con T-04 en `PerfilController`. |
 | 2026-11-24 | T-27 | Aviso global bajo la cabecera (no solo en el panel del cliente), sin ventaja asociada al activar el 2FA (sería una funcionalidad de negocio nueva; anotado como posible mejora). |
+| 2026-11-24 | T-26 | Sin el BP/28 oficial, se aprueba una correspondencia adaptada y redactada por el equipo, marcada como «no contrastada con el oficial»; vive en `documents/Correspondencia_BP28.md` y no se enlaza desde ningún README (no existe). |
 | 2026-11-20 | T-09 | No se avisa a los administradores; solo al titular de la cuenta, como máximo un correo por hora. |
 | 2026-11-20 | T-19 | Retención de 12 meses, sin firma HMAC y sin pantalla de consulta en Angular (solo endpoint). |
 
 El token de sonar se tiene que quedar en el propierties por orden del profesor
 
+## Verificación final (2026-11-24)
+
+| Comprobación | Resultado |
+|---|---|
+| Backend (`clean verify`, sin `BackendApplicationTests`) | 1545 pruebas, 0 fallos, 15 omitidas, JaCoCo 90,28 % (4774/5288 líneas); línea base: 1238 / 0 / 15 / 89,88 % |
+| Frontend (`npm test`, `npm run build`) | 588 pruebas en 46 ficheros, 0 fallos; build correcto con avisos de presupuesto de tamaño (bundle inicial, `acceso.css`, `cliente.css`) |
+| Secretos en el diff desde `5c16a3b` (patrones) | Sin hallazgos; `debugsonar.txt` figura como borrado |
+| Gitleaks (v8.24.3, 55 commits) | 2 hallazgos `generic-api-key`: el token de Sonar en `backend/sonar-project.properties` (conocido y aceptado por orden del profesor) y un ejemplo en un `.md` de `.claude/skills/security-skills-main/…/owasp-proactive-controls.md` (documentación de una skill, probable falso positivo). Ninguno en código nuevo |
+| Semgrep (`p/java`, `p/typescript`, `p/owasp-top-ten`, 378 ficheros de `src/main` y frontend) | 0 hallazgos |
+| Sonar: 10 issues críticos (2026-11-24, fuera del plan T-xx) | Corregidos sin cambiar comportamiento: `register.ts` (`controlError` dividido en helpers), `SecurityConfiguration` (constante de ruta), `AuthService.autenticar` (extraídos `rechazarCredencialesInvalidas` y `comprobarEstadoCuenta`), `BrevoEmailService` (constantes y método `enviar` común), `ExportacionDatosService` (usa `TIPO_LIMITE`). Además, `ConfiguracionLogsTests` ya no depende del orden con `BackendApplicationTests`. Backend 1545 pruebas, 90,28 %; frontend 588 pruebas. Pendiente: que Sonar lo confirme tras el análisis |
+| Plan: 22 tareas (T-08 … T-26) | Todas implementadas; quedan abiertos los criterios que dependen del usuario o de otros (ver pendientes manuales, T-28 y T-26) |
+
 ## Pendientes manuales del usuario
 
 | Tarea | Acción | Hecha |
 |---|---|---|
+| T-26 | Que el equipo revise `documents/Correspondencia_BP28.md`, la incluya en el apartado del RQ-15 de la memoria y, si se consigue, la contraste con el BP/28 oficial | No |
 | T-35 | Decidir y, en su caso, activar `VIRUSTOTAL_ENABLED` en Render | No |
 | T-27 | Con la aplicación arrancada, entrar como cliente sin TOTP: debe verse la franja bajo la cabecera, descartarse con «Ahora no» y desaparecer al activar el segundo factor | No |
 | T-24 | Completar los `[COMPLETAR]` de `documents/rgpd/` y de las páginas `politica-privacidad.html` y `aviso-legal.html`, y que el equipo revise los textos (criterio «el equipo ha revisado los textos») | No |
@@ -91,6 +105,7 @@ Al terminar cada fase, anota aquí qué requisitos (RQ) quedan afectados para qu
 
 | Fase | Requisitos afectados | Nota |
 |---|---|---|
+| 8 | RQ-15 | T-26 añade la correspondencia con los principios de seguridad (adaptada, no contrastada con el BP/28 oficial) en `documents/Correspondencia_BP28.md`. Hueco sin tarea: copias de seguridad y recuperación. |
 | 7 | RQ-15, RQ-16 | T-24 (política de privacidad, aviso legal y consentimiento en el registro), T-25 (exportación de datos personales) y T-27 (aviso para activar el segundo factor en clientes) afectan a «Cumplimiento RGPD» y a «Política por rol». Los textos legales llevan `[COMPLETAR]` pendientes de revisión del equipo. Suite: backend 1545 pruebas, 0 fallos, 90,28 %; frontend 588 pruebas, 79,73 %. |
 | 5 | RQ-15 | T-21 (Content-Security-Policy y cabeceras) y T-23 (permisos finos además de los roles) afectan a «Endurecimiento del frontend» y a «Roles y permisos finos». Suite completa: backend 1500 pruebas, 0 fallos, 90,08 %; frontend 563 pruebas, 79,05 %. |
 | 4 | RQ-06, RQ-15 | T-22 (rate limiting general y OTP), T-11 (validación de entrada), T-10 (límite por IP y CSRF en el alta pública) y T-12 (verificación del correo) afectan a «Rate limiting en peticiones», «Validación de entrada en servidor» y «Registro de usuario seguro». Suite completa: backend 1439 pruebas, 0 fallos, 90,0 %; frontend 563 pruebas, 79,05 %. |

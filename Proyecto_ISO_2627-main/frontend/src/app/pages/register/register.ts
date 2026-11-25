@@ -340,13 +340,26 @@ export class Register {
       return 'Introduce un correo electrónico válido.';
     }
 
+    const especifico = this.errorDniOContrasena(control, name);
+    if (especifico) {
+      return especifico;
+    }
+
+    if (control.hasError('maxlength') && name !== 'imagenPerfil') {
+      return 'Has superado la longitud máxima permitida.';
+    }
+
+    if (control.hasError('underage')) {
+      return 'Debes tener al menos 18 años para registrarte como cliente.';
+    }
+
+    return this.errorTelefonoOImagen(control, name) ?? 'Revisa este campo.';
+  }
+
+  private errorDniOContrasena(control: AbstractControl, name: string): string | null {
     if (
       name === 'dniNif' &&
-      (
-        control.hasError('minlength') ||
-        control.hasError('maxlength') ||
-        control.hasError('pattern')
-      )
+      (control.hasError('minlength') || control.hasError('maxlength') || control.hasError('pattern'))
     ) {
       return 'El DNI/NIF debe tener 8 números y una letra.';
     }
@@ -358,29 +371,19 @@ export class Register {
       return 'La contraseña debe cumplir todos los requisitos indicados.';
     }
 
-    if (control.hasError('maxlength') && name !== 'imagenPerfil') {
-      return 'Has superado la longitud máxima permitida.';
-    }
+    return null;
+  }
 
-    if (control.hasError('underage')) {
-      return 'Debes tener al menos 18 años para registrarte como cliente.';
-    }
-
-    if (
-      control.hasError('pattern') &&
-      name === 'telefono'
-    ) {
+  private errorTelefonoOImagen(control: AbstractControl, name: string): string | null {
+    if (control.hasError('pattern') && name === 'telefono') {
       return 'Introduce un teléfono válido o deja el campo vacío.';
     }
 
-    if (
-      (control.hasError('pattern') || control.hasError('maxlength')) &&
-      name === 'imagenPerfil'
-    ) {
+    if ((control.hasError('pattern') || control.hasError('maxlength')) && name === 'imagenPerfil') {
       return 'Introduce una URL que empiece por https:// (máximo 1000 caracteres).';
     }
 
-    return 'Revisa este campo.';
+    return null;
   }
 
 

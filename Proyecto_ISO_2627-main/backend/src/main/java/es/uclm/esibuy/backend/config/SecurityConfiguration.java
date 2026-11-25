@@ -65,6 +65,7 @@ public class SecurityConfiguration {
         private static final String AUT_ADMIN = ContextoAutenticacion.PREFIJO_ROL + ROL_ADMIN;
         private static final String AUT_VENDEDOR = ContextoAutenticacion.PREFIJO_ROL + "VENDEDOR";
         private static final String RUTA_CATEGORIAS = "/categorias/**";
+        private static final String RUTA_PRODUCTOS_VENDEDOR = "/vendedor/productos/**";
 
         @Bean
         PasswordEncoder passwordEncoder(
@@ -329,17 +330,17 @@ public class SecurityConfiguration {
 
                                                 .requestMatchers(
                                                                 HttpMethod.PUT,
-                                                                "/vendedor/productos/**")
+                                                                RUTA_PRODUCTOS_VENDEDOR)
                                                 .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
 
                                                 .requestMatchers(
                                                                 HttpMethod.PATCH,
-                                                                "/vendedor/productos/**")
+                                                                RUTA_PRODUCTOS_VENDEDOR)
                                                 .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
 
                                                 .requestMatchers(
                                                                 HttpMethod.DELETE,
-                                                                "/vendedor/productos/**")
+                                                                RUTA_PRODUCTOS_VENDEDOR)
                                                 .hasAllAuthorities(AUT_VENDEDOR, CatalogoPermisos.PRODUCTOS_GESTIONAR)
 
                                                 .requestMatchers(

@@ -16,6 +16,12 @@ import org.springframework.web.client.RestClientException;
 public class BrevoEmailService {
 
     private static final String CAMPO_EMAIL = "email";
+    private static final String URL_ENVIO = "https://api.brevo.com/v3/smtp/email";
+    private static final String CABECERA_API_KEY = "api-key";
+    private static final String CAMPO_REMITENTE = "sender";
+    private static final String CAMPO_ASUNTO = "subject";
+    private static final String CAMPO_TEXTO = "textContent";
+    private static final String MENSAJE_SIN_CONFIGURAR = "Falta configurar la API de Brevo o el remitente.";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BrevoEmailService.class);
 
@@ -49,18 +55,7 @@ public class BrevoEmailService {
     }
 
     public void enviarRecuperacion(String destinatario, String enlace) {
-        if (apiKey.isBlank() || emailRemitente.isBlank()) {
-            throw new IllegalStateException(
-                    "Falta configurar la API de Brevo o el remitente.");
-        }
-
-        Map<String, Object> cuerpo = Map.of(
-                "sender", Map.of(
-                        "name", nombreRemitente,
-                        CAMPO_EMAIL, emailRemitente),
-                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
-                "subject", "Recupera tu contraseña de ESIBuy",
-                "textContent", """
+        enviar(destinatario, "Recupera tu contraseña de ESIBuy", """
                         Hemos recibido una solicitud para cambiar la contraseña de tu cuenta ESIBuy.
 
                         Para elegir una contraseña nueva, abre este enlace:
@@ -68,14 +63,6 @@ public class BrevoEmailService {
 
                         Si no solicitaste el cambio, ignora este correo.
                         """.formatted(enlace));
-
-        restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-                .header("api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(cuerpo)
-                .retrieve()
-                .toBodilessEntity();
     }
 
     /**
@@ -92,32 +79,13 @@ public class BrevoEmailService {
     }
 
     public void enviarAvisoBloqueo(String destinatario) {
-        if (apiKey.isBlank() || emailRemitente.isBlank()) {
-            throw new IllegalStateException(
-                    "Falta configurar la API de Brevo o el remitente.");
-        }
-
-        Map<String, Object> cuerpo = Map.of(
-                "sender", Map.of(
-                        "name", nombreRemitente,
-                        CAMPO_EMAIL, emailRemitente),
-                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
-                "subject", "Aviso de seguridad de tu cuenta de ESIBuy",
-                "textContent", """
+        enviar(destinatario, "Aviso de seguridad de tu cuenta de ESIBuy", """
                         Hemos detectado varios intentos fallidos de acceso a tu cuenta de ESIBuy.
 
                         Por seguridad, el acceso a tu cuenta se ha bloqueado temporalmente.
                         Si has sido tú, espera unos minutos e inténtalo de nuevo.
                         Si no has sido tú, cambia tu contraseña en cuanto puedas.
                         """);
-
-        restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-                .header("api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(cuerpo)
-                .retrieve()
-                .toBodilessEntity();
     }
 
     /** Confirmación del correo de una cuenta nueva; en segundo plano para no alterar la respuesta del alta. */
@@ -131,18 +99,7 @@ public class BrevoEmailService {
     }
 
     public void enviarVerificacionCorreo(String destinatario, String enlace) {
-        if (apiKey.isBlank() || emailRemitente.isBlank()) {
-            throw new IllegalStateException(
-                    "Falta configurar la API de Brevo o el remitente.");
-        }
-
-        Map<String, Object> cuerpo = Map.of(
-                "sender", Map.of(
-                        "name", nombreRemitente,
-                        CAMPO_EMAIL, emailRemitente),
-                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
-                "subject", "Confirma tu correo en ESIBuy",
-                "textContent", """
+        enviar(destinatario, "Confirma tu correo en ESIBuy", """
                         Hemos recibido una solicitud de registro en ESIBuy con este correo.
 
                         Para confirmar que la dirección es tuya, abre este enlace (caduca en 24 horas y solo puede usarse una vez):
@@ -150,38 +107,33 @@ public class BrevoEmailService {
 
                         Si no has solicitado el registro, ignora este correo.
                         """.formatted(enlace));
-
-        restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-                .header("api-key", apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(cuerpo)
-                .retrieve()
-                .toBodilessEntity();
     }
 
     public void enviarCodigoAutenticacion(String destinatario, String codigo) {
-        if (apiKey.isBlank() || emailRemitente.isBlank()) {
-            throw new IllegalStateException(
-                    "Falta configurar la API de Brevo o el remitente.");
-        }
-
-        Map<String, Object> cuerpo = Map.of(
-                "sender", Map.of(
-                        "name", nombreRemitente,
-                        CAMPO_EMAIL, emailRemitente),
-                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
-                "subject", "Código de verificación de ESIBuy",
-                "textContent", """
+        enviar(destinatario, "Código de verificación de ESIBuy", """
                         Tu código de verificación de ESIBuy es: %s
 
                         Caduca en 10 minutos y solo se puede utilizar una vez.
                         Si no estás intentando iniciar sesión, ignora este correo.
                         """.formatted(codigo));
+    }
+
+    private void enviar(String destinatario, String asunto, String texto) {
+        if (apiKey.isBlank() || emailRemitente.isBlank()) {
+            throw new IllegalStateException(MENSAJE_SIN_CONFIGURAR);
+        }
+
+        Map<String, Object> cuerpo = Map.of(
+                CAMPO_REMITENTE, Map.of(
+                        "name", nombreRemitente,
+                        CAMPO_EMAIL, emailRemitente),
+                "to", List.of(Map.of(CAMPO_EMAIL, destinatario)),
+                CAMPO_ASUNTO, asunto,
+                CAMPO_TEXTO, texto);
 
         restClient.post()
-                .uri("https://api.brevo.com/v3/smtp/email")
-                .header("api-key", apiKey)
+                .uri(URL_ENVIO)
+                .header(CABECERA_API_KEY, apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(cuerpo)
                 .retrieve()
