@@ -20,6 +20,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
+import es.uclm.esibuy.backend.dao.CategoriaDAO;
+import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
@@ -27,6 +29,7 @@ import es.uclm.esibuy.backend.dao.UsuarioDAO;
 import es.uclm.esibuy.backend.dto.AlertasResponse;
 import es.uclm.esibuy.backend.exceptions.AlertaNoEncontradaException;
 import es.uclm.esibuy.backend.model.Alerta;
+import es.uclm.esibuy.backend.model.Categoria;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Pedido;
@@ -54,6 +57,12 @@ class AlertaServiceTests {
 
     @Mock
     private PedidoDAO pedidoDAO;
+
+    @Mock
+    private CategoriaDAO categoriaDAO;
+
+    @Mock
+    private ClienteDAO clienteDAO;
 
     @InjectMocks
     private AlertaService alertaService;
@@ -232,6 +241,103 @@ class AlertaServiceTests {
         verifyNoInteractions(listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
     }
 
+    // --- Categorías favoritas ---
+
+    private static Categoria categoria(String id, String nombre) {
+        Categoria categoria = new Categoria(nombre, "Descripción");
+        categoria.setId(id);
+        return categoria;
+    }
+
+    private void categoriaFavoritaDe(Cliente... clientes) {
+        when(categoriaDAO.findByNombreIgnoreCase("Informática"))
+                .thenReturn(List.of(categoria("cat-informatica", "Informática")));
+        when(clienteDAO.findByCategoriasFavoritasIn(List.of("cat-informatica"))).thenReturn(List.of(clientes));
+    }
+
+    private Alerta alertaDe(List<Alerta> alertas, String clienteId) {
+        return alertas.stream().filter(alerta -> clienteId.equals(alerta.getClienteId())).findFirst().orElseThrow();
+    }
+
+    @Test
+    void elPrimerProductoDeUnaCategoriaAvisaAQuienLaTieneComoFavorita() {
+        Cliente favorita = cliente("cliente-favorita", false);
+        categoriaFavoritaDe(favorita);
+        when(productoDAO.findByCategoriaIgnoreCase("Informática")).thenReturn(List.of(producto(15.0, 0)));
+        when(usuarioDAO.findAllById(Set.of("cliente-favorita"))).thenReturn(List.of(favorita));
+
+        alertaService.recomendarNuevoProducto(producto(15.0, 0));
+
+        List<Alerta> alertas = alertasGuardadas();
+        assertEquals(1, alertas.size());
+        Alerta alerta = alertas.get(0);
+        assertEquals("cliente-favorita", alerta.getClienteId());
+        assertEquals(TipoAlerta.RECOMENDACION, alerta.getTipo());
+        assertEquals(PRODUCTO_ID, alerta.getProductoId());
+        assertEquals("Nuevo producto en tu categoría favorita Informática: «Teclado».", alerta.getMensaje());
+        verifyNoInteractions(listaProductosDAO, pedidoDAO);
+    }
+
+    @Test
+    void quienTieneLaCategoriaComoFavoritaNoRecibeDosAvisos() {
+        Cliente favorita = cliente("cliente-favorita", false);
+        Cliente conLista = cliente("cliente-lista", false);
+        categoriaFavoritaDe(favorita);
+        otroProductoDeLaCategoria("raton");
+        when(listaProductosDAO.findConAlgunProducto(List.of("raton"))).thenReturn(List.of(
+                ListaProductos.crearLista("cliente-favorita", "Regalos"),
+                ListaProductos.crearLista("cliente-lista", "Oficina")));
+        when(usuarioDAO.findAllById(Set.of("cliente-favorita"))).thenReturn(List.of(favorita));
+        when(usuarioDAO.findAllById(Set.of("cliente-lista"))).thenReturn(List.of(conLista));
+
+        alertaService.recomendarNuevoProducto(producto(15.0, 0));
+
+        List<Alerta> alertas = alertasGuardadas();
+        assertEquals(2, alertas.size());
+        assertEquals("Nuevo producto en tu categoría favorita Informática: «Teclado».",
+                alertaDe(alertas, "cliente-favorita").getMensaje());
+        assertEquals("Nuevo producto en Informática que te puede interesar: «Teclado».",
+                alertaDe(alertas, "cliente-lista").getMensaje());
+    }
+
+    @Test
+    void unProductoSoloPremiumDeUnaCategoriaFavoritaSoloSeAnunciaALosPremium() {
+        Cliente estandar = cliente("cliente-estandar", false);
+        Cliente premium = cliente("cliente-premium", true);
+        categoriaFavoritaDe(estandar, premium);
+        Producto soloPremium = producto(15.0, 0);
+        soloPremium.setSoloPremium(true);
+        when(productoDAO.findByCategoriaIgnoreCase("Informática")).thenReturn(List.of(soloPremium));
+        when(usuarioDAO.findAllById(Set.of("cliente-estandar", "cliente-premium")))
+                .thenReturn(List.of(estandar, premium));
+
+        alertaService.recomendarNuevoProducto(soloPremium);
+
+        List<Alerta> alertas = alertasGuardadas();
+        assertEquals(1, alertas.size());
+        assertEquals("cliente-premium", alertas.get(0).getClienteId());
+    }
+
+    @Test
+    void siNadieTieneLaCategoriaComoFavoritaNiProductosSuyosNoSeAvisa() {
+        categoriaFavoritaDe();
+        when(productoDAO.findByCategoriaIgnoreCase("Informática")).thenReturn(List.of(producto(15.0, 0)));
+
+        alertaService.recomendarNuevoProducto(producto(15.0, 0));
+
+        verifyNoInteractions(listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
+    }
+
+    @Test
+    void unProductoSinCategoriaNoBuscaCategoriasFavoritas() {
+        Producto sinCategoria = producto(15.0, 0);
+        sinCategoria.setCategoria(" ");
+
+        alertaService.recomendarNuevoProducto(sinCategoria);
+
+        verifyNoInteractions(categoriaDAO, clienteDAO, alertaDAO);
+    }
+
     @Test
     void unProductoNuevoNoDisponibleNoSeRecomienda() {
         Producto oculto = producto(15.0, 0);
@@ -239,7 +345,8 @@ class AlertaServiceTests {
 
         alertaService.recomendarNuevoProducto(oculto);
 
-        verifyNoInteractions(productoDAO, listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO);
+        verifyNoInteractions(productoDAO, listaProductosDAO, pedidoDAO, usuarioDAO, alertaDAO, categoriaDAO,
+                clienteDAO);
     }
 
     private static final String CORREO = "cliente@test.com";
