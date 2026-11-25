@@ -13,6 +13,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import es.uclm.esibuy.backend.dao.AlertaDAO;
+import es.uclm.esibuy.backend.dao.CategoriaDAO;
+import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ListaProductosDAO;
 import es.uclm.esibuy.backend.dao.PedidoDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
@@ -21,6 +23,7 @@ import es.uclm.esibuy.backend.dto.AlertaResponse;
 import es.uclm.esibuy.backend.dto.AlertasResponse;
 import es.uclm.esibuy.backend.exceptions.AlertaNoEncontradaException;
 import es.uclm.esibuy.backend.model.Alerta;
+import es.uclm.esibuy.backend.model.Categoria;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.ListaProductos;
 import es.uclm.esibuy.backend.model.Pedido;
@@ -38,14 +41,18 @@ public class AlertaService {
     private final UsuarioDAO usuarioDAO;
     private final ProductoDAO productoDAO;
     private final PedidoDAO pedidoDAO;
+    private final CategoriaDAO categoriaDAO;
+    private final ClienteDAO clienteDAO;
 
     public AlertaService(AlertaDAO alertaDAO, ListaProductosDAO listaProductosDAO, UsuarioDAO usuarioDAO,
-            ProductoDAO productoDAO, PedidoDAO pedidoDAO) {
+            ProductoDAO productoDAO, PedidoDAO pedidoDAO, CategoriaDAO categoriaDAO, ClienteDAO clienteDAO) {
         this.alertaDAO = alertaDAO;
         this.listaProductosDAO = listaProductosDAO;
         this.usuarioDAO = usuarioDAO;
         this.productoDAO = productoDAO;
         this.pedidoDAO = pedidoDAO;
+        this.categoriaDAO = categoriaDAO;
+        this.clienteDAO = clienteDAO;
     }
 
     // Alertas del cliente, de la más reciente a la más antigua.
@@ -104,28 +111,68 @@ public class AlertaService {
         avisarClientesConFavorito(producto, TipoAlerta.DISPONIBILIDAD, mensaje);
     }
 
-    // Interesa a quien tiene en sus favoritos, en sus listas o en sus pedidos algún producto de la misma categoría.
+    /*
+     * Interesa a quien tiene la categoría entre sus categorías favoritas y a quien tiene en sus favoritos,
+     * en sus listas o en sus pedidos algún producto de la misma categoría. Quien la tiene como favorita
+     * recibe el aviso aunque sea el primer producto de la categoría, y nadie recibe dos avisos.
+     */
     public void recomendarNuevoProducto(Producto producto) {
         if (!estaDisponible(producto)) {
             return;
         }
+        Set<String> porCategoriaFavorita = clientesConCategoriaFavorita(producto.getCategoria());
+
+        Set<String> interesados = new LinkedHashSet<>();
         List<String> mismaCategoria = productoDAO.findByCategoriaIgnoreCase(producto.getCategoria()).stream()
                 .map(Producto::getId)
                 .filter(id -> !id.equals(producto.getId()))
                 .toList();
-        if (mismaCategoria.isEmpty()) {
+        if (!mismaCategoria.isEmpty()) {
+            listaProductosDAO.findConAlgunProducto(mismaCategoria)
+                    .forEach(lista -> interesados.add(lista.getUsuarioId()));
+            pedidoDAO.findConAlgunProducto(mismaCategoria).stream()
+                    .map(Pedido::getClienteId)
+                    .filter(Objects::nonNull)
+                    .forEach(interesados::add);
+        }
+        interesados.removeAll(porCategoriaFavorita);
+        if (porCategoriaFavorita.isEmpty() && interesados.isEmpty()) {
             return;
         }
-        Set<String> interesados = new LinkedHashSet<>();
-        listaProductosDAO.findConAlgunProducto(mismaCategoria)
-                .forEach(lista -> interesados.add(lista.getUsuarioId()));
-        pedidoDAO.findConAlgunProducto(mismaCategoria).stream()
-                .map(Pedido::getClienteId)
+
+        Instant ahora = Instant.now();
+        List<Alerta> alertas = new ArrayList<>();
+        if (!porCategoriaFavorita.isEmpty()) {
+            String mensaje = "Nuevo producto en tu categoría favorita " + producto.getCategoria() + ": «"
+                    + producto.getNombre() + "».";
+            alertas.addAll(crearAlertas(porCategoriaFavorita, producto, TipoAlerta.RECOMENDACION, mensaje, ahora));
+        }
+        if (!interesados.isEmpty()) {
+            String mensaje = "Nuevo producto en " + producto.getCategoria() + " que te puede interesar: «"
+                    + producto.getNombre() + "».";
+            alertas.addAll(crearAlertas(interesados, producto, TipoAlerta.RECOMENDACION, mensaje, ahora));
+        }
+        alertaDAO.saveAll(alertas);
+    }
+
+    // Los productos guardan el nombre de la categoría y los clientes, los ids de sus categorías favoritas.
+    private Set<String> clientesConCategoriaFavorita(String nombreCategoria) {
+        if (nombreCategoria == null || nombreCategoria.isBlank()) {
+            return Set.of();
+        }
+        List<String> categoriaIds = categoriaDAO.findByNombreIgnoreCase(nombreCategoria.trim()).stream()
+                .map(Categoria::getId)
                 .filter(Objects::nonNull)
-                .forEach(interesados::add);
-        String mensaje = "Nuevo producto en " + producto.getCategoria() + " que te puede interesar: «"
-                + producto.getNombre() + "».";
-        avisar(interesados, producto, TipoAlerta.RECOMENDACION, mensaje);
+                .toList();
+        if (categoriaIds.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> clientes = new LinkedHashSet<>();
+        clienteDAO.findByCategoriasFavoritasIn(categoriaIds).stream()
+                .map(Cliente::getId)
+                .filter(Objects::nonNull)
+                .forEach(clientes::add);
+        return clientes;
     }
 
     static boolean estaDisponible(Producto producto) {
@@ -160,13 +207,17 @@ public class AlertaService {
 
     // Solo reciben alertas los clientes; un producto solo premium no se anuncia a los clientes estándar.
     private void avisar(Collection<String> usuarioIds, Producto producto, TipoAlerta tipo, String mensaje) {
-        Instant ahora = Instant.now();
+        alertaDAO.saveAll(crearAlertas(usuarioIds, producto, tipo, mensaje, Instant.now()));
+    }
+
+    private List<Alerta> crearAlertas(Collection<String> usuarioIds, Producto producto, TipoAlerta tipo,
+            String mensaje, Instant fecha) {
         List<Alerta> alertas = new ArrayList<>();
         for (Usuario usuario : usuarioDAO.findAllById(usuarioIds)) {
             if (usuario instanceof Cliente cliente && (!producto.isSoloPremium() || cliente.isEsPremium())) {
-                alertas.add(new Alerta(cliente.getId(), tipo, producto.getId(), mensaje, ahora));
+                alertas.add(new Alerta(cliente.getId(), tipo, producto.getId(), mensaje, fecha));
             }
         }
-        alertaDAO.saveAll(alertas);
+        return alertas;
     }
 }
