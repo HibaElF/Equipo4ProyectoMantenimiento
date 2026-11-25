@@ -5,6 +5,7 @@ import { provideIonicAngular } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { ProductoCatalogo } from '../../core/models/producto';
 import { CarritoService } from '../../core/services/carrito.service';
+import { CategoriasFavoritasService } from '../../core/services/categorias-favoritas.service';
 import { FavoritosService } from '../../core/services/favoritos.service';
 import { ProductoService } from '../../core/services/producto.service';
 import { controladoresFalsos } from '../../testing/controladores-falsos';
@@ -22,7 +23,8 @@ describe('TiendaPage', () => {
         provideIonicAngular({}),
         { provide: ProductoService, useValue: { consultarCatalogo, urlImagen: (i: string) => i } },
         { provide: FavoritosService, useValue: { consultar: () => of({ ids: [], productos: [] }) } },
-        { provide: CarritoService, useValue: {} }
+        { provide: CarritoService, useValue: {} },
+        { provide: CategoriasFavoritasService, useValue: { consultar: () => of([]), consultarCategorias: () => of([]) } }
       ]
     });
   });
@@ -70,6 +72,7 @@ describe('TiendaPage: búsqueda, favoritos y carrito', () => {
   const productos = { consultarCatalogo: vi.fn(), urlImagen: (i: string) => i };
   const favoritos = { consultar: vi.fn(), anadir: vi.fn(), quitar: vi.fn() };
   const carrito = { anadirProducto: vi.fn() };
+  const categoriasFavoritas = { consultar: vi.fn(), consultarCategorias: vi.fn(), anadir: vi.fn(), quitar: vi.fn() };
   const p = { id: 'p1', nombre: 'Mochila', categoria: 'Viaje' } as ProductoCatalogo;
 
   function crear() {
@@ -82,6 +85,7 @@ describe('TiendaPage: búsqueda, favoritos y carrito', () => {
         { provide: ProductoService, useValue: productos },
         { provide: FavoritosService, useValue: favoritos },
         { provide: CarritoService, useValue: carrito },
+        { provide: CategoriasFavoritasService, useValue: categoriasFavoritas },
         ...falsos.providers
       ]
     });
@@ -92,9 +96,63 @@ describe('TiendaPage: búsqueda, favoritos y carrito', () => {
   }
 
   beforeEach(() => {
-    [productos, favoritos, carrito].forEach((o) => Object.values(o).forEach((f) => typeof f === 'function' && 'mockReset' in f && f.mockReset()));
+    [productos, favoritos, carrito, categoriasFavoritas].forEach((o) => Object.values(o).forEach((f) => typeof f === 'function' && 'mockReset' in f && f.mockReset()));
     productos.consultarCatalogo.mockReturnValue(of([p]));
     favoritos.consultar.mockReturnValue(of({ ids: [], productos: [] }));
+    categoriasFavoritas.consultar.mockReturnValue(of([]));
+    categoriasFavoritas.consultarCategorias.mockReturnValue(
+      of([{ id: 'c1', nombre: 'Viaje' }, { id: 'c2', nombre: 'Hogar' }])
+    );
+  });
+
+  it('marca la categoría seleccionada como favorita y la vuelve a quitar', async () => {
+    categoriasFavoritas.anadir.mockReturnValue(of([{ id: 'c1', nombre: 'Viaje' }]));
+    categoriasFavoritas.quitar.mockReturnValue(of([]));
+    const { pagina, toasts } = crear();
+    expect(pagina.idCategoriaSeleccionada()).toBeNull();
+    expect(pagina.etiquetaCategoriaFavorita()).toBe('Selecciona una categoría para marcarla como favorita');
+
+    pagina.elegirCategoria('viaje');
+    expect(pagina.idCategoriaSeleccionada()).toBe('c1');
+    expect(pagina.etiquetaCategoriaFavorita()).toBe('Marcar viaje como categoría favorita');
+    pagina.cambiarCategoriaFavorita();
+    expect(categoriasFavoritas.anadir).toHaveBeenCalledWith('c1');
+    expect(pagina.categoriaSeleccionadaEsFavorita()).toBe(true);
+    expect(pagina.esCategoriaFavorita('VIAJE')).toBe(true);
+    expect(pagina.etiquetaCategoriaFavorita()).toBe('Quitar viaje de categorías favoritas');
+    await Promise.resolve();
+    expect(toasts.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ message: 'Categoría «viaje» guardada en tus favoritas.' })
+    );
+
+    pagina.cambiarCategoriaFavorita();
+    expect(categoriasFavoritas.quitar).toHaveBeenCalledWith('c1');
+    expect(pagina.categoriaSeleccionadaEsFavorita()).toBe(false);
+  });
+
+  it('las favoritas aparecen en las categorías aunque no tengan productos', () => {
+    categoriasFavoritas.consultar.mockReturnValue(of([{ id: 'c3', nombre: 'Jardín' }]));
+    const { pagina } = crear();
+    expect(pagina.categorias()).toEqual(['Jardín', 'Viaje']);
+  });
+
+  it('avisa si no se pueden consultar o cambiar las categorías favoritas', async () => {
+    categoriasFavoritas.consultar.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+    categoriasFavoritas.consultarCategorias.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const { pagina, toasts } = crear();
+    expect(pagina.errorCategoriasFavoritas()).toBe('No se pudo conectar con el servicio de categorías favoritas.');
+    pagina.elegirCategoria('Viaje');
+    pagina.cambiarCategoriaFavorita();
+    expect(categoriasFavoritas.anadir).not.toHaveBeenCalled();
+
+    categoriasFavoritas.consultar.mockReturnValue(of([]));
+    categoriasFavoritas.consultarCategorias.mockReturnValue(of([{ id: 'c1', nombre: 'Viaje' }]));
+    pagina.cargarCategoriasFavoritas();
+    categoriasFavoritas.anadir.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 404 })));
+    pagina.cambiarCategoriaFavorita();
+    await Promise.resolve();
+    expect(toasts.create).toHaveBeenLastCalledWith(expect.objectContaining({ message: 'La categoría ya no existe.' }));
+    expect(pagina.modificandoCategoriaFavorita()).toBe(false);
   });
 
   it('la búsqueda espera a que se deje de escribir (300 ms)', () => {

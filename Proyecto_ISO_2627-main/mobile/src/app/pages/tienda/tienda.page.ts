@@ -29,9 +29,14 @@ import {
   ToastController
 } from '@ionic/angular';
 import { addIcons } from 'ionicons';
-import { closeOutline, optionsOutline, refreshOutline } from 'ionicons/icons';
+import { closeOutline, optionsOutline, refreshOutline, star, starOutline } from 'ionicons/icons';
+import { CategoriaFavorita, claveCategoria } from '../../core/models/categoria-favorita';
 import { FiltrosCatalogo, ProductoCatalogo } from '../../core/models/producto';
 import { CarritoService, mensajeErrorCarrito } from '../../core/services/carrito.service';
+import {
+  CategoriasFavoritasService,
+  mensajeErrorCategoriaFavorita
+} from '../../core/services/categorias-favoritas.service';
 import { FavoritosService } from '../../core/services/favoritos.service';
 import { ProductoService } from '../../core/services/producto.service';
 import { TarjetaProductoComponent } from '../../shared/tarjeta-producto/tarjeta-producto.component';
@@ -80,6 +85,7 @@ import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.
 export class TiendaPage implements OnDestroy {
   private readonly productosApi = inject(ProductoService);
   private readonly favoritosApi = inject(FavoritosService);
+  private readonly categoriasFavoritasApi = inject(CategoriasFavoritasService);
   private readonly carritoApi = inject(CarritoService);
   private readonly toasts = inject(ToastController);
   private readonly router = inject(Router);
@@ -89,7 +95,46 @@ export class TiendaPage implements OnDestroy {
   readonly cargando = signal(true);
   readonly error = signal('');
   private readonly categoriasVistas = signal<string[]>([]);
-  readonly categorias = computed(() => [...this.categoriasVistas()].sort((a, b) => a.localeCompare(b, 'es')));
+  // Las favoritas siempre aparecen, aunque ahora no haya productos suyos, para poder quitarlas (como en la web).
+  readonly categorias = computed(() => {
+    const nombres = new Map<string, string>();
+    for (const nombre of [...this.categoriasVistas(), ...this.categoriasFavoritas().map((c) => c.nombre)]) {
+      const clave = claveCategoria(nombre);
+      if (!nombres.has(clave)) nombres.set(clave, nombre);
+    }
+    return [...nombres.values()].sort((a, b) => a.localeCompare(b, 'es'));
+  });
+
+  // Categorías favoritas: el cliente marca la categoría seleccionada con la estrella.
+  readonly catalogoCategorias = signal<CategoriaFavorita[]>([]);
+  readonly categoriasFavoritas = signal<CategoriaFavorita[]>([]);
+  readonly categoriasFavoritasDisponibles = signal(false);
+  readonly modificandoCategoriaFavorita = signal(false);
+  readonly errorCategoriasFavoritas = signal('');
+
+  /** Id de la categoría seleccionada; null si no hay ninguna o no se conoce. */
+  readonly idCategoriaSeleccionada = computed(() => {
+    const seleccionada = this.categoria();
+    if (!seleccionada) return null;
+    const clave = claveCategoria(seleccionada);
+    return (
+      [...this.categoriasFavoritas(), ...this.catalogoCategorias()].find((c) => claveCategoria(c.nombre) === clave)
+        ?.id ?? null
+    );
+  });
+
+  readonly categoriaSeleccionadaEsFavorita = computed(() => {
+    const id = this.idCategoriaSeleccionada();
+    return id !== null && this.categoriasFavoritas().some((c) => c.id === id);
+  });
+
+  readonly etiquetaCategoriaFavorita = computed(() => {
+    const nombre = this.categoria();
+    if (!nombre) return 'Selecciona una categoría para marcarla como favorita';
+    return this.categoriaSeleccionadaEsFavorita()
+      ? `Quitar ${nombre} de categorías favoritas`
+      : `Marcar ${nombre} como categoría favorita`;
+  });
 
   // Filtros (los mismos que la web)
   readonly busqueda = signal('');
@@ -129,8 +174,9 @@ export class TiendaPage implements OnDestroy {
   private temporizadorBusqueda: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
-    addIcons({ optionsOutline, closeOutline, refreshOutline });
+    addIcons({ optionsOutline, closeOutline, refreshOutline, star, starOutline });
     this.cargarProductos();
+    this.cargarCategoriasFavoritas();
   }
 
   /** Ionic conserva la pantalla entre pestañas: al volver se actualizan los favoritos. */
@@ -168,6 +214,7 @@ export class TiendaPage implements OnDestroy {
 
   recargar(evento: CustomEvent): void {
     this.cargarFavoritos();
+    this.cargarCategoriasFavoritas();
     this.cargarProductos(() => (evento.target as HTMLIonRefresherElement).complete());
   }
 
@@ -274,6 +321,59 @@ export class TiendaPage implements OnDestroy {
         );
       }
     });
+  }
+
+  // --- Categorías favoritas (como en la web) ---
+
+  cargarCategoriasFavoritas(): void {
+    this.categoriasFavoritasDisponibles.set(false);
+    this.errorCategoriasFavoritas.set('');
+    this.categoriasFavoritasApi.consultarCategorias().subscribe({
+      next: (categorias) => this.catalogoCategorias.set(categorias),
+      // Sin catálogo solo se pueden gestionar las categorías que ya son favoritas.
+      error: () => this.catalogoCategorias.set([])
+    });
+    this.categoriasFavoritasApi.consultar().subscribe({
+      next: (categorias) => {
+        this.categoriasFavoritas.set(categorias);
+        this.categoriasFavoritasDisponibles.set(true);
+      },
+      error: (e: HttpErrorResponse) =>
+        this.errorCategoriasFavoritas.set(
+          e.status === 0
+            ? 'No se pudo conectar con el servicio de categorías favoritas.'
+            : 'No se pudieron consultar tus categorías favoritas.'
+        )
+    });
+  }
+
+  esCategoriaFavorita(nombre: string): boolean {
+    const clave = claveCategoria(nombre);
+    return this.categoriasFavoritas().some((c) => claveCategoria(c.nombre) === clave);
+  }
+
+  cambiarCategoriaFavorita(): void {
+    const categoriaId = this.idCategoriaSeleccionada();
+    const nombre = this.categoria();
+    if (categoriaId === null || !this.categoriasFavoritasDisponibles() || this.modificandoCategoriaFavorita()) return;
+    const yaFavorita = this.categoriaSeleccionadaEsFavorita();
+    this.modificandoCategoriaFavorita.set(true);
+    (yaFavorita ? this.categoriasFavoritasApi.quitar(categoriaId) : this.categoriasFavoritasApi.anadir(categoriaId))
+      .subscribe({
+        next: (categorias) => {
+          this.categoriasFavoritas.set(categorias);
+          this.modificandoCategoriaFavorita.set(false);
+          this.aviso(
+            yaFavorita
+              ? `Categoría «${nombre}» eliminada de tus favoritas.`
+              : `Categoría «${nombre}» guardada en tus favoritas.`
+          );
+        },
+        error: (e: HttpErrorResponse) => {
+          this.modificandoCategoriaFavorita.set(false);
+          this.aviso(mensajeErrorCategoriaFavorita(e), true);
+        }
+      });
   }
 
   // --- Carrito ---

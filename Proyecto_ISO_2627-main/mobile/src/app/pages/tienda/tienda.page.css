@@ -29,6 +29,29 @@
   font-weight: 600;
 }
 
+/* Estrella de categoría favorita (como en el filtro de categoría de la web). */
+.icono-favorita {
+  color: var(--ion-color-warning-shade, #e0ac08);
+  margin-inline: 0 4px;
+}
+
+.categoria-favorita {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 6px 10px 0;
+}
+
+.categoria-favorita ion-button {
+  min-height: 40px;
+  margin: 0;
+}
+
+.categoria-favorita .mensaje {
+  margin: 0;
+}
+
 .contenido {
   padding: 4px 10px 16px;
 }

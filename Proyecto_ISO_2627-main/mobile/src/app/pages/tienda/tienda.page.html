@@ -48,12 +48,41 @@
         [color]="categoria() === cat ? 'primary' : undefined"
         (click)="elegirCategoria(cat)"
         [attr.aria-pressed]="categoria() === cat"
+        [attr.aria-label]="esCategoriaFavorita(cat) ? cat + ', categoría favorita' : cat"
         role="button"
       >
+        @if (esCategoriaFavorita(cat)) {
+          <ion-icon name="star" class="icono-favorita" aria-hidden="true"></ion-icon>
+        }
         <ion-label>{{ cat }}</ion-label>
       </ion-chip>
     }
   </div>
+
+  <!-- Marca o quita como favorita la categoría seleccionada (la estrella del filtro de la web). -->
+  @if (categoria()) {
+    <div class="categoria-favorita">
+      <ion-button
+        size="small"
+        [fill]="categoriaSeleccionadaEsFavorita() ? 'solid' : 'outline'"
+        [disabled]="idCategoriaSeleccionada() === null || !categoriasFavoritasDisponibles() || modificandoCategoriaFavorita()"
+        [attr.aria-pressed]="categoriaSeleccionadaEsFavorita()"
+        [attr.aria-label]="etiquetaCategoriaFavorita()"
+        [attr.aria-busy]="modificandoCategoriaFavorita()"
+        (click)="cambiarCategoriaFavorita()"
+      >
+        <ion-icon [name]="categoriaSeleccionadaEsFavorita() ? 'star' : 'star-outline'" slot="start" aria-hidden="true"></ion-icon>
+        {{ categoriaSeleccionadaEsFavorita() ? 'Categoría favorita' : 'Marcar como favorita' }}
+      </ion-button>
+    </div>
+  }
+
+  @if (errorCategoriasFavoritas()) {
+    <div class="categoria-favorita" role="alert">
+      <ion-text color="danger"><p class="mensaje">{{ errorCategoriasFavoritas() }}</p></ion-text>
+      <ion-button size="small" fill="clear" (click)="cargarCategoriasFavoritas()">Reintentar categorías favoritas</ion-button>
+    </div>
+  }
 
   <div class="contenido">
     @if (cargando() && productos().length === 0) {
@@ -142,7 +171,7 @@
               [value]="categoria()" (ionChange)="categoria.set($event.detail.value)" cancelText="Cancelar">
               <ion-select-option value="">Todas</ion-select-option>
               @for (cat of categorias(); track cat) {
-                <ion-select-option [value]="cat">{{ cat }}</ion-select-option>
+                <ion-select-option [value]="cat">{{ esCategoriaFavorita(cat) ? '★ ' + cat + ' (favorita)' : cat }}</ion-select-option>
               }
             </ion-select>
           </ion-item>
