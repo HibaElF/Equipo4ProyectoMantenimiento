@@ -85,6 +85,14 @@ Las comprobaciones incluyen:
 
 Adicionalmente, GitHub Actions ejecuta análisis de seguridad mediante CodeQL.
 
+### CodeQL
+
+- **Fichero:** `.github/workflows/codeql.yml`, en la raíz del repositorio (GitHub no lee otras carpetas `.github`).
+- **Cuándo se ejecuta:** en cada `push` y Pull Request cuya rama (de destino, en las PR) sea `main`, `Develop`, `feature/**` o `release/**`, y cada lunes a las 03:00 UTC. La ejecución semanal solo funciona cuando el fichero está en `main`.
+- **Qué analiza:** el backend Java (compilado) y todo el JavaScript/TypeScript del repositorio, incluidos `frontend/` y `mobile/`. El código nativo Java de `mobile/android` no se compila ni se analiza.
+- **Resultados:** pestaña **Security → Code scanning** de GitHub. En un repositorio privado hace falta tener activado GitHub Code Security.
+- **Decisiones:** las toma el equipo y se recogen en el informe del RQ-19.
+
 ### Agente de ejecución
 
 Azure Pipelines utiliza un agente autoalojado denominado `wsl-ubuntu`, perteneciente al grupo `Default`.

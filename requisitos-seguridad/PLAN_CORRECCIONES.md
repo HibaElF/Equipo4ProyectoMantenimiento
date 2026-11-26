@@ -17,7 +17,7 @@
 | 5 | C-05 | Arreglar el registro desde la app móvil | H-06 | Media | Otro miembro | No la implementa este chat |
 | 6 | C-06 | HTTPS en la app móvil | H-05, RQ-09 | Media | Otro miembro | No la implementa este chat |
 | 7 | C-07 | Rutas de estadísticas | H-07 | Baja | Hecha | 26/11/2026: rutas añadidas en `SpaController` y en las rutas HTML permitidas; prueba `PaginasEstadisticasPublicasTests` (sin sesión la API de estadísticas responde 403). Backend 1692 pruebas, 0 fallos, 91,43 %. No comprobado en el navegador |
-| 8 | C-08 | Hacer que CodeQL se ejecute | H-08, RQ-19 | Media | Pendiente | |
+| 8 | C-08 | Hacer que CodeQL se ejecute | H-08, RQ-19 | Media | En curso | 26/11/2026: workflow movido a `.github/workflows/` de la raíz, rama `Develop`, ruta del backend, `chmod +x mvnw` y CodeQL Action v4.39.5; `actionlint` sin errores. Falta (manual): abrir la PR, comprobar que se ejecuta y que hay resultados en *Code scanning*, y listar las alertas para el RQ-19 |
 | 9 | C-09 | Quitar código sin uso | H-13, RQ-13 | Baja (opcional) | Pendiente | |
 
 ---
