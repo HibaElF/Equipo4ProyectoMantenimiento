@@ -39,8 +39,14 @@ $certificate = $null
 if (Test-Path -LiteralPath $certificatePath) {
     $certificate = New-Object Security.Cryptography.X509Certificates.X509Certificate2($certificatePath)
 }
+# El emulador de Android ve el ordenador como 10.0.2.2: el certificado debe incluir esa IP para la app móvil.
+function Test-IncluyeEmulador($cert) {
+    $alternativos = $cert.Extensions | Where-Object { $_.Oid.Value -eq '2.5.29.17' } | Select-Object -First 1
+    return $alternativos -and $alternativos.Format($false) -match '10\.0\.2\.2'
+}
 $generate = -not $certificate -or $certificate.NotAfter -lt (Get-Date).AddDays(7) -or `
-    -not (Test-Path -LiteralPath $keyPath) -or -not (Test-Path -LiteralPath $keyStorePath) -or -not $passwordMatch.Success
+    -not (Test-Path -LiteralPath $keyPath) -or -not (Test-Path -LiteralPath $keyStorePath) -or -not $passwordMatch.Success -or `
+    -not (Test-IncluyeEmulador $certificate)
 
 function Invoke-OpenSsl([string[]] $Arguments) {
     $ErrorActionPreference = 'Continue'
@@ -57,7 +63,7 @@ if ($generate) {
         $env:ESIBUY_HTTPS_KEY_PASSWORD = $certificatePassword
         Invoke-OpenSsl -Arguments @('req', '-x509', '-newkey', 'rsa:3072', '-sha256', '-nodes', '-days', '365',
             '-keyout', $nextKey, '-out', $nextCertificate, '-subj', '/CN=localhost',
-            '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1',
+            '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1,IP:::1,IP:10.0.2.2',
             '-addext', 'basicConstraints=critical,CA:FALSE', '-addext', 'extendedKeyUsage=serverAuth',
             '-addext', 'keyUsage=critical,digitalSignature,keyEncipherment')
         Invoke-OpenSsl -Arguments @('pkcs12', '-export', '-out', $nextKeyStore, '-inkey', $nextKey,

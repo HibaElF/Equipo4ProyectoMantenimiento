@@ -99,3 +99,6 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Certificado HTTPS de desarrollo de cada ordenador (lo copia scripts/copiar-certificado.mjs)
+app/src/main/res/raw/esibuy_localhost.pem

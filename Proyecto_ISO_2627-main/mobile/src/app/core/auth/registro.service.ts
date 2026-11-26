@@ -1,7 +1,6 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { AuthService } from './auth.service';
 
 /** Mismos datos que envía la web al registrar un cliente (POST /cliente/register). */
 export interface RegistroClienteRequest {
@@ -14,6 +13,8 @@ export interface RegistroClienteRequest {
   telefono?: string;
   imagenPerfil?: string;
   esPremium: boolean;
+  /** T-24: consentimiento expreso de la política de privacidad. */
+  aceptaPolitica: boolean;
 }
 
 export interface RegistroResponse {
@@ -22,9 +23,10 @@ export interface RegistroResponse {
 
 @Injectable({ providedIn: 'root' })
 export class RegistroService {
-  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
 
+  /** El alta pública también exige el token CSRF (T-10), igual que en la web. */
   registrarCliente(request: RegistroClienteRequest): Observable<RegistroResponse> {
-    return this.http.post<RegistroResponse>(`${environment.apiUrl}/cliente/register`, request);
+    return this.auth.postConCsrf<RegistroResponse>('/cliente/register', request);
   }
 }

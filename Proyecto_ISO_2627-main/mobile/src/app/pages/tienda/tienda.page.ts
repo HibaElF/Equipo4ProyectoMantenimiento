@@ -47,11 +47,13 @@ type Disponibilidad = 'todos' | 'disponibles' | 'agotados';
  * Catálogo del cliente: mismas funciones que la web (buscar, categoría, precio,
  * disponibilidad, solo favoritos, favoritos y añadir al carrito), en rejilla de dos columnas.
  */
+import { AvisoSegundoFactorComponent } from '../../shared/aviso-segundo-factor/aviso-segundo-factor.component';
 import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
 
 @Component({
   selector: 'app-tienda',
   imports: [
+    AvisoSegundoFactorComponent,
     BotonAlertasComponent,
     FormsModule,
     TarjetaProductoComponent,

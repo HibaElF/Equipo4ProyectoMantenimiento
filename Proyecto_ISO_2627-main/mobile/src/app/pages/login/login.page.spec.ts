@@ -103,6 +103,24 @@ describe('LoginPage', () => {
     expect(pagina.info()).toBe('Te hemos enviado un código nuevo a tu correo.');
   });
 
+  it('contraseña caducada: ofrece restablecerla (T-06)', () => {
+    const pagina = crear();
+    auth.iniciarSesion.mockReturnValue(
+      throwError(() => new HttpErrorResponse({
+        status: 403,
+        error: { error: 'Tu contraseña ha caducado.', errores: { codigo: ['CONTRASENA_CADUCADA'] } }
+      }))
+    );
+    pagina.enviar();
+    expect(pagina.contrasenaCaducada()).toBe(true);
+    expect(pagina.error()).toBe('Tu contraseña ha caducado.');
+
+    // Otro 403 (cuenta bloqueada, por ejemplo) no muestra el enlace.
+    auth.iniciarSesion.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 403, error: { error: 'Cuenta bloqueada.' } })));
+    pagina.enviar();
+    expect(pagina.contrasenaCaducada()).toBe(false);
+  });
+
   it('errores: servidor, sin conexión y verificación caducada', () => {
     const pagina = crear();
     auth.iniciarSesion.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401, error: { error: 'Credenciales incorrectas.' } })));

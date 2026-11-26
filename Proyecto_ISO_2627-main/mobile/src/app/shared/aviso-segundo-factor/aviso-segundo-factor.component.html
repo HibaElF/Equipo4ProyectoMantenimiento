@@ -1,0 +1,15 @@
+@if (visible()) {
+  <aside class="aviso" role="status" aria-label="Recomendación de seguridad">
+    <ion-icon name="shield-half-outline" class="icono" aria-hidden="true"></ion-icon>
+    <div class="texto">
+      <p>
+        <strong>Protege tu cuenta.</strong>
+        Activa el segundo factor de autenticación para que nadie pueda entrar solo con tu contraseña.
+      </p>
+      <div class="acciones">
+        <ion-button size="small" routerLink="/perfil/seguridad">Activar segundo factor</ion-button>
+        <ion-button size="small" fill="clear" (click)="descartar()">Ahora no</ion-button>
+      </div>
+    </div>
+  </aside>
+}

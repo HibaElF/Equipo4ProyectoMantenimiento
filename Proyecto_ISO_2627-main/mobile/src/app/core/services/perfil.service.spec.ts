@@ -1,6 +1,9 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { environment } from '../../../environments/environment';
 import { inicialPerfil, secretoTotp } from '../models/perfil';
-import { mensajeErrorPerfil } from './perfil.service';
+import { PerfilService, mensajeErrorPerfil } from './perfil.service';
 
 const err = (status: number, error: unknown = null) => new HttpErrorResponse({ status, error });
 
@@ -25,5 +28,38 @@ describe('perfil: utilidades', () => {
     expect(secretoTotp('otpauth://totp/ESIBuy:a@b.es?secret=JBSWY3DPEHPK3PXP&issuer=ESIBuy')).toBe('JBSW Y3DP EHPK 3PXP');
     expect(secretoTotp(null)).toBeNull();
     expect(secretoTotp('otpauth://totp/x')).toBeNull();
+  });
+});
+
+describe('PerfilService: contraseña y mis datos', () => {
+  const api = environment.apiUrl;
+  let servicio: PerfilService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    servicio = TestBed.inject(PerfilService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('cambia la contraseña con su token CSRF (T-05)', () => {
+    servicio.cambiarContrasena('Actual1234!', 'Nueva1234!').subscribe();
+    http.expectOne(`${api}/usuarios/csrf`).flush({ token: 't' });
+    const peticion = http.expectOne(`${api}/usuarios/contrasena`);
+    expect(peticion.request.method).toBe('PUT');
+    expect(peticion.request.headers.get('X-XSRF-TOKEN')).toBe('t');
+    expect(peticion.request.body).toEqual({ contrasenaActual: 'Actual1234!', nuevaContrasena: 'Nueva1234!' });
+    peticion.flush(null);
+  });
+
+  it('descarga mis datos como archivo, con la cookie de sesión (T-25)', () => {
+    servicio.descargarMisDatos().subscribe((datos) => expect(datos).toBeInstanceOf(Blob));
+    const peticion = http.expectOne(`${api}/usuarios/mis-datos`);
+    expect(peticion.request.method).toBe('GET');
+    expect(peticion.request.withCredentials).toBe(true);
+    expect(peticion.request.responseType).toBe('blob');
+    peticion.flush(new Blob(['{}']));
   });
 });

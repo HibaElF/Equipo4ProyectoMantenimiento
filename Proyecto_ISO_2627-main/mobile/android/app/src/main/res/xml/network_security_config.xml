@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Solo HTTPS. En las versiones debug (emulador y pruebas) se acepta además el certificado de desarrollo
+  del equipo, que crea scripts/configurar-https.ps1 y copia aquí scripts/copiar-certificado.mjs
+  (res/raw/esibuy_localhost.pem, fuera de Git). Una versión release solo confía en las autoridades del sistema.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="@raw/esibuy_localhost" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

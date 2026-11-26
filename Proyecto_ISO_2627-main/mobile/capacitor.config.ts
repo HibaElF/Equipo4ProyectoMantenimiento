@@ -4,15 +4,8 @@ const config: CapacitorConfig = {
   appId: 'es.uclm.esibuy',
   appName: 'ESIBuy',
   webDir: 'dist/mobile/browser',
-  server: { cleartext: true },
-  android: {
-    /*
-     * La app se sirve como https://localhost y el backend de desarrollo va por http://:
-     * sin esto Android bloquearía las imágenes de los productos (contenido mixto).
-     * Con un backend HTTPS no haría falta.
-     */
-    allowMixedContent: true
-  },
+  // Todo va por HTTPS (app y backend): ni tráfico en claro ni contenido mixto.
+  // El certificado de desarrollo se acepta en android/app/src/main/res/xml/network_security_config.xml.
   plugins: {
     // Las peticiones salen desde Android (no desde el navegador): sin CORS y con la cookie de sesión guardada.
     CapacitorHttp: { enabled: true },

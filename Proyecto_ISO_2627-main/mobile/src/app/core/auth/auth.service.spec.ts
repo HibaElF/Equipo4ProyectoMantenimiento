@@ -94,14 +94,13 @@ describe('AuthService', () => {
     });
   });
 
-  it('registro de cliente en /cliente/register', () => {
+  it('registro de cliente en /cliente/register, con token CSRF (T-10)', () => {
     const datos = {
       nombre: 'Ana', apellidos: 'Ruiz', fechaNacimiento: '2000-01-01', dniNif: '12345678Z',
-      email: 'ana@x.es', contrasena: 'Clave1234!', esPremium: false
+      email: 'ana@x.es', contrasena: 'Clave1234!', esPremium: false, aceptaPolitica: true
     };
     TestBed.inject(RegistroService).registrarCliente(datos).subscribe();
-    const req = http.expectOne(`${api}/cliente/register`);
-    expect(req.request.method).toBe('POST');
+    const req = conCsrf('POST', '/cliente/register');
     expect(req.request.body).toEqual(datos);
     req.flush({ mensaje: 'ok' });
   });

@@ -32,6 +32,9 @@
     }
   </section>
 
+  <!-- T-27: aviso para activar el segundo factor, como en la web. -->
+  <app-aviso-segundo-factor></app-aviso-segundo-factor>
+
   <ion-list lines="full" inset="true">
     <ion-list-header><ion-label>Mi cuenta</ion-label></ion-list-header>
     <ion-item routerLink="/perfil/datos" [button]="true" detail="true">
@@ -47,7 +50,7 @@
     </ion-item>
     <ion-item routerLink="/perfil/seguridad" [button]="true" detail="true">
       <ion-icon name="shield-checkmark-outline" slot="start" aria-hidden="true"></ion-icon>
-      <ion-label>Seguridad y segundo factor</ion-label>
+      <ion-label>Seguridad, contraseña y segundo factor</ion-label>
       @if (perfil(); as p) {
         <ion-note slot="end">{{ p.totpActivado ? 'Activado' : 'Desactivado' }}</ion-note>
       }
@@ -67,6 +70,26 @@
     <ion-item routerLink="/listas" [button]="true" detail="true">
       <ion-icon name="list-outline" slot="start" aria-hidden="true"></ion-icon>
       <ion-label>Mis listas</ion-label>
+    </ion-item>
+  </ion-list>
+
+  <!-- T-24 y T-25: privacidad, igual que en el perfil de la web. -->
+  <ion-list lines="full" inset="true">
+    <ion-list-header><ion-label>Privacidad</ion-label></ion-list-header>
+    <ion-item button (click)="descargarMisDatos()" [disabled]="descargaEnCurso()" detail="false">
+      <ion-icon name="download-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>
+        {{ descargaEnCurso() ? 'Preparando…' : 'Descargar mis datos' }}
+        <p>Copia de tus datos personales en formato JSON. Una vez por minuto.</p>
+      </ion-label>
+    </ion-item>
+    <ion-item routerLink="/politica-privacidad" [button]="true" detail="true">
+      <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Política de privacidad</ion-label>
+    </ion-item>
+    <ion-item routerLink="/aviso-legal" [button]="true" detail="true">
+      <ion-icon name="document-text-outline" slot="start" aria-hidden="true"></ion-icon>
+      <ion-label>Aviso legal</ion-label>
     </ion-item>
   </ion-list>
 

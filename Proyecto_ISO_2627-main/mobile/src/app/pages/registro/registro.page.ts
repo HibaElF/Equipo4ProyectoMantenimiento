@@ -7,6 +7,7 @@ import {
   IonBackButton,
   IonButton,
   IonButtons,
+  IonCheckbox,
   IonContent,
   IonHeader,
   IonIcon,
@@ -46,6 +47,7 @@ type Campo = 'nombre' | 'apellidos' | 'fechaNacimiento' | 'dniNif' | 'email' | '
     IonBackButton,
     IonButton,
     IonButtons,
+    IonCheckbox,
     IonContent,
     IonHeader,
     IonIcon,
@@ -78,16 +80,21 @@ export class RegistroPage {
 
   readonly form = this.fb.nonNullable.group(
     {
-      nombre: ['', Validators.required],
-      apellidos: ['', Validators.required],
+      // Mismas longitudes máximas que el servidor (T-11).
+      nombre: ['', [Validators.required, Validators.maxLength(100)]],
+      apellidos: ['', [Validators.required, Validators.maxLength(150)]],
       fechaNacimiento: ['', [Validators.required, mayorDeEdadValidator]],
       dniNif: ['', [Validators.required, Validators.pattern(/^\d{8}[A-Za-z]$/)]],
-      email: ['', [Validators.required, correoValidator]],
-      telefono: ['', Validators.pattern(/^\+?[0-9\s().-]{7,20}$/)],
-      imagenPerfil: ['', Validators.pattern(/^https?:\/\/.+/i)],
+      email: ['', [Validators.required, correoValidator, Validators.maxLength(254)]],
+      // Solo espacio normal: ni tabuladores ni saltos de línea.
+      telefono: ['', Validators.pattern(/^\+?[0-9 ().-]{7,20}$/)],
+      // El servidor exige una URL HTTPS de hasta 1000 caracteres.
+      imagenPerfil: ['', [Validators.maxLength(1000), Validators.pattern(/^https:\/\/[^\s/]+(?:\/\S*)?$/i)]],
       tipoCliente: ['normal' as 'normal' | 'premium'],
-      contrasena: ['', [Validators.required, contrasenaSeguraValidator]],
-      repetirContrasena: ['', Validators.required]
+      contrasena: ['', [Validators.required, Validators.maxLength(128), contrasenaSeguraValidator]],
+      repetirContrasena: ['', Validators.required],
+      // T-24: consentimiento expreso, nunca premarcado.
+      aceptaPolitica: [false, Validators.requiredTrue]
     },
     { validators: coincidenValidator('contrasena', 'repetirContrasena') }
   );
@@ -118,9 +125,16 @@ export class RegistroPage {
     if (control.hasError('menorDeEdad')) return 'Debes tener al menos 18 años.';
     if (control.hasError('contrasenaDebil')) return 'La contraseña debe cumplir todos los requisitos.';
     if (campo === 'dniNif') return 'El DNI/NIF debe tener 8 números y una letra.';
+    if (campo === 'imagenPerfil') return 'Introduce una URL que empiece por https:// (máximo 1000 caracteres).';
+    if (control.hasError('maxlength')) return 'Has superado la longitud máxima permitida.';
     if (campo === 'telefono') return 'Introduce un teléfono válido o deja el campo vacío.';
-    if (campo === 'imagenPerfil') return 'Introduce una URL que empiece por http:// o https://.';
     return 'Revisa este campo.';
+  }
+
+  /** Mismo aviso que la web cuando no se marca la casilla de la política. */
+  errorConsentimiento(): string {
+    const control = this.form.controls.aceptaPolitica;
+    return control.touched && control.invalid ? 'Debes aceptar la política de privacidad para registrarte.' : '';
   }
 
   registrar(): void {
@@ -141,13 +155,14 @@ export class RegistroPage {
         email: v.email.trim(),
         contrasena: v.contrasena,
         esPremium: v.tipoCliente === 'premium',
+        aceptaPolitica: v.aceptaPolitica,
         ...(v.telefono.trim() ? { telefono: v.telefono.trim() } : {}),
         ...(v.imagenPerfil.trim() ? { imagenPerfil: v.imagenPerfil.trim() } : {})
       })
       .subscribe({
         next: (respuesta) => {
           this.enviando.set(false);
-          this.exito.set(respuesta?.mensaje || 'Tu cuenta se ha creado correctamente.');
+          this.exito.set(respuesta?.mensaje || 'Hemos recibido tu solicitud de registro.');
           this.form.reset();
           this.fotoFallida.set(false);
         },

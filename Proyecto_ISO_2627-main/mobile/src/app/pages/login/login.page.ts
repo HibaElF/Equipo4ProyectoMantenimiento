@@ -50,6 +50,8 @@ export class LoginPage {
   readonly cargando = signal(false);
   readonly error = signal('');
   readonly info = signal('');
+  /** T-06: la contraseña es correcta pero ha caducado (a los 30 días); se ofrece restablecerla. */
+  readonly contrasenaCaducada = signal(false);
 
   email = '';
   contrasena = '';
@@ -67,6 +69,7 @@ export class LoginPage {
 
   enviar(): void {
     this.error.set('');
+    this.contrasenaCaducada.set(false);
     switch (this.paso()) {
       case 'credenciales':
         this.iniciarSesion();
@@ -132,6 +135,7 @@ export class LoginPage {
 
   volverAlInicio(): void {
     this.paso.set('credenciales');
+    this.contrasenaCaducada.set(false);
     this.codigo = '';
     this.info.set('');
     this.error.set('');
@@ -177,6 +181,7 @@ export class LoginPage {
       this.error.set('No se pudo conectar con el servidor. Comprueba tu conexión.');
       return;
     }
+    this.contrasenaCaducada.set(e.status === 403 && e.error?.errores?.codigo?.[0] === 'CONTRASENA_CADUCADA');
     const mensaje = e.error?.error;
     this.error.set(
       typeof mensaje === 'string' ? mensaje : porDefecto ?? 'No se pudo iniciar sesión. Inténtalo de nuevo.'

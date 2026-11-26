@@ -25,6 +25,8 @@ import { addIcons } from 'ionicons';
 import {
   cardOutline,
   closeOutline,
+  documentTextOutline,
+  downloadOutline,
   homeOutline,
   listOutline,
   logOutOutline,
@@ -36,18 +38,22 @@ import {
 } from 'ionicons/icons';
 import { AuthService } from '../../core/auth/auth.service';
 import { Perfil } from '../../core/models/perfil';
+import { EstadoSegundoFactorService } from '../../core/services/estado-segundo-factor.service';
 import { PerfilService, mensajeErrorPerfil } from '../../core/services/perfil.service';
 import { AvatarPerfilComponent } from '../../shared/avatar-perfil/avatar-perfil.component';
+import { AvisoSegundoFactorComponent } from '../../shared/aviso-segundo-factor/aviso-segundo-factor.component';
+import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
+import { guardarArchivo } from '../../shared/guardar-archivo';
 
 /**
  * Pestaña Perfil: las secciones de «Mi perfil» de la web (datos, tipo de cuenta, seguridad,
- * direcciones, métodos de pago, baja) más «Mis listas» y cerrar sesión.
+ * direcciones, métodos de pago, privacidad, baja) más «Mis listas» y cerrar sesión.
  */
-import { BotonAlertasComponent } from '../../shared/boton-alertas/boton-alertas.component';
 
 @Component({
   selector: 'app-perfil',
   imports: [
+    AvisoSegundoFactorComponent,
     BotonAlertasComponent,
     RouterLink,
     AvatarPerfilComponent,
@@ -77,16 +83,20 @@ export class PerfilPage {
   private readonly router = inject(Router);
   private readonly alertas = inject(AlertController);
   private readonly toasts = inject(ToastController);
+  private readonly segundoFactor = inject(EstadoSegundoFactorService);
 
   readonly perfil = signal<Perfil | null>(null);
   readonly cargando = signal(true);
   readonly error = signal('');
   readonly bajaEnCurso = signal(false);
+  readonly descargaEnCurso = signal(false);
 
   constructor() {
     addIcons({
       cardOutline,
       closeOutline,
+      documentTextOutline,
+      downloadOutline,
       homeOutline,
       listOutline,
       logOutOutline,
@@ -109,6 +119,7 @@ export class PerfilPage {
     this.perfilApi.consultar().subscribe({
       next: (p) => {
         this.perfil.set(p);
+        this.segundoFactor.activado.set(p.totpActivado);
         this.cargando.set(false);
         alTerminar?.();
       },
@@ -122,6 +133,34 @@ export class PerfilPage {
 
   recargar(evento: CustomEvent): void {
     this.cargar(() => (evento.target as HTMLIonRefresherElement).complete());
+  }
+
+  /** T-25: copia de los datos personales en JSON (la web la descarga; aquí se guarda o se comparte). */
+  descargarMisDatos(): void {
+    if (this.descargaEnCurso()) return;
+    this.descargaEnCurso.set(true);
+    this.perfilApi.descargarMisDatos().subscribe({
+      next: async (contenido) => {
+        try {
+          await guardarArchivo(contenido, 'mis-datos.json', 'Mis datos de ESIBuy');
+        } catch {
+          await this.aviso('No se pudo guardar el archivo. Inténtalo de nuevo.');
+        }
+        this.descargaEnCurso.set(false);
+      },
+      error: (e: HttpErrorResponse) => {
+        this.descargaEnCurso.set(false);
+        if (e.status === 401) {
+          this.router.navigate(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
+          return;
+        }
+        this.aviso(
+          e.status === 429
+            ? 'Solo puedes descargar tus datos una vez por minuto. Inténtalo de nuevo en unos segundos.'
+            : mensajeErrorPerfil(e, 'No se pudieron descargar tus datos. Inténtalo de nuevo.')
+        );
+      }
+    });
   }
 
   async confirmarCierreSesion(): Promise<void> {

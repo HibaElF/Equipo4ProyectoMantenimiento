@@ -10,7 +10,7 @@
 <ion-content class="ion-padding">
   <div class="contenedor-formulario">
     @if (exito()) {
-      <h1>¡Cuenta creada!</h1>
+      <h1>Solicitud enviada</h1>
       <ion-text role="status"><p>{{ exito() }}</p></ion-text>
       <ion-button expand="block" color="secondary" routerLink="/login">Ir a iniciar sesión</ion-button>
     } @else {
@@ -26,11 +26,11 @@
         <ion-list lines="full">
           <ion-list-header><ion-label>Datos personales</ion-label></ion-list-header>
           <ion-item>
-            <ion-input label="Nombre" labelPlacement="stacked" formControlName="nombre" autocomplete="given-name"
+            <ion-input label="Nombre" labelPlacement="stacked" formControlName="nombre" [maxlength]="100" autocomplete="given-name"
               [errorText]="errorDe('nombre')" [class.ion-invalid]="!!errorDe('nombre')" [class.ion-touched]="!!errorDe('nombre')"></ion-input>
           </ion-item>
           <ion-item>
-            <ion-input label="Apellidos" labelPlacement="stacked" formControlName="apellidos" autocomplete="family-name"
+            <ion-input label="Apellidos" labelPlacement="stacked" formControlName="apellidos" [maxlength]="150" autocomplete="family-name"
               [errorText]="errorDe('apellidos')" [class.ion-invalid]="!!errorDe('apellidos')" [class.ion-touched]="!!errorDe('apellidos')"></ion-input>
           </ion-item>
           <ion-item>
@@ -50,7 +50,7 @@
           </ion-item>
           <ion-item>
             <ion-input label="URL de la foto de perfil (opcional)" labelPlacement="stacked" type="url" inputmode="url"
-              formControlName="imagenPerfil" placeholder="https://…" (ionInput)="fotoFallida.set(false)"
+              formControlName="imagenPerfil" [maxlength]="1000" placeholder="https://…" (ionInput)="fotoFallida.set(false)"
               [errorText]="errorDe('imagenPerfil')"
               [class.ion-invalid]="!!errorDe('imagenPerfil')" [class.ion-touched]="!!errorDe('imagenPerfil')"></ion-input>
           </ion-item>
@@ -72,18 +72,18 @@
           <ion-list-header><ion-label>Acceso</ion-label></ion-list-header>
           <ion-item>
             <ion-input label="Correo electrónico" labelPlacement="stacked" type="email" inputmode="email"
-              formControlName="email" autocomplete="email" [errorText]="errorDe('email')"
+              formControlName="email" [maxlength]="254" autocomplete="email" [errorText]="errorDe('email')"
               [class.ion-invalid]="!!errorDe('email')" [class.ion-touched]="!!errorDe('email')"></ion-input>
           </ion-item>
           <ion-item>
-            <ion-input label="Contraseña" labelPlacement="stacked" type="password" formControlName="contrasena"
+            <ion-input label="Contraseña" labelPlacement="stacked" type="password" formControlName="contrasena" [maxlength]="128"
               autocomplete="new-password" [errorText]="errorDe('contrasena')"
               [class.ion-invalid]="!!errorDe('contrasena')" [class.ion-touched]="!!errorDe('contrasena')">
               <ion-input-password-toggle slot="end"></ion-input-password-toggle>
             </ion-input>
           </ion-item>
           <ion-item>
-            <ion-input label="Repite la contraseña" labelPlacement="stacked" type="password" formControlName="repetirContrasena"
+            <ion-input label="Repite la contraseña" labelPlacement="stacked" type="password" formControlName="repetirContrasena" [maxlength]="128"
               autocomplete="new-password" [errorText]="errorDe('repetirContrasena')"
               [class.ion-invalid]="!!errorDe('repetirContrasena')" [class.ion-touched]="!!errorDe('repetirContrasena')">
               <ion-input-password-toggle slot="end"></ion-input-password-toggle>
@@ -101,6 +101,26 @@
           }
         </ul>
 
+        <!-- T-24: consentimiento expreso de la política de privacidad, igual que en la web. -->
+        <div class="consentimiento">
+          <ion-checkbox
+            formControlName="aceptaPolitica"
+            labelPlacement="end"
+            justify="start"
+            [attr.aria-invalid]="!!errorConsentimiento()"
+            [attr.aria-describedby]="errorConsentimiento() ? 'consentimiento-error' : null"
+          >
+            He leído y acepto la política de privacidad y el aviso legal.
+          </ion-checkbox>
+          @if (errorConsentimiento()) {
+            <small id="consentimiento-error" class="campo-error">{{ errorConsentimiento() }}</small>
+          }
+          <div class="enlaces-legales">
+            <ion-button fill="clear" size="small" routerLink="/politica-privacidad">Leer la política de privacidad</ion-button>
+            <ion-button fill="clear" size="small" routerLink="/aviso-legal">Leer el aviso legal</ion-button>
+          </div>
+        </div>
+
         @if (error()) {
           <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
         }
@@ -113,9 +133,16 @@
           }
         </ion-button>
         <ion-note class="ayuda ion-text-center">
-          Un administrador revisará y activará tu cuenta antes de que puedas iniciar sesión.
+          Te enviaremos un correo para confirmar tu dirección. Después, un administrador revisará y activará tu
+          cuenta antes de que puedas iniciar sesión.
         </ion-note>
       </form>
     }
+
+    <div class="enlaces-legales">
+      <ion-button fill="clear" size="small" routerLink="/politica-privacidad">Política de privacidad</ion-button>
+      <span aria-hidden="true">·</span>
+      <ion-button fill="clear" size="small" routerLink="/aviso-legal">Aviso legal</ion-button>
+    </div>
   </div>
 </ion-content>
