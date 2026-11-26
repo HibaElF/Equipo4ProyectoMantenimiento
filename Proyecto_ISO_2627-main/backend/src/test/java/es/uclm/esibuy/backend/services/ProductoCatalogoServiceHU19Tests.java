@@ -69,7 +69,7 @@ class ProductoCatalogoServiceHU19Tests {
         FirmaImagenService firmas = new FirmaImagenService(FirmaImagenServiceTests.CLAVE,
                 java.time.Duration.ofHours(2), java.time.Clock.systemUTC());
         productoService = new ProductoService(productoDAO, vendedorDAO, categoriaDAO, validator,
-                productoImagenService, clienteDAO, pedidoDAO, firmas);
+                productoImagenService, clienteDAO, pedidoDAO, alertaService, firmas);
         Producto producto = crearProducto(ID_PRODUCTO, "Detalle", "Informática", 4, 50.0, 10, 20, false);
         producto.setImagen("/product-images/b.png");
         when(clienteDAO.findByEmail(EMAIL_CLIENTE)).thenReturn(Optional.of(crearCliente(true, true)));
