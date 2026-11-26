@@ -270,6 +270,7 @@ public class SecurityConfiguration {
                                                                 "/perfil/direcciones",
                                                                 "/perfil/pagos",
                                                                 "/admin",
+                                                                "/admin/estadisticas",
                                                                 "/admin/usuarios",
                                                                 "/admin/usuarios/*",
                                                                 "/admin/categorias",
@@ -282,6 +283,7 @@ public class SecurityConfiguration {
                                                                 "/carrito",
                                                                 "/cliente/checkout",
                                                                 "/vendedor",
+                                                                "/vendedor/estadisticas",
                                                                 "/vendedor/pedidos")
                                                 .permitAll()
 

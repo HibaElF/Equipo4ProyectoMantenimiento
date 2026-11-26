@@ -16,7 +16,7 @@
 | 4 | C-04 | Filtros que no se salten con la ruta codificada | H-02, H-03 | Media | Hecha | 26/11/2026: los tres filtros usan `PathPatternRequestMatcher`; el de imágenes verifica la firma del nombre decodificado. Pruebas con `%72egister`, `%70roduct-images` y `product%2Dimages` (fallaban antes del cambio). Backend 1687 pruebas, 0 fallos, 91,43 %. No probado contra la aplicación arrancada |
 | 5 | C-05 | Arreglar el registro desde la app móvil | H-06 | Media | Otro miembro | No la implementa este chat |
 | 6 | C-06 | HTTPS en la app móvil | H-05, RQ-09 | Media | Otro miembro | No la implementa este chat |
-| 7 | C-07 | Rutas de estadísticas | H-07 | Baja | Pendiente | |
+| 7 | C-07 | Rutas de estadísticas | H-07 | Baja | Hecha | 26/11/2026: rutas añadidas en `SpaController` y en las rutas HTML permitidas; prueba `PaginasEstadisticasPublicasTests` (sin sesión la API de estadísticas responde 403). Backend 1692 pruebas, 0 fallos, 91,43 %. No comprobado en el navegador |
 | 8 | C-08 | Hacer que CodeQL se ejecute | H-08, RQ-19 | Media | Pendiente | |
 | 9 | C-09 | Quitar código sin uso | H-13, RQ-13 | Baja (opcional) | Pendiente | |
 
