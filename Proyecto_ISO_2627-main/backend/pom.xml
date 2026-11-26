@@ -8,7 +8,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>4.1.2</version>
+		<version>4.1.3</version>
 		<relativePath/>
 	</parent>
 
@@ -37,8 +37,9 @@
 
 	<properties>
 		<java.version>21</java.version>
-		<!-- Corrige CVE-2026-110879 y mantiene alineados los módulos Jackson 3. -->
-		<jackson-bom.version>3.1.8</jackson-bom.version>
+		<!-- Corrige CVE-2026-118233. Spring Boot 4.1.3 aún gestiona Tomcat 11.0.27:
+		     quitar cuando Spring Boot traiga 11.0.29 o posterior. -->
+		<tomcat.version>11.0.29</tomcat.version>
 	</properties>
 
 	<dependencies>

@@ -11,7 +11,7 @@
 |---|---|---|---|---|---|---|
 | 0 | C-00 | Mitigación de Java4Shell en Render | H-14 | Urgente | Pendiente (manual) | |
 | 1 | C-01 | Fijar Java 21 corregido | H-14, CVE de Java | Alta | Hecha (falta comprobación manual) | 26/11/2026: `docker build` correcto; Java 21.0.13.1 en la imagen final y en la de compilación (Maven 3.10.0); paso del pipeline probado con versiones simuladas (no en el agente); backend 1681 pruebas, 0 fallos, 91,42 %. Manual: actualizar el JDK del agente `wsl-ubuntu` y los equipos, y comprobar en Render tras reconstruir sin caché |
-| 2 | C-02 | Actualizar Spring Boot y Tomcat | `auditoria/cve/05` | Alta | Pendiente | |
+| 2 | C-02 | Actualizar Spring Boot y Tomcat | `auditoria/cve/05` | Alta | Hecha | 26/11/2026: Spring Boot 4.1.3, Spring Security 7.1.3, Spring Data MongoDB 5.1.3, Tomcat 11.0.29 (forzado con `tomcat.version`, acordado con el usuario), Spring Framework 7.0.11, driver 5.8.1, Jackson 3.1.8 (quitado el forzado, ya lo trae Boot). Backend 1681 pruebas, 0 fallos, 91,42 %; JAR de la imagen Docker revisado |
 | 3 | C-03 | Impedir premium sin pago | H-01 | Alta | Otro miembro | No la implementa este chat |
 | 4 | C-04 | Filtros que no se salten con la ruta codificada | H-02, H-03 | Media | Pendiente | |
 | 5 | C-05 | Arreglar el registro desde la app móvil | H-06 | Media | Otro miembro | No la implementa este chat |
