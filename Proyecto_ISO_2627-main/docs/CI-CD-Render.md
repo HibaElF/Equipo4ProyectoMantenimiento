@@ -28,8 +28,23 @@ ESIBuy se despliega como una única aplicación Docker que contiene el frontend 
 El archivo `Dockerfile`, situado en la raíz del repositorio, utiliza una construcción multietapa:
 
 1. **Compilación del frontend:** se utiliza Node.js 24 para instalar las dependencias y generar la versión de producción de Angular.
-2. **Compilación del backend:** se utiliza Maven con Java 21. Los archivos compilados de Angular se incorporan a los recursos estáticos de Spring Boot.
-3. **Imagen de ejecución:** se utiliza una imagen de Java 21 JRE que ejecuta el JAR resultante.
+2. **Compilación del backend:** se utiliza Maven 3.10.0 con Java 21.0.13.1. Los archivos compilados de Angular se incorporan a los recursos estáticos de Spring Boot.
+3. **Imagen de ejecución:** se utiliza una imagen de Java 21.0.13.1 JRE que ejecuta el JAR resultante.
+
+### Versión de Java
+
+La versión mínima admitida es **Java 21.0.13.1** (corrige Java4Shell, CVE-2026-114938). Se exige en tres sitios:
+
+- **Imágenes del `Dockerfile`:** `maven:3.10.0-eclipse-temurin-21` y `eclipse-temurin:21.0.13.1_2-jre`, fijadas por etiqueta y *digest*. La compilación usa Maven 3.10.0; en local y en el pipeline se sigue usando el *wrapper* (`./mvnw`).
+- **Agente del pipeline** (`wsl-ubuntu`): el paso «Comprobar Java 21.0.13.1 o posterior» falla con un Java anterior o de otra versión principal. Hay que actualizar el JDK del agente antes de ejecutar el pipeline.
+- **Equipos de desarrollo:** deben usar un JDK 21.0.13.1 o posterior de la rama 21. No consta que Java 23 vaya a recibir el parche.
+
+Al fijar el *digest*, **los parches no entran solos**. Para actualizar (conviene revisarlo con cada publicación trimestral de Java y ante avisos de seguridad):
+
+1. Elegir las etiquetas nuevas en Docker Hub y comprobar su versión: `docker run --rm <imagen> java -version`.
+2. Obtener el *digest*: `docker buildx imagetools inspect <imagen> --format '{{.Manifest.Digest}}'`.
+3. Cambiar etiqueta y *digest* en el `Dockerfile`, y la versión mínima en `azure-pipelines.yml` y en este apartado.
+4. Construir (`docker build --no-cache .`), probar y, en Render, desplegar con **Manual Deploy → Clear build cache & deploy**.
 
 De esta manera, Spring Boot sirve tanto la API REST como la aplicación Angular. No es necesario mantener un servidor independiente de Angular en Render.
 
@@ -140,7 +155,7 @@ Las variables necesarias se configuran en el panel de Render y no se incluyen en
 | `PERSONAL_DATA_MIGRATE` | Activar temporalmente con `true` para cifrar los datos existentes al desplegar |
 | `PERSONAL_DATA_ROTATE` | Activar temporalmente con `true` para rotar los campos cifrados a la clave actual |
 | `TOTP_MIGRATE_KEY` | Control de migración de la clave TOTP |
-| `JAVA_TOOL_OPTIONS` | Ajustes de memoria para la JVM |
+| `JAVA_TOOL_OPTIONS` | Ajustes de memoria para la JVM. Mientras no esté desplegada una imagen con Java 21.0.13.1, añadir (sin sustituir lo que haya) `-XX:-UseBASE64Intrinsics` |
 
 Las credenciales, claves de cifrado y enlaces privados de despliegue deben mantenerse fuera de GitHub.
 La migración de datos personales es optativa e idempotente: activarla en `true` durante un arranque,
