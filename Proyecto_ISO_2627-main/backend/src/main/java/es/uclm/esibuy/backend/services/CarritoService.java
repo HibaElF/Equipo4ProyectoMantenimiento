@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,18 +18,18 @@ import es.uclm.esibuy.backend.dao.ClienteDAO;
 import es.uclm.esibuy.backend.dao.ProductoDAO;
 import es.uclm.esibuy.backend.dto.CarritoResponse;
 import es.uclm.esibuy.backend.dto.LineaCarritoResponse;
+import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
 import es.uclm.esibuy.backend.exceptions.ProductoNoEncontradoException;
 import es.uclm.esibuy.backend.model.Carrito;
 import es.uclm.esibuy.backend.model.Cliente;
 import es.uclm.esibuy.backend.model.Producto;
-import es.uclm.esibuy.backend.exceptions.DatosNoValidosException;
-import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class CarritoService {
     private static final String MENSAJE_CARRITO_NO_ACTUALIZADO = "No se ha podido actualizar el carrito.";
     private static final String MENSAJE_SOLO_PREMIUM = "Este producto solo está disponible para clientes Premium.";
     private static final String MENSAJE_PRECIO_NO_DISPONIBLE = "Un producto del carrito no tiene un precio disponible.";
+    private static final String MENSAJE_CANTIDAD_NO_VALIDA = "La cantidad de un producto del carrito no es válida.";
     private static final int MAXIMO_INTENTOS = 3;
     private final CarritoDAO carritoDAO;
     private final ClienteDAO clienteDAO;
@@ -141,7 +142,7 @@ public class CarritoService {
             throw new DatosNoValidosException("El producto es obligatorio.");
         }
         if (cantidad != null && cantidad <= 0) {
-            throw new DatosNoValidosException("La cantidad debe ser mayor que cero.");
+            throw new DatosNoValidosException(MENSAJE_CANTIDAD_NO_VALIDA);
         }
         return reintentarSiHayConflicto(() -> {
             Carrito carrito = carritoDAO.findById(cliente.getId())
@@ -239,7 +240,7 @@ public class CarritoService {
         // PBI 291: las unidades del carrito ya están reservadas (descontadas del stock),
         // así que aquí no se compara con el stock restante.
         if (cantidad <= 0) {
-            return "La cantidad debe ser mayor que cero.";
+            return MENSAJE_CANTIDAD_NO_VALIDA;
         }
         Double precio = producto.getPrecio();
         if (precio == null || !Double.isFinite(precio) || precio < 0) {
@@ -273,7 +274,7 @@ public class CarritoService {
     private Resultado actualizarCarrito(String idProducto, int cantidad) {
         Cliente cliente = obtenerClienteAutenticado();
         if (cantidad <= 0) {
-            throw new DatosNoValidosException("La cantidad debe ser mayor que cero.");
+            throw new DatosNoValidosException(MENSAJE_CANTIDAD_NO_VALIDA);
         }
         if (idProducto == null || idProducto.isBlank()) {
             throw new DatosNoValidosException("El producto es obligatorio.");
@@ -324,7 +325,7 @@ public class CarritoService {
                 throw new AccessDeniedException("Un producto del carrito solo está disponible para clientes Premium.");
             }
            if (entrada.getValue() <= 0) {
-                throw new DatosNoValidosException("La cantidad de un producto del carrito no es válida.");
+                throw new DatosNoValidosException(MENSAJE_CANTIDAD_NO_VALIDA);
             }
            
             int maximo = producto == productoAnadido ? maximoAnadido
