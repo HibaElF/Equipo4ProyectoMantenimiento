@@ -8,7 +8,8 @@ import { RegistroPage } from './registro.page';
 
 const validos = {
   nombre: ' Ana ', apellidos: ' Ruiz ', fechaNacimiento: '2000-01-01', dniNif: '12345678z', email: ' ana@x.es ',
-  telefono: '', imagenPerfil: '', tipoCliente: 'normal' as const, contrasena: 'Clave1234!', repetirContrasena: 'Clave1234!'
+  telefono: '', imagenPerfil: '', tipoCliente: 'normal' as const, contrasena: 'Clave1234!', repetirContrasena: 'Clave1234!',
+  aceptaPolitica: true
 };
 
 describe('RegistroPage', () => {
@@ -43,7 +44,7 @@ describe('RegistroPage', () => {
     expect(pagina.errorDe('fechaNacimiento')).toBe('Debes tener al menos 18 años.');
     expect(pagina.errorDe('dniNif')).toBe('El DNI/NIF debe tener 8 números y una letra.');
     expect(pagina.errorDe('telefono')).toBe('Introduce un teléfono válido o deja el campo vacío.');
-    expect(pagina.errorDe('imagenPerfil')).toBe('Introduce una URL que empiece por http:// o https://.');
+    expect(pagina.errorDe('imagenPerfil')).toBe('Introduce una URL que empiece por https:// (máximo 1000 caracteres).');
     expect(pagina.errorDe('contrasena')).toBe('La contraseña debe cumplir todos los requisitos.');
     expect(pagina.errorDe('repetirContrasena')).toBe('Las contraseñas no coinciden.');
     expect(pagina.requisitos().some((r) => !r.cumplido)).toBe(true);
@@ -56,10 +57,28 @@ describe('RegistroPage', () => {
     pagina.registrar();
     expect(api.registrarCliente).toHaveBeenCalledWith({
       nombre: 'Ana', apellidos: 'Ruiz', fechaNacimiento: '2000-01-01', dniNif: '12345678Z', email: 'ana@x.es',
-      contrasena: 'Clave1234!', esPremium: true
+      contrasena: 'Clave1234!', esPremium: true, aceptaPolitica: true
     });
     expect(pagina.exito()).toBe('Revisa tu correo para activar la cuenta.');
     expect(pagina.form.controls.nombre.value).toBe('');
+  });
+
+  it('exige aceptar la política de privacidad (T-24)', () => {
+    const pagina = crear();
+    pagina.form.setValue({ ...validos, aceptaPolitica: false });
+    expect(pagina.errorConsentimiento()).toBe('');
+    pagina.registrar();
+    expect(api.registrarCliente).not.toHaveBeenCalled();
+    expect(pagina.errorConsentimiento()).toBe('Debes aceptar la política de privacidad para registrarte.');
+  });
+
+  it('mismas longitudes máximas que el servidor y foto solo por https', () => {
+    const pagina = crear();
+    pagina.form.patchValue({ nombre: 'a'.repeat(101), imagenPerfil: 'http://x.es/a.jpg', telefono: '600\t123 456' });
+    pagina.form.markAllAsTouched();
+    expect(pagina.errorDe('nombre')).toBe('Has superado la longitud máxima permitida.');
+    expect(pagina.errorDe('imagenPerfil')).toBe('Introduce una URL que empiece por https:// (máximo 1000 caracteres).');
+    expect(pagina.errorDe('telefono')).toBe('Introduce un teléfono válido o deja el campo vacío.');
   });
 
   it('vista previa: la URL escrita o el avatar por defecto', () => {

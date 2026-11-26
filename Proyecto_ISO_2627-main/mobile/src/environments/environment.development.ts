@@ -1,3 +1,4 @@
+/** App en el navegador (npm start): mismo backend HTTPS que la web. */
 export const environment = {
-  apiUrl: 'http://localhost:8443'
+  apiUrl: 'https://localhost:8443'
 };

@@ -118,6 +118,11 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "ssl": true,
+            "sslCert": "../.certs/localhost.pem",
+            "sslKey": "../.certs/localhost-key.pem"
+          },
           "configurations": {
             "production": {
               "buildTarget": "mobile:build:production"

@@ -4,6 +4,7 @@ import { Observable, finalize, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { RespuestaTokenCsrf } from '../models/respuesta-token-csrf';
 import { AlertasEstadoService } from '../services/alertas-estado.service';
+import { EstadoSegundoFactorService } from '../services/estado-segundo-factor.service';
 import { CarritoEstadoService } from '../services/carrito-estado.service';
 
 export type Rol = 'ADMIN' | 'CLIENTE' | 'VENDEDOR';
@@ -29,6 +30,7 @@ export class AuthService {
   private readonly api = environment.apiUrl;
   private readonly carritoEstado = inject(CarritoEstadoService);
   private readonly alertasEstado = inject(AlertasEstadoService);
+  private readonly segundoFactor = inject(EstadoSegundoFactorService);
 
   iniciarSesion(correo: string, contrasena: string): Observable<RespuestaInicioSesion> {
     return this.postConCsrf<RespuestaInicioSesion>('/usuarios/login', {
@@ -60,6 +62,7 @@ export class AuthService {
     return this.postConCsrf<void>('/usuarios/logout', null).pipe(finalize(() => {
         this.carritoEstado.reiniciar();
         this.alertasEstado.reiniciar();
+        this.segundoFactor.reiniciar();
       }));
   }
 

@@ -161,6 +161,67 @@
           <ion-text color="danger"><p class="mensaje" role="alert">{{ errorCorreo() }}</p></ion-text>
         }
       </section>
+
+      <!-- Cambiar contraseña (T-05), igual que en el perfil de la web -->
+      <section class="tarjeta" aria-labelledby="cambiar-contrasena-titulo">
+        <p class="antetitulo">Seguridad</p>
+        <h2 id="cambiar-contrasena-titulo">Cambiar contraseña</h2>
+        <p>Al cambiarla se cerrarán tus sesiones abiertas en otros dispositivos.</p>
+        <form (ngSubmit)="cambiarContrasena()" novalidate class="formulario-contrasena">
+          <ion-input
+            label="Contraseña actual"
+            labelPlacement="stacked"
+            fill="outline"
+            type="password"
+            name="contrasenaActual"
+            autocomplete="current-password"
+            [maxlength]="128"
+            [(ngModel)]="contrasenaActual"
+          >
+            <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+          </ion-input>
+          <ion-input
+            label="Contraseña nueva"
+            labelPlacement="stacked"
+            fill="outline"
+            type="password"
+            name="nuevaContrasena"
+            autocomplete="new-password"
+            [maxlength]="128"
+            helperText="Al menos 8 caracteres, con mayúsculas, minúsculas, números y símbolos."
+            [(ngModel)]="nuevaContrasena"
+          >
+            <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+          </ion-input>
+          <ion-input
+            label="Repite la contraseña nueva"
+            labelPlacement="stacked"
+            fill="outline"
+            type="password"
+            name="confirmarContrasena"
+            autocomplete="new-password"
+            [maxlength]="128"
+            [(ngModel)]="confirmarContrasena"
+          >
+            <ion-input-password-toggle slot="end"></ion-input-password-toggle>
+          </ion-input>
+
+          @if (errorContrasena()) {
+            <ion-text color="danger"><p class="mensaje" role="alert">{{ errorContrasena() }}</p></ion-text>
+          }
+          @if (mensajeContrasena()) {
+            <p class="exito" role="status">{{ mensajeContrasena() }}</p>
+          }
+
+          <ion-button type="submit" expand="block" [disabled]="cambiandoContrasena()">
+            @if (cambiandoContrasena()) {
+              <ion-spinner name="crescent" aria-label="Guardando"></ion-spinner>
+            } @else {
+              Cambiar contraseña
+            }
+          </ion-button>
+        </form>
+      </section>
     }
   </div>
 </ion-content>

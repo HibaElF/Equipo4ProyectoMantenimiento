@@ -17,6 +17,16 @@ export const routes: Routes = [
       import('./pages/recuperar-contrasena/recuperar-contrasena.page').then((m) => m.RecuperarContrasenaPage)
   },
   {
+    // Páginas legales públicas, con las mismas rutas que la web (T-24).
+    path: 'politica-privacidad',
+    loadComponent: () =>
+      import('./pages/legal/politica-privacidad.page').then((m) => m.PoliticaPrivacidadPage)
+  },
+  {
+    path: 'aviso-legal',
+    loadComponent: () => import('./pages/legal/aviso-legal.page').then((m) => m.AvisoLegalPage)
+  },
+  {
     // Zona del cliente con las pestañas inferiores. Solo para clientes con sesión.
     path: '',
     canActivate: [clienteGuard],

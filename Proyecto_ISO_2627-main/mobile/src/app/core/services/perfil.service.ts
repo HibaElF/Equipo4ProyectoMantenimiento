@@ -41,6 +41,16 @@ export class PerfilService {
     return this.auth.peticionConCsrf<void>('PUT', '/usuarios/3fa/preferencia', { activado });
   }
 
+  /** T-05: cambio de contraseña con la sesión iniciada; el servidor cierra las demás sesiones. */
+  cambiarContrasena(contrasenaActual: string, nuevaContrasena: string): Observable<void> {
+    return this.auth.peticionConCsrf<void>('PUT', '/usuarios/contrasena', { contrasenaActual, nuevaContrasena });
+  }
+
+  /** T-25: copia de los datos personales del titular (JSON). Es un GET sin efectos: no necesita CSRF. */
+  descargarMisDatos(): Observable<Blob> {
+    return this.http.get(`${environment.apiUrl}/usuarios/mis-datos`, { withCredentials: true, responseType: 'blob' });
+  }
+
   darDeBaja(): Observable<void> {
     return this.auth.peticionConCsrf<void>('DELETE', '/cliente/cuenta');
   }

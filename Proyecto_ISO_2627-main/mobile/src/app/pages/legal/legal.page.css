@@ -1,0 +1,77 @@
+.legal {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 18px 32px;
+  line-height: 1.55;
+  color: var(--ion-text-color);
+}
+
+.legal h1 {
+  font-size: 1.5rem;
+  margin: 4px 0 6px;
+}
+
+.legal h2 {
+  font-size: 1.1rem;
+  margin: 24px 0 8px;
+}
+
+.version {
+  margin: 0 0 12px;
+  color: var(--ion-color-medium-shade);
+  font-size: 0.9rem;
+}
+
+.aviso-plantilla {
+  padding: 10px 12px;
+  border-left: 4px solid var(--ion-color-warning);
+  background: rgba(var(--ion-color-warning-rgb), 0.12);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.legal ul {
+  padding-left: 20px;
+}
+
+.legal li + li {
+  margin-top: 6px;
+}
+
+/* La tabla se desliza en horizontal en pantallas estrechas. */
+.tabla {
+  overflow-x: auto;
+}
+
+.tabla table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tabla th,
+.tabla td {
+  border: 1px solid var(--ion-color-light-shade);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.tabla th {
+  background: var(--ion-color-light);
+}
+
+.legal a {
+  color: var(--ion-color-primary);
+  font-weight: 600;
+}
+
+.volver {
+  margin-top: 28px;
+  text-align: center;
+}
+
+.volver a {
+  display: inline-block;
+  padding: 10px 4px; /* Zona táctil cómoda. */
+}

@@ -195,3 +195,7 @@ ion-button {
   border-radius: 14px;
   margin-bottom: 12px;
 }
+
+.formulario-contrasena ion-input {
+  margin-bottom: 12px;
+}

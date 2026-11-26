@@ -10,6 +10,7 @@ import {
   IonHeader,
   IonIcon,
   IonInput,
+  IonInputPasswordToggle,
   IonNote,
   IonSkeletonText,
   IonSpinner,
@@ -23,6 +24,7 @@ import { Capacitor } from '@capacitor/core';
 import { addIcons } from 'ionicons';
 import { closeOutline, copyOutline, keyOutline, mailOutline, openOutline, shieldCheckmark } from 'ionicons/icons';
 import { Perfil, secretoTotp } from '../../core/models/perfil';
+import { EstadoSegundoFactorService } from '../../core/services/estado-segundo-factor.service';
 import { PerfilService, mensajeErrorPerfil } from '../../core/services/perfil.service';
 
 /** Normaliza un código: sin espacios ni guiones. */
@@ -52,6 +54,7 @@ export function esCodigoDesactivacion(codigo: string): boolean {
     IonHeader,
     IonIcon,
     IonInput,
+    IonInputPasswordToggle,
     IonNote,
     IonSkeletonText,
     IonSpinner,
@@ -67,6 +70,7 @@ export class SeguridadPage {
   private readonly perfilApi = inject(PerfilService);
   private readonly alertas = inject(AlertController);
   private readonly toasts = inject(ToastController);
+  private readonly estadoSegundoFactor = inject(EstadoSegundoFactorService);
 
   readonly perfil = signal<Perfil | null>(null);
   readonly cargando = signal(true);
@@ -91,6 +95,14 @@ export class SeguridadPage {
   readonly guardandoCorreo = signal(false);
   readonly errorCorreo = signal('');
 
+  // Cambiar contraseña (T-05)
+  contrasenaActual = '';
+  nuevaContrasena = '';
+  confirmarContrasena = '';
+  readonly cambiandoContrasena = signal(false);
+  readonly errorContrasena = signal('');
+  readonly mensajeContrasena = signal('');
+
   constructor() {
     addIcons({ closeOutline, copyOutline, keyOutline, mailOutline, openOutline, shieldCheckmark });
   }
@@ -105,6 +117,7 @@ export class SeguridadPage {
     this.perfilApi.consultar().subscribe({
       next: (p) => {
         this.perfil.set(p);
+        this.estadoSegundoFactor.activado.set(p.totpActivado);
         this.cargando.set(false);
       },
       error: (e: HttpErrorResponse) => {
@@ -157,6 +170,7 @@ export class SeguridadPage {
         this.codigo = '';
         this.mensajeTotp.set('TOTP activado. Guarda estos códigos de respaldo en un lugar seguro.');
         this.perfil.update((p) => (p ? { ...p, totpActivado: true } : p));
+        this.estadoSegundoFactor.activado.set(true);
       },
       error: (e: HttpErrorResponse) => {
         this.cargandoTotp.set(false);
@@ -194,6 +208,7 @@ export class SeguridadPage {
       next: () => {
         this.cargandoTotp.set(false);
         this.perfil.update((p) => (p ? { ...p, totpActivado: false } : p));
+        this.estadoSegundoFactor.activado.set(false);
         this.codigo = '';
         this.codigosRespaldo.set([]);
         this.mensajeTotp.set('Segundo factor desactivado.');
@@ -228,6 +243,36 @@ export class SeguridadPage {
       error: () => {
         this.guardandoCorreo.set(false);
         this.errorCorreo.set('No se pudo actualizar la configuración de seguridad.');
+      }
+    });
+  }
+
+  /** T-05: mismas comprobaciones y mensajes que la web; el servidor cierra las demás sesiones. */
+  cambiarContrasena(): void {
+    this.errorContrasena.set('');
+    this.mensajeContrasena.set('');
+    const actual = this.contrasenaActual;
+    const nueva = this.nuevaContrasena;
+    if (!actual || nueva.length < 8 || !this.confirmarContrasena || [actual, nueva, this.confirmarContrasena].some((c) => c.length > 128)) {
+      this.errorContrasena.set('Completa los tres campos. La contraseña nueva debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (nueva !== this.confirmarContrasena) {
+      this.errorContrasena.set('La contraseña nueva y su confirmación no coinciden.');
+      return;
+    }
+    this.cambiandoContrasena.set(true);
+    this.perfilApi.cambiarContrasena(actual, nueva).subscribe({
+      next: () => {
+        this.cambiandoContrasena.set(false);
+        this.contrasenaActual = '';
+        this.nuevaContrasena = '';
+        this.confirmarContrasena = '';
+        this.mensajeContrasena.set('Contraseña actualizada. Se han cerrado tus otras sesiones.');
+      },
+      error: (e: HttpErrorResponse) => {
+        this.cambiandoContrasena.set(false);
+        this.errorContrasena.set(mensajeErrorPerfil(e, 'No se pudo cambiar la contraseña. Inténtalo de nuevo.'));
       }
     });
   }

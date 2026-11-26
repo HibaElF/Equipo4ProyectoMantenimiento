@@ -18,6 +18,7 @@
               type="email"
               name="email"
               autocomplete="email"
+              [maxlength]="254"
               inputmode="email"
               [(ngModel)]="email"
               required
@@ -30,6 +31,7 @@
               type="password"
               name="contrasena"
               autocomplete="current-password"
+              [maxlength]="128"
               [(ngModel)]="contrasena"
               required
             >
@@ -59,6 +61,12 @@
       @if (error()) {
         <ion-text color="danger" role="alert"><p class="mensaje">{{ error() }}</p></ion-text>
       }
+      @if (contrasenaCaducada()) {
+        <!-- T-06: la contraseña es correcta pero ha caducado; se ofrece restablecerla por correo. -->
+        <ion-button fill="outline" expand="block" color="danger" routerLink="/recuperar-contrasena">
+          Restablecer mi contraseña
+        </ion-button>
+      }
 
       <ion-button type="submit" expand="block" color="secondary" [disabled]="cargando()">
         @if (cargando()) {
@@ -85,6 +93,11 @@
         <ion-button fill="clear" routerLink="/recuperar-contrasena">¿Has olvidado tu contraseña?</ion-button>
         <p>¿No tienes cuenta?</p>
         <ion-button fill="outline" expand="block" routerLink="/registro">Crear una cuenta</ion-button>
+        <div class="enlaces-legales">
+          <ion-button fill="clear" size="small" routerLink="/politica-privacidad">Política de privacidad</ion-button>
+          <span aria-hidden="true">·</span>
+          <ion-button fill="clear" size="small" routerLink="/aviso-legal">Aviso legal</ion-button>
+        </div>
       </div>
     }
   </div>

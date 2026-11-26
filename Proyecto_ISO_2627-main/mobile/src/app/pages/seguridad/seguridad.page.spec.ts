@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 import { provideIonicAngular } from '@ionic/angular';
 import { of, throwError } from 'rxjs';
 import { Perfil } from '../../core/models/perfil';
+import { EstadoSegundoFactorService } from '../../core/services/estado-segundo-factor.service';
 import { PerfilService } from '../../core/services/perfil.service';
 import { controladoresFalsos } from '../../testing/controladores-falsos';
 import { SeguridadPage, esCodigoDesactivacion, esCodigoTotp } from './seguridad.page';
@@ -14,7 +15,13 @@ const perfil = (totpActivado: boolean, emailOtpActivado = false): Perfil => ({
 });
 
 describe('SeguridadPage', () => {
-  const api = { consultar: vi.fn(), configurarSegundoFactor: vi.fn(), confirmarSegundoFactor: vi.fn(), cambiarTercerFactor: vi.fn() };
+  const api = {
+    consultar: vi.fn(),
+    configurarSegundoFactor: vi.fn(),
+    confirmarSegundoFactor: vi.fn(),
+    cambiarTercerFactor: vi.fn(),
+    cambiarContrasena: vi.fn()
+  };
 
   function crear(p: Perfil) {
     api.consultar.mockReturnValue(of(p));
@@ -28,6 +35,44 @@ describe('SeguridadPage', () => {
   }
 
   beforeEach(() => Object.values(api).forEach((f) => f.mockReset()));
+
+  it('cambiar contraseña: comprueba los campos como la web y avisa al terminar (T-05)', () => {
+    const pagina = crear(perfil(false));
+    pagina.cambiarContrasena();
+    expect(pagina.errorContrasena()).toBe('Completa los tres campos. La contraseña nueva debe tener al menos 8 caracteres.');
+
+    pagina.contrasenaActual = 'Actual1234!';
+    pagina.nuevaContrasena = 'Nueva1234!';
+    pagina.confirmarContrasena = 'Otra1234!';
+    pagina.cambiarContrasena();
+    expect(pagina.errorContrasena()).toBe('La contraseña nueva y su confirmación no coinciden.');
+    expect(api.cambiarContrasena).not.toHaveBeenCalled();
+
+    api.cambiarContrasena.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 400, error: { error: 'La contraseña actual no es correcta.' } }))
+    );
+    pagina.confirmarContrasena = 'Nueva1234!';
+    pagina.cambiarContrasena();
+    expect(api.cambiarContrasena).toHaveBeenCalledWith('Actual1234!', 'Nueva1234!');
+    expect(pagina.errorContrasena()).toBe('La contraseña actual no es correcta.');
+    expect(pagina.cambiandoContrasena()).toBe(false);
+
+    api.cambiarContrasena.mockReturnValue(of(undefined));
+    pagina.cambiarContrasena();
+    expect(pagina.mensajeContrasena()).toBe('Contraseña actualizada. Se han cerrado tus otras sesiones.');
+    expect(pagina.contrasenaActual + pagina.nuevaContrasena + pagina.confirmarContrasena).toBe('');
+  });
+
+  it('el aviso del segundo factor se entera de si está activado (T-27)', () => {
+    api.confirmarSegundoFactor.mockReturnValue(of({ enabled: true, backupCodes: [] }));
+    const pagina = crear(perfil(false));
+    const estado = TestBed.inject(EstadoSegundoFactorService);
+    expect(estado.activado()).toBe(false);
+    pagina.configuracion.set({ otpauthUri: null, qrDataUrl: null });
+    pagina.codigo = '123456';
+    pagina.confirmar();
+    expect(estado.activado()).toBe(true);
+  });
 
   it('formatos de código como en la web', () => {
     expect(esCodigoTotp('123 456')).toBe(true);

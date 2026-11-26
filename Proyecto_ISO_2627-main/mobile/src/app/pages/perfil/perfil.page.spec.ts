@@ -58,7 +58,7 @@ describe('PerfilPage', () => {
 });
 
 describe('PerfilPage: confirmaciones', () => {
-  const api = { consultar: vi.fn(), darDeBaja: vi.fn() };
+  const api = { consultar: vi.fn(), darDeBaja: vi.fn(), descargarMisDatos: vi.fn() };
   const auth = { cerrarSesion: vi.fn() };
 
   function crear() {
@@ -102,6 +102,41 @@ describe('PerfilPage: confirmaciones', () => {
     expect(alertas.creadas[1].header).toBe('La eliminación es permanente');
     alertas.pulsar('Eliminar mi cuenta');
     expect(api.darDeBaja).toHaveBeenCalled();
+  });
+
+  it('descargar mis datos: lo descarga y, si se repite antes de un minuto, avisa (T-25)', async () => {
+    const crearUrl = vi.fn(() => 'blob:mis-datos');
+    const revocar = vi.fn();
+    const urlOriginal = { crear: URL.createObjectURL, revocar: URL.revokeObjectURL };
+    URL.createObjectURL = crearUrl;
+    URL.revokeObjectURL = revocar;
+    const pulsar = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    try {
+      api.descargarMisDatos.mockReturnValue(of(new Blob(['{}'], { type: 'application/json' })));
+      const { pagina, toasts } = crear();
+      pagina.descargarMisDatos();
+      await vi.waitFor(() => expect(pagina.descargaEnCurso()).toBe(false));
+      expect(pulsar).toHaveBeenCalled();
+      expect(revocar).toHaveBeenCalledWith('blob:mis-datos');
+
+      api.descargarMisDatos.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 429 })));
+      pagina.descargarMisDatos();
+      await Promise.resolve();
+      expect(toasts.mensajes.at(-1)).toBe(
+        'Solo puedes descargar tus datos una vez por minuto. Inténtalo de nuevo en unos segundos.'
+      );
+    } finally {
+      URL.createObjectURL = urlOriginal.crear;
+      URL.revokeObjectURL = urlOriginal.revocar;
+      pulsar.mockRestore();
+    }
+  });
+
+  it('descargar mis datos con la sesión caducada lleva al login', () => {
+    api.descargarMisDatos.mockReturnValue(throwError(() => new HttpErrorResponse({ status: 401 })));
+    const { pagina } = crear();
+    pagina.descargarMisDatos();
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/login'], { queryParams: { motivo: 'sesion-expirada' } });
   });
 
   it('si el servidor rechaza la baja muestra el motivo', async () => {
