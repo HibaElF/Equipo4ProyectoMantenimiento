@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.Instant;
 
+import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -148,5 +149,21 @@ class RegistroPublicoSeguridadTests {
                         .contentType(MediaType.APPLICATION_JSON).content("{}"));
 
         verify(almacen, never()).reservar(anyString(), anyString(), any(Instant.class), anyInt(), anyInt());
+    }
+
+    // C-04: con el cupo agotado, la ruta codificada tampoco llega al servicio. Se usa URI.create para que
+    // MockMvc no vuelva a codificar el «%».
+    @Test
+    void conElCupoAgotadoLaRutaCodificadaDeAltaResponde429() throws Exception {
+        when(almacen.reservar(anyString(), anyString(), any(Instant.class), anyInt(), anyInt())).thenReturn(120);
+
+        mockMvc.perform(post(URI.create("/cliente/%72egister")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(CLIENTE))
+                .andExpect(status().isTooManyRequests());
+        mockMvc.perform(post(URI.create("/vendedor/%72egister")).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content(VENDEDOR))
+                .andExpect(status().isTooManyRequests());
+
+        verifyNoInteractions(clienteService, vendedorService);
     }
 }

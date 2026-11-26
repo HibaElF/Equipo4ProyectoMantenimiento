@@ -13,7 +13,7 @@
 | 1 | C-01 | Fijar Java 21 corregido | H-14, CVE de Java | Alta | Hecha (falta comprobación manual) | 26/11/2026: `docker build` correcto; Java 21.0.13.1 en la imagen final y en la de compilación (Maven 3.10.0); paso del pipeline probado con versiones simuladas (no en el agente); backend 1681 pruebas, 0 fallos, 91,42 %. Manual: actualizar el JDK del agente `wsl-ubuntu` y los equipos, y comprobar en Render tras reconstruir sin caché |
 | 2 | C-02 | Actualizar Spring Boot y Tomcat | `auditoria/cve/05` | Alta | Hecha | 26/11/2026: Spring Boot 4.1.3, Spring Security 7.1.3, Spring Data MongoDB 5.1.3, Tomcat 11.0.29 (forzado con `tomcat.version`, acordado con el usuario), Spring Framework 7.0.11, driver 5.8.1, Jackson 3.1.8 (quitado el forzado, ya lo trae Boot). Backend 1681 pruebas, 0 fallos, 91,42 %; JAR de la imagen Docker revisado |
 | 3 | C-03 | Impedir premium sin pago | H-01 | Alta | Otro miembro | No la implementa este chat |
-| 4 | C-04 | Filtros que no se salten con la ruta codificada | H-02, H-03 | Media | Pendiente | |
+| 4 | C-04 | Filtros que no se salten con la ruta codificada | H-02, H-03 | Media | Hecha | 26/11/2026: los tres filtros usan `PathPatternRequestMatcher`; el de imágenes verifica la firma del nombre decodificado. Pruebas con `%72egister`, `%70roduct-images` y `product%2Dimages` (fallaban antes del cambio). Backend 1687 pruebas, 0 fallos, 91,43 %. No probado contra la aplicación arrancada |
 | 5 | C-05 | Arreglar el registro desde la app móvil | H-06 | Media | Otro miembro | No la implementa este chat |
 | 6 | C-06 | HTTPS en la app móvil | H-05, RQ-09 | Media | Otro miembro | No la implementa este chat |
 | 7 | C-07 | Rutas de estadísticas | H-07 | Baja | Pendiente | |

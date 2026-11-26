@@ -12,6 +12,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
@@ -28,6 +31,12 @@ public class LimiteApiFilter extends OncePerRequestFilter {
 
 	static final String MENSAJE_LIMITE = "Demasiadas peticiones. Inténtalo de nuevo en %d segundos.";
 
+	// Se compara la ruta decodificada, igual que en la autorización y en el resto de filtros.
+	private static final RequestMatcher RUTAS_EXCLUIDAS = new OrRequestMatcher(
+			PathPatternRequestMatcher.pathPattern("/usuarios/csrf"),
+			PathPatternRequestMatcher.pathPattern("/usuarios/sesion-actual"),
+			PathPatternRequestMatcher.pathPattern("/product-images/**"));
+
 	private final LimiteApiService limite;
 
 	public LimiteApiFilter(LimiteApiService limite) {
@@ -36,11 +45,7 @@ public class LimiteApiFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String ruta = request.getRequestURI();
-		return HttpMethod.OPTIONS.matches(request.getMethod())
-				|| "/usuarios/csrf".equals(ruta)
-				|| "/usuarios/sesion-actual".equals(ruta)
-				|| ruta.startsWith("/product-images/");
+		return HttpMethod.OPTIONS.matches(request.getMethod()) || RUTAS_EXCLUIDAS.matches(request);
 	}
 
 	@Override

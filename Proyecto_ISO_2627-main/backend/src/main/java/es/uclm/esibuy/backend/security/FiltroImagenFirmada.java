@@ -4,6 +4,7 @@ import java.io.IOException;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import es.uclm.esibuy.backend.services.FirmaImagenService;
@@ -16,6 +17,13 @@ import jakarta.servlet.http.HttpServletResponse;
 // firma inválida: 403; firma correcta pero caducada: 410. Sirve para los dos modos de almacenamiento.
 public class FiltroImagenFirmada extends OncePerRequestFilter {
 
+    // Se compara la ruta decodificada, la misma que ven Spring MVC y el gestor de recursos: codificar una
+    // letra de «product-images» no sirve la imagen sin firma.
+    private static final PathPatternRequestMatcher IMAGENES =
+            PathPatternRequestMatcher.pathPattern(FirmaImagenService.RUTA_PUBLICA + "**");
+    private static final PathPatternRequestMatcher UNA_IMAGEN =
+            PathPatternRequestMatcher.pathPattern(FirmaImagenService.RUTA_PUBLICA + "{nombre}");
+
     private final FirmaImagenService firmas;
 
     public FiltroImagenFirmada(FirmaImagenService firmas) {
@@ -24,14 +32,14 @@ public class FiltroImagenFirmada extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith(FirmaImagenService.RUTA_PUBLICA)
-                || HttpMethod.OPTIONS.matches(request.getMethod());
+        return HttpMethod.OPTIONS.matches(request.getMethod()) || !IMAGENES.matches(request);
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String nombre = request.getRequestURI().substring(FirmaImagenService.RUTA_PUBLICA.length());
+        // Nombre ya decodificado; es null (y se responde 403) si la ruta no apunta a un único fichero.
+        String nombre = UNA_IMAGEN.matcher(request).getVariables().get("nombre");
         FirmaImagenService.Resultado resultado = firmas.verificar(nombre,
                 request.getParameter(FirmaImagenService.PARAMETRO_EXPIRACION),
                 request.getParameter(FirmaImagenService.PARAMETRO_FIRMA));

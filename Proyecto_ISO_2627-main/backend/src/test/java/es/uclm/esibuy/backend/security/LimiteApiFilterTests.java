@@ -103,6 +103,10 @@ class LimiteApiFilterTests {
             assertEquals(200, peticion("GET", "/usuarios/csrf", "203.0.113.9").getStatus());
             assertEquals(200, peticion("GET", "/product-images/foto-" + i + ".png", "203.0.113.9").getStatus());
             assertEquals(200, peticion("OPTIONS", "/productos", "203.0.113.9").getStatus());
+            // C-04: las exclusiones comparan la ruta decodificada.
+            assertEquals(200, peticion("GET", "/usuarios/%63srf", "203.0.113.9").getStatus());
+            assertEquals(200, peticion("GET", "/%70roduct-images/foto.png", "203.0.113.9").getStatus());
+            assertEquals(200, peticion("GET", "/product%2Dimages/foto.png", "203.0.113.9").getStatus());
         }
 
         // El cupo sigue intacto para el resto de la API.

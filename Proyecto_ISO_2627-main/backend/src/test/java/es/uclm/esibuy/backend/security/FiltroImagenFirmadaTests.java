@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Optional;
 
+import java.net.URI;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -84,5 +85,30 @@ class FiltroImagenFirmadaTests {
     @Test
     void otrasRutasNoSeVenAfectadas() throws Exception {
         mockMvc.perform(get("/otra-ruta")).andExpect(status().isNotFound());
+    }
+
+    // C-04: la ruta codificada se compara decodificada, igual que hace Spring MVC.
+    @Test
+    void sinFirmaDa403ConCualquierCodificacionDeLaRuta() throws Exception {
+        for (String ruta : new String[] { "/%70roduct-images/", "/product%2Dimages/", "/product-images/%64" }) {
+            String url = ruta.endsWith("%64") ? ruta + NOMBRE.substring(1) : ruta + NOMBRE;
+            mockMvc.perform(get(URI.create(url))).andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void unaUrlFirmadaSigueSirviendoAunqueLaRutaVayaCodificada() throws Exception {
+        String url = firmas.firmar("/product-images/" + NOMBRE);
+
+        mockMvc.perform(get(URI.create(url.replace("/product-images/", "/%70roduct-images/"))))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(URI.create(url.replace("/product-images/d", "/product-images/%64"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void unaRutaConMasSegmentosBajoLasImagenesDa403() throws Exception {
+        mockMvc.perform(get("/product-images/carpeta/" + NOMBRE)).andExpect(status().isForbidden());
+        mockMvc.perform(get("/product-images/")).andExpect(status().isForbidden());
     }
 }
