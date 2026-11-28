@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -72,5 +73,16 @@ class ProductoImagenConfigurationTests {
         mockMvc.perform(get("/product-images/foto.png")).andExpect(status().isForbidden());
         mockMvc.perform(get("/product-images/foto.png?exp=9999999999&sig=falsa")).andExpect(status().isForbidden());
         mockMvc.perform(get(firmas.firmar("/product-images/foto.png"))).andExpect(status().isOk());
+    }
+
+    // C-04: modo local, con la cadena de seguridad real y la ruta codificada.
+    @Test
+    void laEntregaLocalAplicaLaFirmaAunqueLaRutaVayaCodificada() throws Exception {
+        mockMvc.perform(get(URI.create("/%70roduct-images/foto.png"))).andExpect(status().isForbidden());
+        mockMvc.perform(get(URI.create("/product%2Dimages/foto.png"))).andExpect(status().isForbidden());
+
+        String firmada = firmas.firmar("/product-images/foto.png");
+        mockMvc.perform(get(URI.create(firmada.replace("/foto.png", "/%66oto.png"))))
+                .andExpect(status().isOk());
     }
 }

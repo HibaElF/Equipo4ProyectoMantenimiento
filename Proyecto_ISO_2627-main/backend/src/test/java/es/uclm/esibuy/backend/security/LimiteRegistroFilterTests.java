@@ -87,4 +87,17 @@ class LimiteRegistroFilterTests {
 
         assertNotNull(cadena.getRequest());
     }
+
+    // C-04: codificar una letra de la ruta no salta el límite.
+    @Test
+    void laRutaCodificadaTambienSeLimita() throws Exception {
+        when(almacen.reservar(anyString(), anyString(), any(Instant.class), anyInt(), anyInt())).thenReturn(60);
+
+        for (String ruta : new String[] { "/cliente/%72egister", "/%63liente/register", "/vendedor/%72egister" }) {
+            MockHttpServletResponse respuesta = new MockHttpServletResponse();
+            MockFilterChain cadena = ejecutar("POST", ruta, "203.0.113.9", respuesta);
+            assertNull(cadena.getRequest(), ruta);
+            assertEquals(429, respuesta.getStatus(), ruta);
+        }
+    }
 }

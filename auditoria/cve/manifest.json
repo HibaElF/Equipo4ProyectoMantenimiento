@@ -1,0 +1,7 @@
+{
+  "source": "Proyecto_ISO_2627-main",
+  "sha256": null,
+  "files_examined": 7,
+  "components_recorded": 1012,
+  "warning": "STATIC ONLY: no Maven dependency resolution, running runtime, CVE validation or exploitability proof"
+}

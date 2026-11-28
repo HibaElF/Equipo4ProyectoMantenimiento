@@ -3,7 +3,6 @@ package es.uclm.esibuy.backend.security;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import org.slf4j.Logger;
@@ -12,6 +11,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import es.uclm.esibuy.backend.dao.LoginAttemptStore;
@@ -29,7 +31,11 @@ public class LimiteRegistroFilter extends OncePerRequestFilter {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(LimiteRegistroFilter.class);
 
-	static final Set<String> RUTAS = Set.of("/cliente/register", "/vendedor/register");
+	// Mismo emparejador que la autorización: compara la ruta ya decodificada, así que escribirla como
+	// «/cliente/%72egister» no salta el límite.
+	private static final RequestMatcher ALTAS_PUBLICAS = new OrRequestMatcher(
+			PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/cliente/register"),
+			PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/vendedor/register"));
 	static final String TIPO_LIMITE = "registro-ip";
 	static final String MENSAJE_LIMITE =
 			"Demasiados intentos de registro desde esta conexión. Inténtalo de nuevo en %d segundos.";
@@ -48,7 +54,7 @@ public class LimiteRegistroFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) {
-		return !HttpMethod.POST.matches(request.getMethod()) || !RUTAS.contains(request.getRequestURI());
+		return !ALTAS_PUBLICAS.matches(request);
 	}
 
 	@Override

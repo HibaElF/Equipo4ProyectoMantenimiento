@@ -1,11 +1,12 @@
-# Análisis de seguridad con CodeQL (GitHub Actions)
+# Análisis de seguridad con CodeQL (GitHub Actions).
+# Debe estar en la .github de la raíz del repositorio: GitHub no lee otras.
 name: CodeQL
 
 on:
   push:
-    branches: [main, develop, 'feature/**', 'release/**']
+    branches: [main, Develop, 'feature/**', 'release/**']
   pull_request:
-    branches: [main, develop, 'feature/**', 'release/**']
+    branches: [main, Develop, 'feature/**', 'release/**']
   schedule:
     - cron: '0 3 * * 1'   # Semanal: lunes a las 03:00 UTC
 
@@ -38,7 +39,7 @@ jobs:
           cache: maven
 
       - name: Inicializar CodeQL
-        uses: github/codeql-action/init@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
+        uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
@@ -46,10 +47,13 @@ jobs:
 
       - name: Compilar backend
         if: matrix.language == 'java-kotlin'
-        working-directory: backend
-        run: ./mvnw -B -DskipTests package
+        working-directory: Proyecto_ISO_2627-main/backend
+        # mvnw está versionado sin permiso de ejecución.
+        run: |
+          chmod +x mvnw
+          ./mvnw -B -DskipTests package
 
       - name: Analizar
-        uses: github/codeql-action/analyze@9f759ee644a3e7c15c1390abf49868036c00067b # v3.38.3
+        uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           category: /language:${{ matrix.language }}

@@ -43,10 +43,18 @@ stages:
     displayName: 'Maven Compile & Tests'
     steps:
 
+    # Mínimo 21.0.13.1 (corrige Java4Shell). Se comprueba el mismo java que usará mvnw.
     - script: |
-        java -version
-        java -version 2>&1 | grep -q '"21' || { echo "##vso[task.logissue type=error]Se requiere Java 21 en el agente"; exit 1; }
-      displayName: 'Comprobar Java 21'
+        JAVA="${JAVA_HOME:+$JAVA_HOME/bin/}java"
+        "$JAVA" -version
+        MINIMA='21.0.13.1'
+        VERSION=$("$JAVA" -version 2>&1 | sed -n 's/.* version "\([^"]*\)".*/\1/p' | head -n 1)
+        case "$VERSION" in
+          21.*) printf '%s\n%s\n' "$MINIMA" "$VERSION" | sort -V -C && exit 0 ;;
+        esac
+        echo "##vso[task.logissue type=error]Se requiere Java 21 en version $MINIMA o posterior en el agente (detectada: ${VERSION:-ninguna})"
+        exit 1
+      displayName: 'Comprobar Java 21.0.13.1 o posterior'
 
     - task: Cache@2
       inputs:

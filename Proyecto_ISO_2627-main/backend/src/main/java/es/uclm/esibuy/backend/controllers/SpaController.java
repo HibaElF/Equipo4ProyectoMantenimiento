@@ -20,6 +20,7 @@ public class SpaController {
             "/perfil/direcciones",
             "/perfil/pagos",
             "/admin",
+            "/admin/estadisticas",
             "/admin/usuarios",
             "/admin/categorias",
             "/admin/administradores",
@@ -31,6 +32,7 @@ public class SpaController {
             "/carrito",
             "/cliente/checkout",
             "/vendedor",
+            "/vendedor/estadisticas",
             "/vendedor/pedidos"
     })
     public String mostrarAngular() {
